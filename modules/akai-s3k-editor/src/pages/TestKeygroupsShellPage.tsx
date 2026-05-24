@@ -1,7 +1,8 @@
 /**
  * Test harness for the Keygroups page chrome contract — closes
  * AUDIT-20260524-06 (the gap left open by AUDIT-20260524-05's first
- * pass). The pre-existing `TestKeygroupsPage` at
+ * pass) and AUDIT-20260524-08 (detail-scroll ownership under
+ * contentful pressure). The pre-existing `TestKeygroupsPage` at
  * `/akai/s3000xl/editor/test/keygroups` is the inline-styled
  * zone-overview interaction harness load-bearing for
  * `zone-overview.spec.ts`; this file is the SEPARATE shell-compliant
@@ -18,7 +19,15 @@
  *     ZoneOverview
  *     .ac-app-shell
  *       KeygroupList (real component, factory data)
- *       .ac-detail-scroll (stub detail content)
+ *       .ac-detail-scroll (20 stacked param rows — overflow pressure)
+ *
+ * The detail pane renders 20 stacked synthetic param rows (min-height
+ * 80px each → ~1600px content) so the AUDIT-20260524-08 contentful
+ * detail-scroll assertion can observe `scrollHeight > clientHeight`
+ * and prove the last row is reachable via `scrollIntoView()` without
+ * the document leaking scroll. Each row carries
+ * `data-testid="kg-detail-row-<index>"` so the spec can address the
+ * last row deterministically.
  *
  * See `TestProgramsPage.tsx` for the composition pattern; this file
  * follows the same factory-data + local-state shape so the contract
@@ -110,7 +119,7 @@ export function TestKeygroupsShellPage(): JSX.Element {
           isLoading={false}
         />
 
-        <div className="ac-detail-scroll">
+        <div className="ac-detail-scroll" data-testid="kg-detail-scroll">
           <p className="text-gray-300">
             Test detail pane — selected keygroup:{' '}
             {selectedHeader
@@ -123,6 +132,29 @@ export function TestKeygroupsShellPage(): JSX.Element {
             list + detail). The production page renders the same
             scaffold around a real `KeygroupEditor`.
           </p>
+
+          {/*
+            Twenty synthetic param rows force the detail pane past one
+            viewport height (~1600px content at min-height: 80px each).
+            The contract spec asserts `.ac-detail-scroll` owns the
+            internal scroll: scrollHeight > clientHeight, the last row
+            is reachable via scrollIntoView, and the document never
+            grows beyond innerHeight. Closes AUDIT-20260524-08.
+          */}
+          {Array.from({ length: 20 }, (_, i) => (
+            <div
+              key={i}
+              data-testid={`kg-detail-row-${i}`}
+              style={{ minHeight: '80px', borderTop: '1px solid #374151', padding: '0.5rem 0' }}
+            >
+              <span className="text-gray-400 text-sm">
+                Param row {String(i + 1).padStart(2, '0')} (synthetic)
+              </span>
+              <span className="text-gray-300 ml-3">
+                value: {(i + 1) * 7}
+              </span>
+            </div>
+          ))}
         </div>
       </div>
     </div>

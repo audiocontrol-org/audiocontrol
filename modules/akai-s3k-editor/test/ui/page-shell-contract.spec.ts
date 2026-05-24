@@ -1,6 +1,7 @@
 /**
  * Page shell contract — regression coverage for the akai page chrome
- * migrated in commit bba5b13b. Closes AUDIT-20260524-05, -06, -07.
+ * migrated in commit bba5b13b. Closes AUDIT-20260524-05, -06, -07,
+ * -08, -09.
  *
  * The Phase 2 migration moved all four akai pages (Programs, Samples,
  * Keygroups, Library) onto the canonical fixed-viewport shell:
@@ -46,11 +47,27 @@
  *   - `.ac-app-shell` is a 2-col grid (or `.ac-page-shell-body` for
  *     Library)
  *   - `.ac-list-scroll` (where present) has `overflow-y: scroll|auto`
+ *   - `.ac-detail-scroll` (where present) has `overflow-y: scroll|auto`
+ *     (AUDIT-20260524-08 — both columns of the app-shell contract are
+ *     asserted, not just the list side)
+ *   - For `/test/keygroups-shell` (the contentful-detail harness):
+ *     `.ac-detail-scroll` has overflow PRESSURE (scrollHeight >
+ *     clientHeight), the last detail row is reachable via
+ *     `scrollIntoView()`, and the document does NOT scroll afterwards
+ *     (AUDIT-20260524-08 — proves the detail-scroll declaration
+ *     actually owns scroll under load, not just declares overflow)
  *   - For `/test/library-real`: inner library panes own their own
  *     overflow (`.ac-plugin-library-browser-device`,
  *     `.ac-plugin-library-browser-sections`,
  *     `.ac-plugin-library-browser-preview` each declare
- *     `overflow-y: auto|scroll`)
+ *     `overflow-y: auto|scroll`); under the contentful seed, each of
+ *     `.ac-plugin-library-browser-device` and
+ *     `.ac-plugin-library-browser-sections` ALSO has overflow pressure
+ *     (scrollHeight > clientHeight), a deterministic last item is
+ *     reachable via `scrollIntoView()`, and the document never grows
+ *     past `innerHeight` (AUDIT-20260524-09 — proves the inner-pane
+ *     overflow declarations actually own scroll under populated
+ *     library + device-memory state)
  *
  * Mobile viewport (414x896):
  *   - The fixed-viewport modifier collapses to `height: auto`
@@ -78,8 +95,28 @@ interface ShellHarnessRoute {
    * the spec can additionally assert the inner-pane overflow contract
    * AUDIT-20260524-05's fix-guidance called out. Only the
    * `/test/library-real` route opts in today.
+   *
+   * Under AUDIT-20260524-09 the same route ALSO seeds the harness
+   * with deterministic contentful data (30 device programs + 30
+   * device samples + 30 entries per library category) so the
+   * inner-pane overflow assertions exercise populated state, not
+   * empty-state CSS declarations.
    */
   readonly asserts_inner_library_overflow?: boolean;
+  /**
+   * When true, the harness seeds the detail column with synthetic
+   * content tall enough to force vertical overflow inside
+   * `.ac-detail-scroll`. The contract spec then asserts
+   * `scrollHeight > clientHeight`, the LAST detail row is reachable
+   * via `scrollIntoView()`, and the document never grows beyond
+   * `innerHeight` (proves the pane owns scroll; document never
+   * leaks). AUDIT-20260524-08 closure.
+   *
+   * Only the `/test/keygroups-shell` route opts in today — its
+   * harness renders 20 synthetic param rows below the selected-
+   * keygroup summary, each with `data-testid="kg-detail-row-<i>"`.
+   */
+  readonly contentful_detail_scroll_last_row_selector?: string;
 }
 
 const SHELL_HARNESS_ROUTES: ShellHarnessRoute[] = [
@@ -100,6 +137,10 @@ const SHELL_HARNESS_ROUTES: ShellHarnessRoute[] = [
     url: '/akai/s3000xl/editor/test/keygroups-shell',
     headingText: 'Test Keygroups (harness)',
     bodyKind: 'app-shell',
+    // 20 stacked synthetic param rows (`min-height: 80px` each)
+    // exceed viewport height on the 900px desktop suite, forcing
+    // `.ac-detail-scroll` to scroll. AUDIT-20260524-08 closure.
+    contentful_detail_scroll_last_row_selector: '[data-testid="kg-detail-row-19"]',
   },
   {
     name: 'library',
@@ -194,7 +235,7 @@ test.describe('Akai page-shell contract — desktop viewport', () => {
           `${route.url} .ac-app-shell at desktop should be 2-col grid, got tracks: [${tracks.join(', ')}]`,
         ).toBe(2);
 
-        // 5. `.ac-list-scroll` inside the list column has an internal
+        // 5a. `.ac-list-scroll` inside the list column has an internal
         // scroll discipline (auto or scroll), not visible.
         const listScrollOverflow = await page
           .locator('.ac-list-scroll')
@@ -203,6 +244,25 @@ test.describe('Akai page-shell contract — desktop viewport', () => {
         expect(
           listScrollOverflow,
           `${route.url} .ac-list-scroll overflow-y should be 'auto' or 'scroll', got '${listScrollOverflow}'`,
+        ).toMatch(/^(auto|scroll)$/);
+
+        // 5b. `.ac-detail-scroll` in the detail column owns the SAME
+        // internal scroll contract as the list column. AUDIT-20260524-08:
+        // every app-shell page has its dense editor surface wrapped in
+        // `<div className="ac-detail-scroll">` (ProgramsPage.tsx:351,
+        // SamplesPage.tsx:259, KeygroupsPage.tsx:351); the rule lives
+        // in index.css:21-53 and exists so editor content past one
+        // viewport scrolls inside the grid track rather than getting
+        // clipped. If a regression drops the wrapper class, removes
+        // `overflow-y: auto`, or substitutes a non-scrolling div, this
+        // assertion turns red.
+        const detailScrollOverflow = await page
+          .locator('.ac-detail-scroll')
+          .first()
+          .evaluate((el) => getComputedStyle(el).overflowY);
+        expect(
+          detailScrollOverflow,
+          `${route.url} .ac-detail-scroll overflow-y should be 'auto' or 'scroll', got '${detailScrollOverflow}'`,
         ).toMatch(/^(auto|scroll)$/);
       } else {
         // 4b. The Library variant uses `.ac-page-shell-body` instead
@@ -271,6 +331,180 @@ test.describe('Akai page-shell contract — desktop viewport', () => {
           docDimensions.docScrollHeight,
           `${route.url}: real PluginLibraryBrowser must not introduce document scroll; got scrollHeight=${docDimensions.docScrollHeight} vs innerHeight=${docDimensions.innerHeight}`,
         ).toBeLessThanOrEqual(docDimensions.innerHeight + HEIGHT_SLACK_PX);
+      });
+
+      test(`${route.name}: contentful library + device-memory state forces real overflow pressure (AUDIT-20260524-09)`, async ({ page }) => {
+        await gotoHarness(page, route);
+
+        // AUDIT-20260524-09: the prior assertion verifies CSS
+        // declarations exist on the panes. This assertion verifies
+        // those declarations actually DO WORK by forcing content
+        // past pane height and proving:
+        //   1. scrollHeight > clientHeight (pane has real overflow
+        //      pressure under the seeded contentful state — proves
+        //      `TestLibraryRealPage` is seeded; if the seed regresses
+        //      back to empty inputs, this assertion goes red)
+        //   2. The last deterministic item per pane is reachable via
+        //      scrollIntoView() + boundingClientRect (proves the pane
+        //      owns its scroll mechanism)
+        //   3. The document still does NOT scroll afterwards (proves
+        //      the pane's overflow stayed internal — no bleed)
+        //
+        // The preview pane (`.ac-plugin-library-browser-preview`) is
+        // intentionally excluded from the populated-overflow part
+        // because it renders the SELECTED item's preview, not all
+        // items; with no selection, it stays empty. The preview's
+        // overflow declaration is still asserted by the prior test
+        // (test above) — populated-overflow coverage for the preview
+        // pane would require selection-driven content and is a
+        // separate concern.
+        const pressureCases: ReadonlyArray<{
+          pane: string;
+          /** A deterministic selector for the LAST item rendered
+           *  inside the pane. Must address an element actually present
+           *  under the harness seed. */
+          lastItem: string;
+        }> = [
+          // Device-memory pane: 30 programs + 30 samples seeded; the
+          // last sample is `device-sample-29` per `DeviceMemoryPanel`
+          // `data-testid={`device-${type}-${index}`}` shape.
+          { pane: '.ac-plugin-library-browser-device', lastItem: '[data-testid="device-sample-29"]' },
+          // Sections pane: 30 entries per category × 3 categories;
+          // tree nodes carry `data-testid={`library-${type}-${slug}`}`
+          // from `TreeView.tsx:267-269`. The last s3k-programs entry
+          // slug is `s3kprog-029` (`S3kProg_029` → lowercased,
+          // non-alnum collapsed). Section ordering is device-band
+          // (s3k-programs) below common-band (samples, common-programs)
+          // since s3k-programs has the default scope ('device') and
+          // the common categories appear in their declaration order;
+          // either way the deepest-rendered item is reachable through
+          // the pane's own scroll. Pick a sample-category entry
+          // because samples is reliably rendered first regardless of
+          // band ordering, and assert reachability on the LAST sample
+          // (idx 29) — sections-pane scroll has to walk past at
+          // least the samples section to reach it.
+          { pane: '.ac-plugin-library-browser-sections', lastItem: '[data-testid="library-sample-samples-sample-029"]' },
+        ];
+
+        for (const { pane, lastItem } of pressureCases) {
+          const paneHandle = page.locator(pane);
+          await expect(paneHandle, `${route.url}: pane ${pane} should exist`).toHaveCount(1);
+
+          const dims = await paneHandle.evaluate((el) => ({
+            scrollHeight: el.scrollHeight,
+            clientHeight: el.clientHeight,
+          }));
+          expect(
+            dims.scrollHeight,
+            `${route.url}: pane '${pane}' scrollHeight (${dims.scrollHeight}px) should be > clientHeight (${dims.clientHeight}px) — proves the contentful seed actually overflows the pane. If this fails, the seed in TestLibraryRealPage.tsx has regressed back to empty inputs (AUDIT-20260524-09).`,
+          ).toBeGreaterThan(dims.clientHeight);
+
+          const lastLocator = page.locator(lastItem);
+          await expect(
+            lastLocator,
+            `${route.url}: last-item selector '${lastItem}' should locate a rendered element under the seeded pane '${pane}'`,
+          ).toHaveCount(1);
+
+          await lastLocator.scrollIntoViewIfNeeded();
+
+          const reachability = await lastLocator.evaluate((el, paneSel) => {
+            const paneEl = document.querySelector(paneSel) as HTMLElement | null;
+            const itemRect = el.getBoundingClientRect();
+            const paneRect = paneEl?.getBoundingClientRect() ?? null;
+            return {
+              itemTop: itemRect.top,
+              itemBottom: itemRect.bottom,
+              paneTop: paneRect?.top ?? null,
+              paneBottom: paneRect?.bottom ?? null,
+              docScrollHeight: document.documentElement.scrollHeight,
+              innerHeight: window.innerHeight,
+            };
+          }, pane);
+
+          // The item's bottom edge should sit within the pane's bottom
+          // edge (the pane owns the scroll; the item is now in-view).
+          // Allow the small slack window used for sub-pixel rounding.
+          expect(
+            reachability.itemBottom,
+            `${route.url}: after scrollIntoView, last item '${lastItem}' bottom (${reachability.itemBottom}px) should be inside pane '${pane}' bottom (${reachability.paneBottom}px) — proves the pane owns scroll and the seeded last entry is reachable.`,
+          ).toBeLessThanOrEqual((reachability.paneBottom ?? 0) + HEIGHT_SLACK_PX);
+
+          // Document MUST not have grown — proves the pane's scroll
+          // stayed internal and did not bleed up the parent chain.
+          expect(
+            reachability.docScrollHeight,
+            `${route.url}: after scrolling pane '${pane}', document scrollHeight (${reachability.docScrollHeight}px) should still fit innerHeight (${reachability.innerHeight}px). If this regresses, the pane's overflow is bleeding to the document.`,
+          ).toBeLessThanOrEqual(reachability.innerHeight + HEIGHT_SLACK_PX);
+        }
+      });
+    }
+
+    if (route.contentful_detail_scroll_last_row_selector) {
+      const lastRowSelector = route.contentful_detail_scroll_last_row_selector;
+      test(`${route.name}: .ac-detail-scroll owns scroll under contentful detail content (AUDIT-20260524-08)`, async ({ page }) => {
+        await gotoHarness(page, route);
+
+        // AUDIT-20260524-08: the per-route `.ac-detail-scroll`
+        // overflow-y assertion above proves the CSS property is
+        // declared. This assertion proves the declaration actually
+        // owns scroll when the detail pane content exceeds one
+        // viewport. The harness `TestKeygroupsShellPage` mounts 20
+        // synthetic param rows (`min-height: 80px` each → ~1600px
+        // content) inside `.ac-detail-scroll`; under the 900px
+        // desktop viewport the pane MUST overflow internally.
+        const detailScroll = page.locator('.ac-detail-scroll').first();
+        await expect(
+          detailScroll,
+          `${route.url}: .ac-detail-scroll should be rendered`,
+        ).toHaveCount(1);
+
+        const dims = await detailScroll.evaluate((el) => ({
+          scrollHeight: el.scrollHeight,
+          clientHeight: el.clientHeight,
+        }));
+        expect(
+          dims.scrollHeight,
+          `${route.url}: .ac-detail-scroll scrollHeight (${dims.scrollHeight}px) should be > clientHeight (${dims.clientHeight}px) — proves the harness seed actually creates overflow pressure on the detail pane. If this fails, the synthetic param rows in TestKeygroupsShellPage.tsx have regressed (AUDIT-20260524-08).`,
+        ).toBeGreaterThan(dims.clientHeight);
+
+        // The LAST detail row should be reachable via scrollIntoView —
+        // the pane owns the scroll, the document does not.
+        const lastRow = page.locator(lastRowSelector);
+        await expect(
+          lastRow,
+          `${route.url}: last detail row '${lastRowSelector}' should be rendered under the harness seed`,
+        ).toHaveCount(1);
+
+        await lastRow.scrollIntoViewIfNeeded();
+
+        const reachability = await lastRow.evaluate((el) => {
+          const detailEl = document.querySelector('.ac-detail-scroll') as HTMLElement | null;
+          const rowRect = el.getBoundingClientRect();
+          const detailRect = detailEl?.getBoundingClientRect() ?? null;
+          return {
+            rowTop: rowRect.top,
+            rowBottom: rowRect.bottom,
+            detailTop: detailRect?.top ?? null,
+            detailBottom: detailRect?.bottom ?? null,
+            docScrollHeight: document.documentElement.scrollHeight,
+            innerHeight: window.innerHeight,
+          };
+        });
+
+        // After scrollIntoView, the row's bottom must sit within (or
+        // very near) the detail pane's bottom — proving the pane
+        // owns the scroll and the row is in-view.
+        expect(
+          reachability.rowBottom,
+          `${route.url}: after scrollIntoView, last detail row bottom (${reachability.rowBottom}px) should be inside .ac-detail-scroll bottom (${reachability.detailBottom}px) — proves the detail pane owns scroll.`,
+        ).toBeLessThanOrEqual((reachability.detailBottom ?? 0) + HEIGHT_SLACK_PX);
+
+        // The document still does NOT scroll — the pane's overflow
+        // stayed internal, no bleed.
+        expect(
+          reachability.docScrollHeight,
+          `${route.url}: after scrolling .ac-detail-scroll, document scrollHeight (${reachability.docScrollHeight}px) should still fit innerHeight (${reachability.innerHeight}px). If this regresses, the detail pane's overflow is bleeding to the document.`,
+        ).toBeLessThanOrEqual(reachability.innerHeight + HEIGHT_SLACK_PX);
       });
     }
   }
