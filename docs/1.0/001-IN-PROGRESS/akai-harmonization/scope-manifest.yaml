@@ -4,8 +4,39 @@ generated_by: strawman
 generated_at: 2026-05-24T08:11:24.964Z
 scenarios:
   - id: default
-    label: Default state
-    description: Strawman scenario; operator curates the real scenario matrix.
+    label: Default state (no selection)
+    description: Page mounted, idle, no list-row selected.
+  - id: selected
+    label: List-row selected, detail pane editing
+    description: |
+      Canonical demo state — a row is selected (program A03 / keygroup
+      KG3 / sample 003 / library node), the detail pane shows the
+      editor with values populated. This is the state Phase 2 visual
+      regression sweeps capture for every page.
+  - id: editing
+    label: Live parameter edit in progress
+    description: |
+      A parameter is actively being edited — slider dragged, envelope
+      point dragged, text input focused with caret. Verifies the
+      live-edit footer LED activates and the live-status string updates.
+      Applies to editor pages (programs / keygroups / samples), not
+      library.
+  - id: tab-amp
+    label: Detail pane tab switched to Amp / envelope
+    description: |
+      Detail pane's tab strip switched away from the default tab. Used
+      to verify the AcRadioTabs registration in akai-dialect.css (later
+      in _shared.css under Phase 2) actually activates the correct
+      panel + lit underline. Most useful on keygroups (Amp tab mounts
+      AcEnvelope) but applies to every tabbed editor.
+  - id: mobile
+    label: Narrow viewport (< 900 px)
+    description: |
+      Verifies the mobile escape hatch from AUDIT-20260523-03: at
+      narrow widths the .ac-page-shell--fixed-viewport constraint
+      drops, .ac-app-shell stacks list above detail, the whole page
+      scrolls naturally, and all controls remain reachable. Capture at
+      414 x 896 (iPhone baseline).
 reference_docs:
   - path: docs/1.0/001-IN-PROGRESS/akai-harmonization/prd.md
     role: prd
@@ -45,26 +76,41 @@ routes:
       - none
     scenarios:
       - default
+      - mobile
   - path: /akai/s3000xl/editor/keygroups
     devices:
       - none
     scenarios:
       - default
+      - selected
+      - editing
+      - tab-amp
+      - mobile
   - path: /akai/s3000xl/editor/library
     devices:
       - none
     scenarios:
       - default
+      - selected
+      - mobile
   - path: /akai/s3000xl/editor/programs
     devices:
       - none
     scenarios:
       - default
+      - selected
+      - editing
+      - tab-amp
+      - mobile
   - path: /akai/s3000xl/editor/samples
     devices:
       - none
     scenarios:
       - default
+      - selected
+      - editing
+      - tab-amp
+      - mobile
   - path: /akai/s3000xl/editor/test/keygroups
     devices:
       - none
@@ -75,26 +121,38 @@ routes:
       - none
     scenarios:
       - default
+      - mobile
   - path: /library
     devices:
       - none
     scenarios:
       - default
+      - selected
+      - mobile
   - path: /patches
     devices:
       - none
     scenarios:
       - default
+      - selected
+      - editing
+      - tab-amp
+      - mobile
   - path: /play
     devices:
       - none
     scenarios:
       - default
+      - mobile
   - path: /tones
     devices:
       - none
     scenarios:
       - default
+      - selected
+      - editing
+      - tab-amp
+      - mobile
 modules:
   - glob: modules/roland-sxx0-editor/src/**/*.{ts,tsx}
     label: roland-sxx0-editor
@@ -901,132 +959,6 @@ modules:
         description: Inline numeric literal >= 2 not bound to a const/named identifier
           (heuristic — synthesis layer + operator curate)
         query: (?<![A-Za-z0-9_.=])\d{2,}\b
-  - glob: modules/d110-editor/src/**/*.{ts,tsx}
-    label: d110-editor
-    patterns:
-      - id: ac-class-consumer
-        kind: grep
-        description: Consumer of an .ac-* CSS class (className string literal or
-          template containing "ac-")
-        query: className\s*=\s*[{"`'][^"`'}\n]*\bac-[a-z][a-z0-9-]*
-      - id: as-type-cast
-        kind: grep
-        description: '`as <TypeName>` cast (banned per CLAUDE.md "never bypass typing")'
-        query: \bas\s+(?!const\b|unknown\b)[A-Z][A-Za-z0-9_]*
-      - id: clone-group-090fc86629c2
-        kind: clone-group
-        description: "jscpd clone group 090fc86629c2 (11 lines, disposition: pending)"
-        query: jscpd-group:090fc86629c2
-      - id: clone-group-12bfbd786555
-        kind: clone-group
-        description: "jscpd clone group 12bfbd786555 (8 lines, disposition: pending)"
-        query: jscpd-group:12bfbd786555
-      - id: clone-group-17a50586ce4e
-        kind: clone-group
-        description: "jscpd clone group 17a50586ce4e (9 lines, disposition: pending)"
-        query: jscpd-group:17a50586ce4e
-      - id: clone-group-1c21348eca9f
-        kind: clone-group
-        description: "jscpd clone group 1c21348eca9f (30 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:1c21348eca9f
-      - id: clone-group-1cbbe47b763e
-        kind: clone-group
-        description: "jscpd clone group 1cbbe47b763e (18 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:1cbbe47b763e
-      - id: clone-group-1df9b5be4c5d
-        kind: clone-group
-        description: "jscpd clone group 1df9b5be4c5d (11 lines, disposition: pending)"
-        query: jscpd-group:1df9b5be4c5d
-      - id: clone-group-1e7294405474
-        kind: clone-group
-        description: "jscpd clone group 1e7294405474 (9 lines, disposition: pending)"
-        query: jscpd-group:1e7294405474
-      - id: clone-group-2ce3f141564b
-        kind: clone-group
-        description: "jscpd clone group 2ce3f141564b (14 lines, disposition: pending)"
-        query: jscpd-group:2ce3f141564b
-      - id: clone-group-33d01a983543
-        kind: clone-group
-        description: "jscpd clone group 33d01a983543 (15 lines, disposition: pending)"
-        query: jscpd-group:33d01a983543
-      - id: clone-group-466ceef58f9b
-        kind: clone-group
-        description: "jscpd clone group 466ceef58f9b (9 lines, disposition: pending)"
-        query: jscpd-group:466ceef58f9b
-      - id: clone-group-4773a406506f
-        kind: clone-group
-        description: "jscpd clone group 4773a406506f (13 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:4773a406506f
-      - id: clone-group-47a4b374d31a
-        kind: clone-group
-        description: "jscpd clone group 47a4b374d31a (16 lines, disposition: pending)"
-        query: jscpd-group:47a4b374d31a
-      - id: clone-group-554cd30ae514
-        kind: clone-group
-        description: "jscpd clone group 554cd30ae514 (12 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:554cd30ae514
-      - id: clone-group-5cdfe2c851fb
-        kind: clone-group
-        description: "jscpd clone group 5cdfe2c851fb (28 lines, disposition: pending)"
-        query: jscpd-group:5cdfe2c851fb
-      - id: clone-group-646b2ad715b2
-        kind: clone-group
-        description: "jscpd clone group 646b2ad715b2 (11 lines, disposition: pending)"
-        query: jscpd-group:646b2ad715b2
-      - id: clone-group-68bcada70576
-        kind: clone-group
-        description: "jscpd clone group 68bcada70576 (12 lines, disposition: pending)"
-        query: jscpd-group:68bcada70576
-      - id: clone-group-7c9da11a5421
-        kind: clone-group
-        description: "jscpd clone group 7c9da11a5421 (9 lines, disposition: pending)"
-        query: jscpd-group:7c9da11a5421
-      - id: clone-group-9dd1ecfac07b
-        kind: clone-group
-        description: "jscpd clone group 9dd1ecfac07b (10 lines, disposition: pending)"
-        query: jscpd-group:9dd1ecfac07b
-      - id: clone-group-a4b7a605bed2
-        kind: clone-group
-        description: "jscpd clone group a4b7a605bed2 (10 lines, disposition: pending)"
-        query: jscpd-group:a4b7a605bed2
-      - id: clone-group-b2002aea9997
-        kind: clone-group
-        description: "jscpd clone group b2002aea9997 (14 lines, disposition: pending)"
-        query: jscpd-group:b2002aea9997
-      - id: clone-group-b75fecb1ddd4
-        kind: clone-group
-        description: "jscpd clone group b75fecb1ddd4 (10 lines, disposition: pending)"
-        query: jscpd-group:b75fecb1ddd4
-      - id: clone-group-bebbd5f298f4
-        kind: clone-group
-        description: "jscpd clone group bebbd5f298f4 (12 lines, disposition: pending)"
-        query: jscpd-group:bebbd5f298f4
-      - id: clone-group-d4854a3768c3
-        kind: clone-group
-        description: "jscpd clone group d4854a3768c3 (12 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:d4854a3768c3
-      - id: clone-group-edc2b4f3226a
-        kind: clone-group
-        description: "jscpd clone group edc2b4f3226a (6 lines, disposition: pending)"
-        query: jscpd-group:edc2b4f3226a
-      - id: clone-group-fc835aefd9d3
-        kind: clone-group
-        description: "jscpd clone group fc835aefd9d3 (16 lines, disposition: pending)"
-        query: jscpd-group:fc835aefd9d3
-      - id: clone-group-fd1348a8b4c5
-        kind: clone-group
-        description: "jscpd clone group fd1348a8b4c5 (11 lines, disposition: pending)"
-        query: jscpd-group:fd1348a8b4c5
-      - id: magic-number
-        kind: grep
-        description: Inline numeric literal >= 2 not bound to a const/named identifier
-          (heuristic — synthesis layer + operator curate)
-        query: (?<![A-Za-z0-9_.=])\d{2,}\b
   - glob: modules/sample-editor/src/**/*.{ts,tsx}
     label: sample-editor
     patterns:
@@ -1144,63 +1076,6 @@ modules:
         description: Inline numeric literal >= 2 not bound to a const/named identifier
           (heuristic — synthesis layer + operator curate)
         query: (?<![A-Za-z0-9_.=])\d{2,}\b
-  - glob: modules/jv1080-editor/src/**/*.{ts,tsx}
-    label: jv1080-editor
-    patterns:
-      - id: ac-class-consumer
-        kind: grep
-        description: Consumer of an .ac-* CSS class (className string literal or
-          template containing "ac-")
-        query: className\s*=\s*[{"`'][^"`'}\n]*\bac-[a-z][a-z0-9-]*
-      - id: as-type-cast
-        kind: grep
-        description: '`as <TypeName>` cast (banned per CLAUDE.md "never bypass typing")'
-        query: \bas\s+(?!const\b|unknown\b)[A-Z][A-Za-z0-9_]*
-      - id: clone-group-1c21348eca9f
-        kind: clone-group
-        description: "jscpd clone group 1c21348eca9f (30 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:1c21348eca9f
-      - id: clone-group-532bf6d23aac
-        kind: clone-group
-        description: "jscpd clone group 532bf6d23aac (24 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:532bf6d23aac
-      - id: clone-group-5382cef9980d
-        kind: clone-group
-        description: "jscpd clone group 5382cef9980d (9 lines, disposition: pending)"
-        query: jscpd-group:5382cef9980d
-      - id: clone-group-5cdfe2c851fb
-        kind: clone-group
-        description: "jscpd clone group 5cdfe2c851fb (28 lines, disposition: pending)"
-        query: jscpd-group:5cdfe2c851fb
-      - id: magic-number
-        kind: grep
-        description: Inline numeric literal >= 2 not bound to a const/named identifier
-          (heuristic — synthesis layer + operator curate)
-        query: (?<![A-Za-z0-9_.=])\d{2,}\b
-  - glob: modules/e2e-infra/src/**/*.{ts,tsx}
-    label: e2e-infra
-    patterns:
-      - id: clone-group-5f1453b53c34
-        kind: clone-group
-        description: "jscpd clone group 5f1453b53c34 (29 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:5f1453b53c34
-      - id: clone-group-7c9da11a5421
-        kind: clone-group
-        description: "jscpd clone group 7c9da11a5421 (9 lines, disposition: pending)"
-        query: jscpd-group:7c9da11a5421
-      - id: clone-group-c9ff2b18354c
-        kind: clone-group
-        description: "jscpd clone group c9ff2b18354c (16 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:c9ff2b18354c
-      - id: clone-group-fa11bf828dd8
-        kind: clone-group
-        description: "jscpd clone group fa11bf828dd8 (32 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:fa11bf828dd8
   - glob: modules/editor-core/src/**/*.{ts,tsx}
     label: editor-core
     patterns:
@@ -1363,64 +1238,6 @@ modules:
         kind: clone-group
         description: "jscpd clone group b2c71c9e39d4 (44 lines, disposition: pending)"
         query: jscpd-group:b2c71c9e39d4
-  - glob: modules/sampler-devices/src/**/*.{ts,tsx}
-    label: sampler-devices
-    patterns:
-      - id: clone-group-389b8ca04d17
-        kind: clone-group
-        description: "jscpd clone group 389b8ca04d17 (12 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:389b8ca04d17
-      - id: clone-group-44e04a2b4f7b
-        kind: clone-group
-        description: "jscpd clone group 44e04a2b4f7b (8 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:44e04a2b4f7b
-      - id: clone-group-5f33ca65cbd5
-        kind: clone-group
-        description: "jscpd clone group 5f33ca65cbd5 (7 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:5f33ca65cbd5
-      - id: clone-group-8a166056292d
-        kind: clone-group
-        description: "jscpd clone group 8a166056292d (17 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:8a166056292d
-  - glob: modules/sampler-library/src/**/*.{ts,tsx}
-    label: sampler-library
-    patterns:
-      - id: clone-group-19ecf52420f9
-        kind: clone-group
-        description: "jscpd clone group 19ecf52420f9 (15 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:19ecf52420f9
-      - id: clone-group-2900b54f5b5f
-        kind: clone-group
-        description: "jscpd clone group 2900b54f5b5f (11 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:2900b54f5b5f
-      - id: clone-group-377928756b0f
-        kind: clone-group
-        description: "jscpd clone group 377928756b0f (12 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:377928756b0f
-      - id: clone-group-46d11bca2d0e
-        kind: clone-group
-        description: "jscpd clone group 46d11bca2d0e (7 lines, disposition:
-          ignore-with-justification)"
-        query: jscpd-group:46d11bca2d0e
-      - id: clone-group-720d54a6c4fb
-        kind: clone-group
-        description: "jscpd clone group 720d54a6c4fb (11 lines, disposition:
-          keep-with-reason)"
-        query: jscpd-group:720d54a6c4fb
-  - glob: modules/synth-core/src/**/*.{ts,tsx}
-    label: synth-core
-    patterns:
-      - id: clone-group-3ff4a5547f7a
-        kind: clone-group
-        description: "jscpd clone group 3ff4a5547f7a (13 lines, disposition: pending)"
-        query: jscpd-group:3ff4a5547f7a
 regime_holdouts:
   anti_patterns: []
   adopter_manifests: []
