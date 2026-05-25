@@ -11,6 +11,67 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-24 Feature review — latest AcEnvelope / AcFrequencyResponse migration work
+
+Surfaced while reviewing the `AcEnvelope` / `AcFrequencyResponse` extraction and Akai migration commits through `d524da07`, `b83318d3`, `2f949329`, `1a47b60c`, and `0ffe43f6` on 2026-05-24. Targeted local verification runs:
+
+- `pnpm --filter @audiocontrol/editor-core test -- AcEnvelopeAdsr.test.tsx AcFrequencyResponse.test.tsx`
+- `pnpm --filter @audiocontrol/akai-s3k-editor test -- KeyRangeEditor.test.tsx VelocityRangeBar.test.tsx`
+
+Both runs passed, but they do not cover the Akai adapter-layer issues below.
+
+### Akai filter-response drag now forwards fractional resonance values directly into the integer `FILQ` device field
+
+Finding-ID: AUDIT-20260524-14
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx`, `modules/editor-core/src/components/AcFrequencyResponse.tsx`
+
+`AcFrequencyResponse` intentionally works in continuous numeric space. During drag it computes `newResonance` as a float inside the configured `resonanceRange` and emits that exact number through `onChange({ resonance })` (`AcFrequencyResponse.tsx:148-152`). The Akai adapter in `KeygroupEditor` then forwards that value straight into `FILQ` without rounding (`KeygroupEditor.tsx:220-227`).
+
+That is a wire-format regression for the S3000XL field. `FILQ` is an integer device parameter in the 0..15 domain; the legacy `FilterDisplay` explicitly rounded before dispatching by using its `clamp()` helper (`git show 0ffe43f6^:FilterDisplay.tsx` reviewed in this pass, lines 25-27 and 145-149). The new path means drag moves can push floats like `7.3` or `11.8` through `onDragChange` / `onParameterChange`. Even if later serialization truncates or rounds somewhere else, the UI/editor state is now carrying a value shape the field did not previously admit.
+
+**Evidence:**
+
+- Primitive emits float resonance values during drag:
+  - `modules/editor-core/src/components/AcFrequencyResponse.tsx:148-152`
+- Akai consumer forwards them directly into `FILQ`:
+  - `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:220-227`
+- Pre-migration implementation rounded the Q value before dispatch:
+  - `git show 0ffe43f6^:modules/akai-s3k-editor/src/components/keygroups/FilterDisplay.tsx` reviewed in this audit pass (`clamp()` + `newQ`)
+
+**Expected:** the Akai adapter should preserve the device field’s integer contract by rounding/clamping the primitive’s continuous resonance output before writing `FILQ`.
+
+**Actual:** float resonance values are forwarded directly into an integer header field.
+
+**Fix guidance:** keep `AcFrequencyResponse` continuous, but quantize at the Akai adapter boundary: `dispatch('FILQ', Math.round(changes.resonance))` (plus clamp to 0..15 if the adapter is the last trusted boundary). This fix is not complete without regression coverage at the Akai adapter layer. Required tests: one unit test that proves a fractional `resonance` callback from `AcFrequencyResponse` becomes an integer `FILQ` write, and one integration-level test on the keygroup editor path that guards the drag/update flow end to end.
+
+### The filter-envelope migration passes impossible `activeSegment={0}` into a 1-based API, so segment 1 is highlighted permanently with no real selection state
+
+Finding-ID: AUDIT-20260524-15
+Status:     open
+Severity:   low
+Surface:    `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx`, `modules/editor-core/src/components/AcEnvelope.tsx`
+
+`AcEnvelope`’s multi-segment variant is explicitly 1-based: `activeSegment` is documented as a 1-based active segment index and is clamped with `clampSegment(...)` into the `1..endSegment` range (`AcEnvelope.tsx:53-54`, `106-113`, `158-168`). The Akai filter-envelope migration passes `activeSegment={0}` (`KeygroupEditor.tsx:178-180`).
+
+Because `0` is out of range, the primitive silently clamps it to `1`. The result is that the filter envelope always renders as though segment 1 is the active/selected segment even though the Akai integration has no real selected-segment state and no `onPointSelect` handler wired. This is a UI-state regression from the legacy display, which was a pure visualization with draggable points and no persistent “segment 1 selected” affordance.
+
+**Evidence:**
+
+- Akai consumer passes `activeSegment={0}`:
+  - `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:178-180`
+- Primitive contract is 1-based and clamps invalid values to 1:
+  - `modules/editor-core/src/components/AcEnvelope.tsx:53-54`
+  - `modules/editor-core/src/components/AcEnvelope.tsx:106-113`
+  - `modules/editor-core/src/components/AcEnvelope.tsx:158-168`
+
+**Expected:** either supply a real 1-based active segment from Akai state, or extend the primitive to allow “no active segment” when the consumer only wants a display/editor surface without selection highlighting.
+
+**Actual:** the Akai adapter passes an impossible index, which the primitive coerces to segment 1, creating a permanent false-active state.
+
+**Fix guidance:** short term, pick the least misleading explicit 1-based segment if the highlight is required by the primitive. Better, add an optional “no active segment” path to `AcEnvelope` and use that here, since the Akai filter envelope has drag-editing but no segment-selection model. This should be treated as a test-gated UI-state fix: closure should require a regression test that proves the Akai filter-envelope surface no longer renders a false-active segment by default.
+
 ## 2026-05-24 Feature review — latest AcZoneStrip extraction/migration work
 
 Surfaced while reviewing the `AcZoneStrip` extraction and Akai migration commits through `03f36ce3`, `544d41f3`, `e23de8b3`, `edab3add`, and the follow-up docs/tooling commits at `HEAD` (`1876bc67`) on 2026-05-24. Targeted local verification run:
