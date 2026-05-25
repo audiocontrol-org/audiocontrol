@@ -18,7 +18,7 @@ Surfaced while reviewing the latest `AcRadioTabs` promotion and Akai `VelocityZo
 ### Promoting radio-tab chrome into global `.ac-tabs` / `.ac-tab` selectors regresses existing button-tab consumers in editor-core
 
 Finding-ID: AUDIT-20260524-10
-Status:     open
+Status:     verified-8545e839
 Severity:   high
 Surface:    `modules/editor-core/src/design/tab-primitives.css`, `modules/editor-core/src/design/layout-primitives.css`, `modules/editor-core/src/components/library/LibraryPanel.tsx`, `modules/editor-core/src/components/layout/BuildInfo.tsx`
 
@@ -52,10 +52,25 @@ Under the promoted CSS, those buttons no longer live in a flex row because `.ac-
 
 At minimum, add regression coverage for `BuildInfo` and `LibraryPanel` before changing any more shared tab CSS.
 
+**Fix landed:** commit `8545e839` took fork (1) from the fix guidance — rename the radio-tab class namespace from `.ac-tabs` / `.ac-tab-strip` / `.ac-tab` / `.ac-panels` / `.ac-panel` to `.ac-radio-tabs` / `.ac-radio-tab-strip` / `.ac-radio-tab` / `.ac-radio-panels` / `.ac-radio-panel`. Applied across:
+
+- `modules/editor-core/src/components/AcRadioTabs.tsx` (JSX classNames)
+- `modules/editor-core/src/design/tab-primitives.css` (every selector + the file comment headers)
+- `modules/roland-sxx0-editor/src/styles/_shared.css` (all four per-tab-ID `:checked` selector blocks: lit-tab fill, underline, panel show, reduced-motion)
+- `modules/roland-sxx0-editor/src/styles/patches.css` (comment)
+- `modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx` (comment)
+- `docs/scope-discovery/anti-patterns.yaml` (`ac-radio-tabs-inline` shape_regex updated to match the post-rename inline-clone shape)
+
+`layout-primitives.css` was NOT touched — the legacy bare `.ac-tabs` / `.ac-tab` / `.ac-tab--active` rules stay where they are, owned by the button-tab system (LibraryPanel + BuildInfo) which continues using them unchanged. After the rename, the two class spaces are disjoint and the two systems cannot collide.
+
+Regression coverage: `modules/editor-core/src/components/AcRadioTabs.test.tsx` gained a new describe block `AcRadioTabs — class-namespace contract (AUDIT-20260524-10)` (2 tests). The teeth-bearing assertion (`mounts AcRadioTabs alongside a button-tab DOM without className collision`) mounts BOTH a `<div className="ac-tabs"><button className="ac-tab ac-tab--active">…</button></div>` button-tab shape AND an `<AcRadioTabs>` instance in the same render tree, then asserts the button-tab container's className is EXACTLY `"ac-tabs"` (no contamination), the active button's className is EXACTLY `"ac-tab ac-tab--active"` (still has the modifier), and NO descendant of the AcRadioTabs container carries the bare `.ac-tabs` / `.ac-tab` / `.ac-tab-strip` / `.ac-panels` / `.ac-panel` token. A sibling assertion (`does NOT emit the bare …`) walks the serialized HTML for the AcRadioTabs container and confirms no className attribute contains the bare token.
+
+Validator-paired hard-test: stashed only the production-code changes (AcRadioTabs.tsx + tab-primitives.css + `_shared.css`) and re-ran the new tests against the pre-rename code. The two AUDIT-10 assertions both went RED — `expected … not to match /\bac-tabs\b/, received …` on the bare-class assertion, and `expected radioContainer.className to contain "ac-radio-tabs"` on the side-by-side assertion. Stash popped; the same tests now pass against the post-rename code. The class-namespace gate has teeth.
+
 ### The promoted `AcRadioTabs` primitive exposes tab semantics on focusable labels, but it does not implement the ARIA tab interaction contract
 
 Finding-ID: AUDIT-20260524-11
-Status:     open
+Status:     verified-8545e839
 Severity:   medium
 Surface:    `modules/editor-core/src/components/AcRadioTabs.tsx`, `modules/editor-core/src/components/AcRadioTabs.test.tsx`, `modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx`, `modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx`, `modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx`
 
@@ -93,6 +108,29 @@ Keyboard and assistive-technology users will encounter elements announced as tab
 3. let the native radio inputs own focus/keyboard semantics.
 
 If the project wants actual tabs, then the component needs a proper tab roving-focus implementation plus `aria-selected` / `aria-controls` wiring and matching tests.
+
+**Fix landed:** commit `8545e839` took the radio fork (option 1) — the auditor's lower-risk path. Specifically:
+
+- Removed `role="tab"` and `tabIndex={0}` from the visible labels (`AcRadioTabs.tsx`); labels are now decorative-only presentation that click-forwards to the radios via `htmlFor`.
+- Removed `role="tablist"` from the container nav and replaced the nav with a plain `<div className="ac-radio-tab-strip">` — the container `<div className="ac-radio-tabs">` now carries `role="radiogroup" aria-label={ariaLabel}` so the group has a real ARIA name.
+- Removed `role="tabpanel"` (and the now-superfluous `aria-labelledby`) from the `<section className="ac-radio-panel" data-tab={…}>` elements. `data-tab` stays as the canonical hook for the per-tab-ID CSS sibling-selector chain.
+- Added `aria-label={tab.label}` to each `<input type="radio">` so assistive tech announces a name even though the visible `<label>` no longer carries an ARIA role.
+- Updated the radio sr-only CSS in `tab-primitives.css` from the previous `opacity: 0; pointer-events: none; width: 0; height: 0` (which removed the radios from the tab order entirely) to the sr-only clip pattern (`position: absolute; width: 1px; height: 1px; clip: rect(0,0,0,0); …`) so the radios stay focusable. Native browser keyboard semantics (Tab to enter the group, Arrow keys between radios within the group) now work; no custom JS focus-management code is needed.
+
+The explicit choice of the radio fork (option 1) over the full ARIA tabs fork: the existing pattern is fundamentally radio-driven — uncontrolled mode flips panels via CSS `:checked` sibling selectors against per-tab-ID rules, and the controlled mode reads the active `id` from React state. Implementing the full ARIA tabs contract (`aria-selected`, `aria-controls` linkage, custom Left/Right/Home/End keyboard handler, roving `tabindex` management) would have meant adding a parallel state-tracking layer on top of the radio inputs — more code surface, more drift risk, and a worse semantic fit. The radio-group fork honors the underlying mechanism instead of papering over it with a faux contract.
+
+Regression coverage: `AcRadioTabs.test.tsx` gained a new describe block `AcRadioTabs — radio-group ARIA contract (AUDIT-20260524-11)` (6 tests):
+
+- `exposes role="radiogroup" + aria-label on the container` — positive assertion.
+- `does NOT render the faux role="tablist" / role="tab" / role="tabpanel" attributes` — three negative assertions that lock the AUDIT-11 regression out.
+- `does NOT add tabIndex={0} to the visible labels (the radios own keyboard focus)` — locks the second half of the AUDIT-11 regression out.
+- `renders each radio with a unique name (groupName) and an aria-label matching its tab.label` — confirms the radios are reachable as `role="radio"` and stay in the tab order (asserts `tabindex !== "-1"`).
+- `exposes the radios through screen.getByRole("radiogroup")` — end-to-end ARIA lookup using the accessible name.
+- `clicking a label still updates the matching radio (presentation labels click-forward via htmlFor)` — proves the click-forwarding contract that lets the visible labels stay decorative.
+
+The 7 adopting roland test files (`tests/wiring/patches.spec.ts`, `tests/wiring/tones.spec.ts`, `tests/wiring/tone-display.spec.ts`, `tests/wiring/tone-writes-helpers.ts`, `tests/rendering/phase-9-task-6-screenshots.spec.ts`, `tests/ui/in-context/tones.envelope.in-context.spec.ts`, `tests/ui/in-context/tones-list.in-context.spec.ts`, `tests/e2e/s550-D-TONE-live-envelope-and-slider.spec.ts`) were updated in the same commit to assert against the radio-group shape instead of the faux ARIA tab attributes. Click sites switched to `page.locator('label.ac-radio-tab', { hasText: … }).click()` because the radios are sr-only / clipped (Playwright cannot click them via the visible viewport; the `<label>` is the visible click target and forwards via `htmlFor`). Presence sites use `page.getByRole('radio', { name: … }).toBeAttached()` — DOM-attached works against sr-only nodes.
+
+Validator-paired hard-test: stashed only the production-code changes and re-ran the new tests against the pre-fix code. All 6 ARIA assertions went RED — e.g., `expected element NOT to contain "role=\"tablist\""`, `expected to find element with role "radiogroup" and name "Test sections accessible"` (the old code emitted `role="tablist"` instead). Stash popped; same tests now pass against the post-fix code. The ARIA gate has teeth.
 
 ## 2026-05-24 Feature review — latest shell-contract closure verification
 
