@@ -1,0 +1,132 @@
+/**
+ * Parameter-panel chrome — `.ac-compact-grid` + `.ac-detail-live*`
+ * families. Both live INSIDE a `.ac-detail-body` (per the detail-pane
+ * recipe in `detail-pane-primitives.css`), so this file conventionally
+ * ships alongside it.
+ *
+ * Two families bundled here:
+ *
+ *   - `.ac-compact-grid` + `.ac-compact-field` (+ `--readout` modifier)
+ *     + `.ac-field-readout` + `.ac-field-label` — the flex-wrap
+ *     container for stacks of small labeled toggles / readouts. Shared
+ *     by the tones-page wave panel (Bank / Loop Mode / Output) and the
+ *     patches-page common panel (Key Mode / Key Assign / A.T Assign /
+ *     Output / P.Bend Range / Oct.Shift).
+ *
+ *   - `.ac-detail-live` + `-led` + `-touch` + `@keyframes
+ *     ac-detail-live-pulse` — the pulsing rec-LED footer that replaces
+ *     save / cancel / undo per `feedback_live_editing_no_save` (edits
+ *     stream to the device in real time as the operator drags).
+ *
+ * Extracted from `_shared.css` 2026-05-25 per akai-harmonization
+ * Phase 2 task 2.8 (decompose `_shared.css` toward the 500-line cap).
+ *
+ * Stays roland-internal: like `.ac-detail-*`, these primitives are
+ * scheduled to lift to editor-core once akai's editor pages adopt the
+ * same panel chrome. Promoting now would be speculative until akai is
+ * the second consumer.
+ */
+
+/* ============================================================
+   COMPACT FIELD GRID — flex-wrap container for stacks of small
+   labeled toggles / readouts. Shared by the tones-page wave
+   panel (Bank / Loop Mode / Output toggles) and the patches-
+   page common panel (Key Mode / Key Assign / A.T Assign /
+   Output / P.Bend Range / Oct.Shift).
+   ============================================================ */
+
+.ac-compact-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-4) var(--ac-space-6);
+  align-items: flex-end;
+  padding-block: var(--ac-space-2);
+}
+
+.ac-compact-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  min-width: 0;
+}
+
+.ac-compact-field > .ac-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.ac-compact-field--readout {
+  gap: var(--ac-space-1);
+}
+
+.ac-compact-field--readout > .ac-field-readout {
+  padding: var(--ac-space-1) var(--ac-space-3);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+  font-size: var(--ac-text-base);
+}
+
+.ac-field-readout {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ac-color-text-primary);
+}
+
+.ac-field-readout strong {
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}
+
+/* ============================================================
+   LIVE-EDIT FOOTER — pulsing rec-LED + status copy. Replaces
+   save / cancel / undo per project memory
+   `feedback_live_editing_no_save` — edits stream to the device
+   in real time as the operator drags.
+   ============================================================ */
+.ac-detail-live {
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-detail-live-led {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 8px var(--ac-color-rec-glow);
+  animation: ac-detail-live-pulse 2.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.ac-detail-live-touch {
+  color: var(--ac-color-text-primary);
+}
+
+@keyframes ac-detail-live-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px var(--ac-color-rec-glow);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 14px var(--ac-color-rec-glow);
+    opacity: 0.8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-detail-live-led { animation: none; }
+}
