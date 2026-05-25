@@ -18,16 +18,36 @@ import { expect } from 'vitest';
  * Return all elements that are in the keyboard tab order under `root`.
  *
  * "In the tab order" is defined as: a focusable element whose effective
- * tabIndex is >= 0. The check uses the standard focusable-selector set
- * (button, input, select, textarea, a[href], [tabindex]) and explicitly
- * filters out elements with `tabindex="-1"` (which keep their semantics
- * for screen-reader / voice-control element enumeration but do NOT
- * appear in keyboard tab traversal).
+ * tabIndex is >= 0, AND which is not currently keyboard-unreachable
+ * because of an enclosing visibility/hidden contract. The check uses
+ * the standard focusable-selector set (button, input, select, textarea,
+ * a[href], [tabindex]) and filters out:
  *
- * The selector intentionally does NOT include `[tabindex]` alone — that
- * would re-add the tabindex="-1" elements we just filtered out. We
- * include `[tabindex="0"]` explicitly so non-button/input elements that
- * opt in via tabIndex={0} are counted.
+ *   - elements with `tabindex="-1"` (which keep their semantics for
+ *     screen-reader / voice-control element enumeration but do NOT
+ *     appear in keyboard tab traversal)
+ *   - elements with an ancestor (or self) that is visibility-hidden in
+ *     a way a real browser would honor: `aria-hidden="true"`, the
+ *     `hidden` HTML attribute, inline `display:none` /
+ *     `visibility:hidden`, or `.ac-collapse[data-expanded="false"]`
+ *     (the canonical disclosure wrapper that grid-clips its contents
+ *     to 0 height when collapsed — content is in the DOM but the
+ *     visible rendering is CSS-driven, so the browser routes Tab
+ *     past it).
+ *
+ * The `.ac-collapse[data-expanded="false"]` filter (AUDIT-20260525-21)
+ * closes the gap surfaced by the original AUDIT-01 closure: jsdom
+ * doesn't compute layout, so a selector-only helper counted every
+ * mounted treeitem (including rows inside collapsed subtrees) as a
+ * tab stop. Real browsers route Tab past CSS-clipped content; this
+ * helper now mirrors that contract by walking the ancestor chain
+ * for each candidate and rejecting any candidate enclosed by the
+ * canonical collapsed-disclosure wrapper.
+ *
+ * The selector intentionally does NOT include `[tabindex]` alone —
+ * that would re-add the tabindex="-1" elements we just filtered out.
+ * We include `[tabindex="0"]` explicitly so non-button/input elements
+ * that opt in via tabIndex={0} are counted.
  */
 export function getTabStops(root: HTMLElement): HTMLElement[] {
   const selector = [
@@ -44,8 +64,52 @@ export function getTabStops(root: HTMLElement): HTMLElement[] {
   return candidates.filter((el) => {
     const ti = el.getAttribute('tabindex');
     if (ti === '-1') return false;
+    if (isKeyboardUnreachable(el, root)) return false;
     return true;
   });
+}
+
+/**
+ * Walk the ancestor chain from `el` toward `root` (inclusive). Return
+ * `true` if any ancestor (or `el` itself) is visibility-hidden in a
+ * way a real browser would honor for keyboard tab traversal.
+ *
+ * The checks intentionally stay narrow: only contracts that jsdom can
+ * see through `getAttribute` / inline `style` / classList. CSS-driven
+ * rules (e.g., `.hidden { display: none }` defined in an external
+ * stylesheet that jsdom doesn't apply) are out of scope — they're the
+ * concern of the editor-level Playwright suites. The contracts that
+ * DO live here are the ones that appear in the canonical primitives:
+ *
+ *   - `aria-hidden="true"` — explicit accessibility-tree removal.
+ *   - `hidden` (HTML attribute) — semantic browser-honored hide.
+ *   - inline `style="display: none"` / `style="visibility: hidden"` —
+ *     pixel-clipped via inline styles.
+ *   - `.ac-collapse[data-expanded="false"]` — the canonical disclosure
+ *     wrapper. Children render via the grid-template-rows transition
+ *     and are pixel-clipped when collapsed.
+ */
+function isKeyboardUnreachable(el: HTMLElement, root: HTMLElement): boolean {
+  let cursor: HTMLElement | null = el;
+  while (cursor !== null) {
+    if (cursor.getAttribute('aria-hidden') === 'true') return true;
+    if (cursor.hasAttribute('hidden')) return true;
+    const inlineDisplay = cursor.style?.display;
+    if (inlineDisplay === 'none') return true;
+    const inlineVisibility = cursor.style?.visibility;
+    if (inlineVisibility === 'hidden' || inlineVisibility === 'collapse') {
+      return true;
+    }
+    if (
+      cursor.classList.contains('ac-collapse') &&
+      cursor.getAttribute('data-expanded') === 'false'
+    ) {
+      return true;
+    }
+    if (cursor === root) break;
+    cursor = cursor.parentElement;
+  }
+  return false;
 }
 
 /**

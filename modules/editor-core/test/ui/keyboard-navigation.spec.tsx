@@ -88,36 +88,73 @@ const TREE_NODES: TreeNode[] = [
   },
 ];
 
-describe('TreeView keyboard navigation (AUDIT-20260524-01)', () => {
-  it('exactly ONE tab stop per row — NOT TWO (AUDIT-20260524-01)', () => {
-    // AUDIT-01: the disclosure-span → button promotion silently created
-    // a SECOND focusable per folder row. After the fix the disclosure
-    // button carries tabIndex={-1}; the row (role="treeitem",
-    // tabIndex={0}) is the single keyboard anchor.
+describe('TreeView keyboard navigation (AUDIT-20260524-01 + AUDIT-20260525-21)', () => {
+  it('collapsed state — only the VISIBLE top-level rows are tab-reachable (AUDIT-20260525-21)', () => {
+    // AUDIT-21: the original AUDIT-01 closure asserted "tab-stops ==
+    // mounted treeitem count," which counted descendants of collapsed
+    // .ac-collapse wrappers (since TreeView keeps children mounted so
+    // the grid-template-rows transition can animate). That counted
+    // hidden rows; a regression that re-introduced collapsed-descendant
+    // tabbability would still have passed.
     //
-    // Counting strategy: tab-stop count must equal treeitem count, no
-    // matter how many disclosure buttons render. Pre-AUDIT-01 fix the
-    // disclosure buttons added one extra stop per folder row; after the
-    // fix the count is exactly one stop per treeitem.
-    //
-    // TreeView ALWAYS mounts children (wrapped in .ac-collapse so the
-    // grid-template-rows transition can animate); the visible rendering
-    // is purely CSS-driven. The DOM contains all rows regardless of
-    // expandedIds, so this test correctly enumerates every treeitem in
-    // the subtree.
+    // The new contract: tab-reachable count == VISIBLE-row count. With
+    // every top-level folder collapsed and no expandedIds passed, only
+    // the 3 top-level treeitems are visible. The 2 leaf descendants
+    // (folder-1-leaf, folder-2-leaf) live inside .ac-collapse
+    // [data-expanded="false"] wrappers and must NOT count as tab stops.
     const { container } = render(<TreeView nodes={TREE_NODES} />);
-    const treeItems = container.querySelectorAll<HTMLElement>('[role="treeitem"]');
-    const expectedStops = treeItems.length;
+    // Sanity: the mounted treeitem count is 5 (3 top + 2 leaf children
+    // — folder-3 has no children). The previous assertion blessed 5;
+    // the new assertion expects 3 because the 2 leaves are inside a
+    // collapsed wrapper.
+    const allMountedTreeItems = container.querySelectorAll<HTMLElement>(
+      '[role="treeitem"]',
+    );
+    expect(allMountedTreeItems.length).toBe(5);
     assertTabStopCount(
       container as HTMLElement,
-      expectedStops,
-      `TreeView with ${expectedStops} treeitems`,
+      3,
+      'TreeView (all collapsed) — only the 3 top-level rows are visible',
     );
   });
 
-  it('expanded state — tab-stop count still equals treeitem count (AUDIT-20260524-01)', () => {
-    // Re-assert under the expanded state: same invariant — one tab stop
-    // per row, regardless of how many disclosure <button>s render.
+  it('partially-expanded state — leaves inside an expanded folder ARE tab-reachable; leaves inside a collapsed folder are NOT (AUDIT-20260525-21)', () => {
+    // Expand folder-1 only. The expected tab order:
+    //   - folder-1 (top-level, visible)
+    //   - folder-1-leaf (inside folder-1's now-expanded wrapper — visible)
+    //   - folder-2 (top-level, visible)
+    //   - (folder-2-leaf — inside folder-2's COLLAPSED wrapper — NOT visible)
+    //   - folder-3 (top-level, visible; no children)
+    // Total: 4 tab stops.
+    const expandedIds = new Set(['folder-1']);
+    const { container } = render(
+      <TreeView nodes={TREE_NODES} expandedIds={expandedIds} onToggleExpand={() => {}} />,
+    );
+    const stops = getTabStops(container as HTMLElement);
+    expect(stops.length).toBe(4);
+    // Locate leaves by name (TreeView doesn't render a data-id hook).
+    const allItems = Array.from(
+      container.querySelectorAll<HTMLElement>('[role="treeitem"]'),
+    );
+    const leafOne = allItems.find((row) => row.textContent?.includes('Leaf 1'));
+    const leafTwo = allItems.find((row) => row.textContent?.includes('Leaf 2'));
+    expect(leafOne).toBeDefined();
+    expect(leafTwo).toBeDefined();
+    // folder-1-leaf must be in the tab order (its parent is expanded).
+    expect(stops).toContain(leafOne!);
+    // folder-2-leaf must NOT be in the tab order (its parent is collapsed).
+    expect(stops).not.toContain(leafTwo!);
+  });
+
+  it('fully-expanded state — every mounted treeitem is tab-reachable (AUDIT-20260524-01)', () => {
+    // Re-assert under the fully-expanded state: same invariant the
+    // original AUDIT-01 closure asserted, now provably load-bearing
+    // because the partial-expand test above exercises the OTHER
+    // direction (collapsed descendants are NOT reachable). With every
+    // .ac-collapse wrapper at data-expanded="true", the visibility
+    // filter is a no-op and the count returns to "every mounted
+    // treeitem." Disclosure buttons (tabindex={-1}) still contribute
+    // ZERO stops.
     const expandedIds = new Set(['folder-1', 'folder-2', 'folder-3']);
     const { container } = render(
       <TreeView nodes={TREE_NODES} expandedIds={expandedIds} onToggleExpand={() => {}} />,
@@ -127,7 +164,7 @@ describe('TreeView keyboard navigation (AUDIT-20260524-01)', () => {
     assertTabStopCount(
       container as HTMLElement,
       expectedStops,
-      `TreeView expanded with ${expectedStops} treeitems`,
+      `TreeView fully-expanded with ${expectedStops} treeitems`,
     );
 
     // And the disclosure buttons under each directory row contribute
