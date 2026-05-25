@@ -113,11 +113,48 @@ Pre-commit gate in this repo (`tools/check-chevron-sizing.sh`) forbids any CSS c
 
 The akai editor currently uses neither — its tree views and disclosure controls are inline JSX. **Disposition: `adopt-roland-pattern`** wherever a disclosure chevron is needed (the keygroup zones list, the library tree, the program clone progress drawer).
 
-### 2.7 Range-bar visualization
+### 2.7 Zone-strip + range-bar visualization
 
-Pattern (memory `feedback_range_bar_pattern`): mono endpoint ticks + accent-tinted center zone. Used for: tone pitch range, patch-level keyboard range, velocity ranges in keygroups.
+**Amended 2026-05-24** (operator-approved scope correction; see
+akai-harmonization Phase 2 task 2.2 dispatch Commits 1-5):
 
-The akai keygroup zones overview is structurally the same thing — a horizontal note range with low/high markers per keygroup. Currently rendered with a custom SVG canvas (`ZoneOverview.tsx`). **Disposition: `adopt-roland-pattern`** — extract `editor-core/AcRangeBar` primitive from the existing roland range-bar styles + the akai `ZoneOverview` shape and consume both surfaces from it.
+The original spec text said "extract `editor-core/AcRangeBar` from
+roland's range-bar styles + akai's `ZoneOverview` shape." That conflated
+two unrelated primitives:
+
+- `AcRangeBar` (memory `feedback_range_bar_pattern`) is a 1D
+  linear/bipolar/enum bar already consumed by parameter rows
+  (S3kParamRow, ParameterSlider). It is NOT a fit for multi-zone
+  segmented bars with per-segment drag handles.
+- The roland editor's `ToneZoneEditor` introduces a separate
+  `.ac-zone-bar` family for segmented zone strips with per-segment
+  drag handles and per-zone hue derivation via `--ac-zone-hue`. This
+  is the genuine extractable primitive.
+
+The akai surfaces that match the segmented-strip shape are
+`VelocityRangeBar` (4 velocity zones above the tab strip) and
+`KeyRangeEditor` (1 zone with low/high handles). **Disposition for
+the segmented strip: `adopt-roland-pattern`** — extract
+`editor-core/AcZoneStrip` from the roland `.ac-zone-*` family and
+migrate both akai surfaces to consume it. Closed: Commits 1-3 of the
+AcZoneStrip primitive-extraction sequence.
+
+The akai `ZoneOverview` (2D note×velocity canvas with pinch-zoom,
+drag-create, octave grid, wheel-zoom, keyboard-pan) is **NOT** a
+segmented strip — it is a domain visualization with zero non-akai
+consumers and load-bearing 2D semantics. **Disposition for
+ZoneOverview: `domain-component`** — stays in `modules/akai-s3k-editor`.
+The per-zone hue palette in `ZoneOverviewZone` IS dialect-leaky
+(inline HSL math); tokenized via `--ac-zone-hue` + `--ac-zone-alpha`
+in Commit 4 of the AcZoneStrip extraction sequence (the saturation /
+lightness stops now live in editor-core's `.ac-keygroup-zone-rect`
+rule alongside the canonical `.ac-zone-segment` math).
+
+The mockup at `mockups/keygroups.html` does not currently render the
+2D canvas as a full-width band; per the operator-approved scope
+amendment, this is mockup oversight (the canvas should regain the
+band). Updating the mockup is a separate concern, NOT part of this
+dispatch.
 
 ### 2.8 8-segment VFD-glow envelope
 
@@ -269,7 +306,7 @@ Current shape ([`KeygroupsPage.tsx`](../../../../modules/akai-s3k-editor/src/pag
 
 Mockup chrome:
 - PageTitleRow: h2 "Keygroups — {program name}" + amber rule + program-jump button + refresh icon
-- ZoneOverview band (full-width, the keyboard range visualization with all keygroups laid out) — uses AcRangeBar primitives
+- ZoneOverview band (full-width, the keyboard range visualization with all keygroups laid out) — `domain-component` per § 2.7 amendment; 2D pinch-zoom canvas stays akai-local; per-zone palette tokenized via `--ac-zone-hue` (Commit edab3add)
 - 2-column app shell: KeygroupList (left) + KeygroupEditor (right)
 - KeygroupEditor uses AcRadioTabs with 5 tabs (Zones · Pitch · Filter · Amp · LFO)
 - Amp tab contains the AcEnvelope (4-segment ADSR) primitive
@@ -277,7 +314,7 @@ Mockup chrome:
 - Live-edit footer beneath the detail column
 - Virtual front panel beneath
 
-Primitives consumed: PageTitleRow, AcRadioTabs, AcRangeBar (zone overview + per-zone range), AcEnvelope (segmentCount=4), AcSlider, AcSelect, AcCheckbox, VirtualFrontPanel.
+Primitives consumed: PageTitleRow, AcRadioTabs, AcZoneStrip (per-zone velocity + key-range, § 2.7 amended), ZoneOverview (akai-local domain-component for the 2D canvas band, § 2.7 amended), AcEnvelope (segmentCount=4), AcSlider, AcSelect, AcCheckbox, VirtualFrontPanel.
 
 ### 4.3 SamplesPage — [`mockups/samples.html`](./mockups/samples.html)
 
@@ -335,7 +372,8 @@ The matrix below is the proof-of-design Phase 2 implementers cite for each `cano
 | AcSelect | ~~`.s3k-param-select`~~ → `<select class="ac-select">` via S3kParamSelectRow | DONE 2026-05-24 (`20e56322` + `74505449` + `f25b10a1`) | roland | 2.2 |
 | AcSlider | ~~`.s3k-param-track` + `.s3k-param-fill`~~ → AcSlider via S3kParamRow | DONE 2026-05-24 (`20e56322` + `74505449` + `f25b10a1`) | roland (shared `AcSlider`) | 2.2 |
 | AcCheckbox | ~~`.s3k-param-toggle`~~ → AcToggle via S3kParamToggleRow | DONE 2026-05-24 (`20e56322` + `74505449` + `f25b10a1`) | roland | 2.2 |
-| AcRangeBar | inline SVG in `ZoneOverview` | `genuinely-dialect` (extract primitive) | new (shared) | 2.2 |
+| ~~AcRangeBar~~ ⟶ AcZoneStrip (segmented 1D zone bar) | VelocityRangeBar.tsx + KeyRangeEditor.tsx (inline tailwind + drag tracking) | `adopt-roland-pattern` (extract from `.ac-zone-*` family) | roland (promoted to editor-core) | 2.2 — DONE 2026-05-24 (Commits 03f36ce3 + 544d41f3 + e23de8b3) |
+| ZoneOverview 2D canvas | ZoneOverview.tsx + ZoneOverviewZone.tsx | `domain-component` (tokenize palette only) | n/a — akai-local | 2.2 — palette tokens DONE 2026-05-24 (Commit edab3add); structural canvas stays akai-local per § 2.7 amendment |
 | AcEnvelope | `.s3k-envelope-display` (ADSR-only) | `genuinely-dialect` (parameterize segment count) | extend roland's 8-segment primitive | 2.2 |
 | AcChevron | absent | `adopt-roland-pattern` | roland | 2.2 |
 | AcButton | mix of `.s3k-*` and tailwind | `adopt-roland-pattern` | roland | 2.2 |
@@ -391,7 +429,7 @@ Phase 1 inventory surfaced these akai-specific patterns that should NOT propagat
 Phase 1 task 1.7 should file these against the scope-discovery-protocol feature for backfill during Phase 2:
 
 1. **Editor-symmetry matrix participant model.** The current matrix at `docs/scope-discovery/editor-symmetry.md` is single-editor (roland-only). Phase 2 task 2.4 needs the matrix renderer to accept akai as a first-class participant. Filing as `SCOPE-DISCOVERY-AKAI-PARTICIPANT`.
-2. **AcRangeBar adopter manifest.** No adopter manifest exists for AcRangeBar yet (the primitive itself doesn't exist — both roland and akai inline equivalents). Phase 2 task 2.2 will extract the primitive AND create the manifest. Filing as `SCOPE-DISCOVERY-AC-RANGE-BAR-MANIFEST`.
+2. **~~AcRangeBar adopter manifest~~ AcZoneStrip adopter manifest** (renamed per § 2.7 amendment 2026-05-24). The genuine extractable primitive turned out to be the segmented zone-strip (extracted as AcZoneStrip), not the 1D AcRangeBar (which already exists). Adopter manifest landed alongside the extraction (Commit 6 of the dispatch). ~~Filing as `SCOPE-DISCOVERY-AC-RANGE-BAR-MANIFEST`.~~ Closed: `ac-zone-strip` manifest in `docs/scope-discovery/adopter-manifests.yaml`.
 3. **AcEnvelope segmentCount extension.** The current `AcEnvelope` is hard-coded to 8 segments. The akai dialect needs 4. Filing the parameterization as `EDITOR-CORE-AC-ENVELOPE-SEGMENTS`. (Not a scope-discovery-protocol gap proper, but in the same backfill batch.)
 
 ## 8. Open questions for operator review
