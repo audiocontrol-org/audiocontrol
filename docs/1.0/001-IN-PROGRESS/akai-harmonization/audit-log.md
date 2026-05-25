@@ -23,7 +23,7 @@ Both runs passed, but they do not cover the Akai adapter-layer issues below.
 ### Akai filter-response drag now forwards fractional resonance values directly into the integer `FILQ` device field
 
 Finding-ID: AUDIT-20260524-14
-Status:     open
+Status:     verified-d39b150a
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx`, `modules/editor-core/src/components/AcFrequencyResponse.tsx`
 
@@ -46,10 +46,14 @@ That is a wire-format regression for the S3000XL field. `FILQ` is an integer dev
 
 **Fix guidance:** keep `AcFrequencyResponse` continuous, but quantize at the Akai adapter boundary: `dispatch('FILQ', Math.round(changes.resonance))` (plus clamp to 0..15 if the adapter is the last trusted boundary). This fix is not complete without regression coverage at the Akai adapter layer. Required tests: one unit test that proves a fractional `resonance` callback from `AcFrequencyResponse` becomes an integer `FILQ` write, and one integration-level test on the keygroup editor path that guards the drag/update flow end to end.
 
+**Fix landed (commit `d39b150a`):** the akai filter adapter was extracted from `KeygroupEditor.tsx` into a new module at `modules/akai-s3k-editor/src/components/keygroups/akai-filter-adapter.ts` (pure helpers, no DOM, unit-testable in isolation). The new module exposes `clampToFilq` (rounds + clamps to 0..15), `hzToFilfrq` (rounds + clamps to 0..99, already integer-safe pre-fix), and `dispatchAkaiFilterChange(changes, dispatch)` — the centralized dispatcher that applies BOTH quantizers before invoking the consumer's field-write callback. `KeygroupEditor`'s `AcFrequencyResponse.onChange` is now a one-liner delegating to `dispatchAkaiFilterChange`; the inline Hz/FILFRQ math + duplicated constants were removed (DRY closure on the previously-inlined adapter primitives). The adapter boundary is the last trusted point where the integer wire-format contract is enforced; floats from `AcFrequencyResponse` can no longer leak past it.
+
+Regression coverage at the akai adapter layer: 24 new tests in `modules/akai-s3k-editor/test/unit/components/keygroups/akai-filter-adapter.test.ts` covering (a) `clampToFilq` fractional rounding + out-of-range clamping (`7.3 → 7`, `11.8 → 12`, `20 → 15`, `-5 → 0`, `15.7 → 15`, `-0.4 → 0`), (b) `hzToFilfrq` integer-only output + boundary clamping (`5 Hz → 0`, `40 kHz → 99`) + round-trip preservation at endpoints, (c) `dispatchAkaiFilterChange` replaying every clampToFilq assertion through the dispatcher with `vi.fn()` spies (`{ resonance: 7.3 }` → `dispatch('FILQ', 7)`, `{ resonance: 11.8 }` → `dispatch('FILQ', 12)`, etc.), plus boundary clamping for both fields, plus channel-isolation assertions (`{ frequency: 800 }` does NOT dispatch FILQ; empty changes does NOT dispatch anything; etc.). Validator-paired-changes hard test: with the production dispatcher gutted to bare value-forwarding (`dispatch('FILQ', changes.resonance)`; `dispatch('FILFRQ', changes.frequency)`) and the new test file intact, 9 of the 24 scenarios FAIL with the specific assertion messages `expected 7.3 to be 7`, `expected 11.8 to be 12`, `expected 20 to be 15`, `expected -5 to be 0`, `expected 15.7 to be 15`, `expected "spy" to be called with arguments: [ 'FILFRQ', 99 ]` (got 50000), `expected "spy" to be called with arguments: [ 'FILFRQ', +0 ]` (got 5), `expected 4.6 to be 5`. The tests have teeth in both directions (FILQ + FILFRQ) at boundaries and at fractional in-range values.
+
 ### The filter-envelope migration passes impossible `activeSegment={0}` into a 1-based API, so segment 1 is highlighted permanently with no real selection state
 
 Finding-ID: AUDIT-20260524-15
-Status:     open
+Status:     verified-d39b150a
 Severity:   low
 Surface:    `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx`, `modules/editor-core/src/components/AcEnvelope.tsx`
 
@@ -71,6 +75,17 @@ Because `0` is out of range, the primitive silently clamps it to `1`. The result
 **Actual:** the Akai adapter passes an impossible index, which the primitive coerces to segment 1, creating a permanent false-active state.
 
 **Fix guidance:** short term, pick the least misleading explicit 1-based segment if the highlight is required by the primitive. Better, add an optional “no active segment” path to `AcEnvelope` and use that here, since the Akai filter envelope has drag-editing but no segment-selection model. This should be treated as a test-gated UI-state fix: closure should require a regression test that proves the Akai filter-envelope surface no longer renders a false-active segment by default.
+
+**Fix landed (commit `d39b150a`):** the second option from the fix guidance — `AcEnvelope`'s multi-segment variant `activeSegment` prop type was widened from `number` to `number | null`. When `null` (or undefined-via-discriminated-union narrowing) is passed, the `clampSegment(...)` helper is bypassed entirely; the sub-surfaces (`AcEnvelopeGraph`, `AcEnvelopeTable`) already render no active highlight when `activeSegment !== <any segment index>`. The graph region's `aria-label` drops the "segment N active" suffix when null. The active-guide vertical line and the `.ac-envelope-axis-tick--active` axis-tick modifier are both suppressed by the existing index-comparison guards plus an explicit `props.activeSegment !== null` short-circuit on the active-guide path. The akai consumer in `KeygroupEditor.tsx` now passes `activeSegment={null}`. The type widening is purely additive — the legacy numeric path (where `clampSegment` floors + clamps into `1..endSegment`) is unchanged.
+
+Cross-editor backwards-compat verification: roland's `ToneEnvelopeEditor.tsx` passes `activeSegment={sustainPoint + 1}`, and `sustainPoint` is bounded `0..7` by the `handleSustainChange` clamp, so the value is always `1..8` (valid for the legacy numeric path). Roland's `AcEnvelopeTableHarness.tsx` passes `activeSegment={1}` (valid). No roland consumer passed an invalid index pre-fix; no roland consumer needs to migrate to the `null` path. Verified via `pnpm --filter @audiocontrol/roland-sxx0-editor test` (48 passed, no regressions) + typecheck across all three consuming modules.
+
+Regression coverage: three new tests in `modules/editor-core/src/components/AcEnvelope.test.tsx`:
+- `activeSegment={null} renders NO segment row as active` — asserts EVERY table row carries `data-active="false"`; EVERY graph point button carries `aria-pressed="false"` and lacks `.ac-envelope-point--active`; the `.ac-envelope-active-guide` line is absent; no `.ac-envelope-axis-tick--active` exists; the graph region's `aria-label` does NOT contain "active".
+- `activeSegment={null} keeps every seg button aria-pressed="false"` — defends against accidental row-state hijacking (a regression where `null` accidentally promotes one segment to active would slip past the first test if it picked any single segment).
+- `activeSegment={1} (legacy default behavior path) still highlights segment 1` — backwards-compat guard asserting the existing roland contract continues to work after the type widening.
+
+Validator-paired-changes hard test: with the production-code changes to `AcEnvelope.tsx` / `AcEnvelopeGraph.tsx` / `AcEnvelopeTable.tsx` / `KeygroupEditor.tsx` stashed (test file intact), 2 of the 3 new scenarios FAIL against pre-fix code with the specific error message `AcEnvelope received non-finite segment index: null` — the `clampSegment` helper rejects `null` because `Number.isFinite(null)` is `false`, proving the pre-fix path could not accept the new contract at all. The third new test (activeSegment={1} backwards-compat) passes both pre- and post-change, which is correct: it asserts the legacy behavior survives the extension. Two of three tests have teeth against the pre-fix path; the third is a back-compat guard whose teeth are against any FUTURE change that breaks the legacy numeric contract.
 
 ## 2026-05-24 Feature review — latest AcZoneStrip extraction/migration work
 
