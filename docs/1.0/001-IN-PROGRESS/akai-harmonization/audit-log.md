@@ -22,7 +22,7 @@ The focused primitive suite passed, but it does not cover the issues below.
 ### VelocityRangeBar now compacts away malformed zones before wiring callbacks, so selection and split-drag indices no longer match the source zone array
 
 Finding-ID: AUDIT-20260524-12
-Status:     open
+Status:     verified-de95eb82
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/src/components/keygroups/VelocityRangeBar.tsx`
 
@@ -51,10 +51,14 @@ That is a real behavior regression for any editor state that preserves a four-sl
 
 **Fix guidance:** preserve the original index alongside each rendered zone instead of filtering down to bare `AcZoneStripZone` values. For example, render an array of `{ sourceIndex, zone }` pairs and adapt `onSelect` / `onStartDrag` to translate the rendered index back to the original source index before invoking callbacks.
 
+**Fix landed (commit `de95eb82`):** the wrapper now builds `{ sourceIndex, zone }` pairs through the compaction stage, splits them into a bare `AcZoneStripZone[]` for the primitive plus a `sourceIndexFor(renderedIndex)` translator, and wraps `onSelect` / `onStartDrag` in adapters (`handleStripSelect` + `handleStripStartDrag`) that translate the rendered index back to the source index before invoking the consumer callbacks. The split-drag contract is preserved: the `splitIndex` emitted is the SOURCE index of the LEFT zone of the boundary, matching the AcZoneStrip documented contract.
+
+Regression coverage: four new scenarios in `modules/akai-s3k-editor/test/unit/components/keygroups/VelocityRangeBar.test.tsx` under the `source-index preservation across malformed entries (AUDIT-20260524-12)` describe block — second-rendered click with malformed-middle, first-rendered click with malformed-leading, split-drag with malformed-middle, split-drag with malformed-leading. Validator-paired-changes hard test: with the production-code diff stashed (test diff intact), all four regression scenarios FAIL against pre-fix code with the specific error messages `expected "spy" to be called with arguments: [ 2 ]` (got `[1]`), `expected "spy" to be called with arguments: [ 1 ]` (got `[0]`), and `expected +0 to be 1 // Object.is equality`. The tests have teeth.
+
 ### AcZoneStrip marks selected segments with `aria-pressed` on `role="group"` containers, which is not a valid ARIA state/role pairing
 
 Finding-ID: AUDIT-20260524-13
-Status:     open
+Status:     verified-de95eb82
 Severity:   medium
 Surface:    `modules/editor-core/src/components/AcZoneStrip.tsx`, `modules/editor-core/src/components/AcZoneStrip.test.tsx`
 
@@ -76,6 +80,12 @@ That ARIA pairing is invalid: `aria-pressed` is a toggle-button state, not a sta
 **Fix guidance:** do not deepen the current contract in more tests. Either:
 1. move the selected-state exposure onto the actual interactive element (`.ac-zone-segment-body` button) using a supported state, or
 2. keep the outer segment as a structural group and remove the ARIA state entirely, using only a CSS modifier class for styling.
+
+**Fix landed (commit `de95eb82`):** option 2 — `aria-pressed` is removed from the `role="group"` segment and replaced with `data-selected` (a CSS-only attribute hook, no ARIA contract). The outer segment stays a structural group; the inner `.ac-zone-segment-body` button carries the click affordance; selection state is communicated visually via the `.ac-zone-segment--editing` modifier class and the `data-selected="true"` attribute. The CSS selector at `modules/editor-core/src/design/zone-strip-primitives.css:85` was updated from `.ac-zone-segment[aria-pressed="true"]` to `.ac-zone-segment[data-selected="true"]`; the visual treatment (inset accent ring + glow) is unchanged.
+
+Cross-editor impact verification: a grep across all source files (`*.ts`/`*.tsx`/`*.css`/`*.scss` under `modules/`, excluding `/dist/` and `/node_modules/`) confirms only the AcZoneStrip primitive, its test, and the canonical CSS selector referenced `aria-pressed` on zone segments. The other `aria-pressed` references in editor-core (`AcEnvelope`, `AcRangeBar`, `AcFrequencyResponse`, `AcEnvelopeTable`, `envelopeChromeHelpers`) live on actual `<button>` elements where the ARIA pairing is valid; those are unchanged. The Roland `ToneZoneEditor` and Akai `KeyRangeEditor` consumers had no production-code or test dependency on `aria-pressed` for zone segments; no consumer-side updates were required.
+
+Regression coverage: `modules/editor-core/src/components/AcZoneStrip.test.tsx` adds an explicit ARIA-cleanup test (`does NOT expose selection via aria-pressed on role="group" segments (invalid ARIA pairing)`) asserting (a) NO segment carries `aria-pressed` at any value, AND (b) `getByRole('button', { pressed: true })` and `getByRole('button', { pressed: false })` do NOT match any zone segment — the segments are `role="group"`, not buttons, and assistive tech must not treat them as toggle buttons. The existing `marks the selected zone` test updates to assert `data-selected="true"` instead of `aria-pressed="true"`. Validator-paired-changes hard test: with the production-code diff stashed (test diff intact), both ARIA-cleanup scenarios FAIL against pre-fix code with the specific error messages `expected null to be 'true'` (data-selected absent pre-fix) and `expected 'true' to be null` (aria-pressed present pre-fix). The tests have teeth in both directions of the contract.
 
 ## 2026-05-24 Feature review — latest AcRadioTabs closure verification
 
