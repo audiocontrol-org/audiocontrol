@@ -200,6 +200,60 @@ Do not assume agent delegation is available by default.
 
 This is an intentional difference from `.claude/CLAUDE.md`, which is allowed to assume proactive repo-local agent delegation.
 
+## Primitive-Extraction Dispatch Checklist (TF-016 countermeasure)
+
+When the user does ask for sub-agent delegation AND the dispatch falls into the primitive-extraction class (see below), the controller MUST work through the pre-dispatch checks before sending the brief. The canonical contract lives at [`.claude/rules/primitive-extraction-checklist.md`](.claude/rules/primitive-extraction-checklist.md); the substantive content below mirrors that file so Codex sessions inherit the same discipline (AUDIT-20260525-19). Both files are kept in sync per "Canonical Sync Path" above; when the deskwork canonical implementation lands, both files retire together.
+
+### When this rule fires
+
+Any dispatch that:
+
+- **Extracts** a primitive into `editor-core` from a per-editor `common/` directory (e.g., AcRadioTabs promotion, AcZoneStrip extraction)
+- **Builds** a new shared primitive in `editor-core` (e.g., AcFrequencyResponse, AcLiveStatusFooter)
+- **Extends** a shared primitive's API surface (e.g., AcEnvelope's `kind: 'adsr'` variant, AcRadioTabs' controlled-mode, AcEnvelope's `activeSegment: number | null`)
+- **Migrates** any consumer file to adopt a primitive that has changed shape since the consumer was last touched
+- **Renames** any CSS class family that consumers may reference
+
+If the dispatch touches `modules/editor-core/src/components/` AND any non-editor-core consumer file in the same change-set, this rule fires. Pure intra-editor dispatches (no `editor-core` touch) are exempt.
+
+### Pre-dispatch checks (mandatory; controller-side; before sending the brief)
+
+Work through every check. If any check surfaces a concern, fold it into the dispatch brief explicitly — do NOT defer to "the sub-agent will figure it out." The pattern this rule names is precisely the controller assuming the sub-agent will catch what the brief didn't say.
+
+1. **CSS class-name conflict grep** (AUDIT-20260524-10). For every CSS class the primitive declares, grep the whole repo for existing usages. If a consumer outside the primitive's source-of-truth file matches, the class-name space is shared: pick a different namespace, migrate the existing consumer in the same dispatch, or surface as NEEDS DECISION.
+2. **ARIA role / state validity audit on the legacy source** (AUDIT-20260524-11, -13). Cross-check every `role="..."` and `aria-*` pairing against the WAI-ARIA spec. Common invalid pairings: `aria-pressed` on `role="group"`; faux-tab semantics (`role="tablist"` + `role="tab"` without the keyboard contract); `role="status"` + `aria-live` combined with a high-frequency ticker. Don't carry invalid patterns forward — surface the fix in the brief.
+3. **Value-domain delta enumeration** (AUDIT-20260524-14, -15). For every value the primitive accepts or emits, compare NEW vs LEGACY on: integer vs float, range bounds (clamp behavior), index base (0 vs 1), nullability (sentinel coercion), unit semantics (Hz vs MIDI vs normalized). If ANY axis has a delta, list it under "Consumer-side adapter contract delta" in the brief — the sub-agent's grep WILL miss the delta unless the brief names it.
+4. **Consumer-side adapter survey** (AUDIT-20260525-17). For every page that will adopt the new primitive, ENUMERATE every existing `onChange`-like handler that issues device writes — literally list each one. The brief must name `handleParameterChange`, `handleRenameProgram`, `handleDeleteSample`, `handleClonePatch`, etc. — not the pattern. Sub-agents grep for the example shape; rename / delete / clone handlers don't follow that name pattern and get missed.
+5. **Test-contract drift survey** (AUDIT-20260525-18). For every page the dispatch will TOUCH, list its pre-existing test files. Read them. If any pre-existing test asserts a contract the dispatch will break (e.g., a `data-testid` the page no longer renders), CALL IT OUT in the brief. Failing tests on touched pages are in scope — the sub-agent does not get to leave them red.
+6. **ARIA + interaction-timing audit** (AUDIT-20260525-16). If the new primitive has BOTH ARIA roles/states AND any interval/animation/auto-update behavior, the brief MUST specify whether/how the two contracts INTERACT. Common failure: `role="status"` + `aria-live="polite"` plus a `setInterval` ticker = continuous live-region announcement spam. The fix shape is almost always: split the announcement contract from the visual update; visible chrome in a non-live `<div>`; separate `<div role="status" aria-live="polite">` carries a discrete announcement string that fires only on rising-edge state changes.
+
+### Mandatory brief sections (if this rule fires)
+
+Every primitive-extraction dispatch brief MUST contain these sections in addition to whatever else the dispatch needs:
+
+- **A. Consumer-side adapter contract delta** — per consumer: what changed in the API surface vs the legacy implementation (value types, ranges, ARIA roles, class-name semantics, index base, state contract); what each adapter MUST do to preserve the legacy contract; regression-test scaffolding the sub-agent MUST add at the adapter layer (NOT just the primitive layer).
+- **B. Test-contract drift survey** — per touched page: list pre-existing test files; note assertions needing updates; explicit instruction that failing tests on touched pages are in scope.
+- **C. ARIA + interaction-timing audit** — only if primitive has ARIA roles + auto-update behavior. Enumerate ARIA role/state attributes; enumerate auto-update mechanisms; specify how they interact; if they MUST be split, name the split shape.
+- **D. Device-write callsite enumeration** — only if dispatch wires into per-page state. Read EVERY consumer page; LIST EVERY handler that issues device writes (literally, not the pattern).
+
+### Forbidden shortcuts
+
+- "Sub-agent will figure out the adapter wiring" — no, the brief enumerates every callsite.
+- "Just check for class-name conflicts when writing the CSS" — no, the controller greps pre-dispatch and surfaces conflicts in the brief.
+- "Carry forward the legacy ARIA pattern; we can fix it later" — no, the audit catches it and the fix dispatch is more work than fixing in-place.
+- "Pre-existing baseline-flaky test is unrelated" — no, if the dispatch touches the page, the test goes with the page.
+- "Sub-agent's reported DONE is good enough" — no, controller re-runs the load-bearing gate AND scans for the 6 checklist items independently.
+
+### Process discipline
+
+1. Read [`.claude/rules/primitive-extraction-checklist.md`](.claude/rules/primitive-extraction-checklist.md) BEFORE writing the dispatch brief (the canonical file has the full lesson catalog with worked AUDIT-XX examples).
+2. Work through checks 1-6 with concrete greps + reads.
+3. Fold every finding into the brief as a Consumer-side adapter contract delta / Test-contract drift survey / ARIA + interaction-timing audit / Device-write callsite enumeration entry.
+4. Send the brief.
+5. After the sub-agent returns DONE, controller re-runs `make test-ui-roland` + `make test-ui-s3k` + `pnpm test:scope-discovery` + `make check-*` gates independently.
+6. ALSO controller-side audit: scan the produced diff for each of the 6 checklist items — confirm the sub-agent didn't drift from the brief on any of them.
+7. If a NEW finding surfaces (audit pass after the dispatch lands), add it to the canonical file as a numbered item with a "What surfaced X" link (then mirror back here).
+
 ## Contract Enforcement
 
 The compiler must catch contract violations.

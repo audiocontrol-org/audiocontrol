@@ -157,6 +157,7 @@ The deskwork repository is shipping a canonical implementation of this dispatch-
 ## Cross-references
 
 - Pattern source: [`docs/1.0/001-IN-PROGRESS/akai-harmonization/tooling-feedback.md`](../../docs/1.0/001-IN-PROGRESS/akai-harmonization/tooling-feedback.md) TF-016
-- Audit findings catalogued: `docs/1.0/001-IN-PROGRESS/akai-harmonization/audit-log.md` AUDIT-20260524-10 / -11 / -12 / -13 / -14 / -15 / AUDIT-20260525-16 / -17 / -18
+- Audit findings catalogued: `docs/1.0/001-IN-PROGRESS/akai-harmonization/audit-log.md` AUDIT-20260524-10 / -11 / -12 / -13 / -14 / -15 / AUDIT-20260525-16 / -17 / -18 / -19
+- Codex-visible mirror: [`AGENTS.md`](../../AGENTS.md) "Primitive-Extraction Dispatch Checklist (TF-016 countermeasure)" — substantive mirror so Codex sessions inherit the same discipline; kept in sync per AGENTS.md "Canonical Sync Path". Both files retire together when the deskwork canonical lands.
 - Reactive rule this is upstream of: [`.claude/rules/agent-discipline.md`](agent-discipline.md) "Validator-paired changes"
 - Related CSS-promotion discipline: [`.claude/rules/css-refactor.md`](css-refactor.md) "CSS refactor protocol — screenshot first, one rule at a time"
