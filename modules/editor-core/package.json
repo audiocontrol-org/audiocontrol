@@ -46,6 +46,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:ui": "vitest run --config vitest.ui.config.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {
