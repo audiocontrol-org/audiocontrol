@@ -321,7 +321,7 @@ The matrix below is the proof-of-design Phase 2 implementers cite for each `cano
 |---|---|---|---|---|
 | Fixed-viewport page shell | absent (`.ac-page-shell` without modifier) | `adopt-roland-pattern` | roland | 2.2 |
 | PageTitleRow | absent (hand-rolled `.ac-page-sticky-header`) | `adopt-roland-pattern` | roland | 2.2 |
-| AcRadioTabs detail pane | absent (single-pane parameter grid) | `adopt-roland-pattern` | roland | 2.2 |
+| AcRadioTabs detail pane | ~~absent (single-pane parameter grid)~~ → AcRadioTabs (controlled mode) from editor-core | DONE 2026-05-24 (`a444acd5` + `b5d30089` + `3b93fa91`) | roland (promoted to editor-core) | 2.2 |
 | Live-editing footer | absent | `adopt-roland-pattern` | roland | 2.2 |
 | Virtual front panel — chassis chrome | absent | `genuinely-dialect` (tokens differ) | roland (component shape) | 2.1 + 2.2 |
 | Virtual front panel — button grid layout | absent | structural divergence — needs factory | shared `FrontPanelButton`, per-device layout | 2.2 |
@@ -379,11 +379,11 @@ Notes on the DONE rows:
 
 Phase 1 inventory surfaced these akai-specific patterns that should NOT propagate to future editors (jv1080, d110, sample-editor):
 
-1. **Hand-rolled `.ac-page-sticky-header` / `.ac-page-header` instead of PageTitleRow.** Register as anti-pattern; the canonical replacement is the shared `PageTitleRow` component.
+1. ~~**Hand-rolled `.ac-page-sticky-header` / `.ac-page-header` instead of PageTitleRow.** Register as anti-pattern; the canonical replacement is the shared `PageTitleRow` component.~~ — DONE 2026-05-24 (`3b93fa91`) — `ac-page-sticky-header-inline` registered with paired adversarial scenarios in `tools/scope-discovery/anti-patterns.ac-page-header-scenarios.ts`. Active scan across all editors; 3 stale e2e test selectors fixed in passing; d110-editor TonesPage holdout listed as deferred exception pending d110 migration.
 2. **Tailwind utility-class chrome in JSX (e.g., `text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300` for the launch-editor buttons in SamplesPage).** Register as anti-pattern; the canonical replacement is `.ac-btn` / `.ac-toolbar-btn`.
 3. **Inline `<a href="/akai/s3000xl/editor/programs" className="text-blue-400 hover:underline">` for cross-page navigation prompts.** Register as anti-pattern; the canonical replacement is `.ac-link` (the design token `--ac-color-accent` carries through under the editor scope).
 4. **`.s3k-param-input` / `.s3k-param-select` / `.s3k-param-toggle` parallel primitive family.** Register as anti-pattern; the canonical replacement is `.ac-input` / `.ac-select` / a new `.ac-toggle` primitive promoted from akai if the shape doesn't already exist on roland.
-5. **`s3k-zone-tabs` / `s3k-zone-tab` parallel primitive (instead of AcRadioTabs).** Register as anti-pattern; the canonical replacement is AcRadioTabs.
+5. ~~**`s3k-zone-tabs` / `s3k-zone-tab` parallel primitive (instead of AcRadioTabs).** Register as anti-pattern; the canonical replacement is AcRadioTabs.~~ — DONE 2026-05-24 (`3b93fa91`) — `s3k-zone-tabs-inline` registered with paired adversarial scenarios in `tools/scope-discovery/anti-patterns.s3k-zone-tabs-scenarios.ts`. The `.s3k-zone-tab*` CSS family was deleted from `modules/akai-s3k-editor/src/index.css` in the same commit; VelocityZoneEditor migrated to AcRadioTabs controlled-mode (activeId + onActiveIdChange) so the VelocityRangeBar above the tabs can read the active zone index. Note: § 8 question 1 ("nested AcRadioTabs vs separate AcSecondaryTabs primitive") resolved as "reuse AcRadioTabs without a `variant=` prop" — the chrome unification was clean; no visual delta warranted a new variant.
 6. **`.s3k-envelope-display` SVG-direct envelope graphic (instead of AcEnvelope).** Register as anti-pattern; the canonical replacement is AcEnvelope with `segmentCount` prop.
 
 ## 7. Scope-discovery-protocol tooling gaps surfaced
