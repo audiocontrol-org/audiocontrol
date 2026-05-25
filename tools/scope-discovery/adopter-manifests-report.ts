@@ -142,7 +142,12 @@ function appendManifestBlock(lines: string[], manifest: ManifestResult): void {
     );
     for (const th of manifest.trackedHoldoutFiles) {
       const reasonFirstLine = th.reason.trim().split('\n')[0] ?? '';
-      lines.push(`    ${th.path} — issue: ${th.issue} — reason: ${reasonFirstLine}`);
+      // `issue:` is optional post-AUDIT-20260525-20: when absent, the
+      // entry is anchored to a substantive inline `reason:` instead.
+      // Display the issue clause only when present so the report stays
+      // honest about whether a navigable tracker artifact exists.
+      const issueClause = th.issue !== undefined ? ` — issue: ${th.issue}` : '';
+      lines.push(`    ${th.path}${issueClause} — reason: ${reasonFirstLine}`);
     }
   }
   if (manifest.holdouts.length === 0) {
@@ -177,11 +182,18 @@ export function reportJson(result: ScanResult): string {
       actual_adopters: m.actualAdopters,
       exempted_files: m.exemptedFiles,
       holdouts: m.holdouts,
-      tracked_holdouts: m.trackedHoldoutFiles.map((th) => ({
-        path: th.path,
-        issue: th.issue,
-        reason: th.reason,
-      })),
+      // `issue:` is optional (AUDIT-20260525-20); only emit the JSON
+      // key when present so downstream consumers can branch on
+      // hasOwnProperty('issue') instead of guessing whether `null` or
+      // `undefined` means "no tracker artifact exists".
+      tracked_holdouts: m.trackedHoldoutFiles.map((th) => {
+        const base: { path: string; reason: string; issue?: string } = {
+          path: th.path,
+          reason: th.reason,
+        };
+        if (th.issue !== undefined) base.issue = th.issue;
+        return base;
+      }),
       message: m.entry.message,
     })),
   };

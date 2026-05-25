@@ -43,7 +43,10 @@
 #            lock that SlideDrawer doesn't expose">
 #     tracked_holdouts:            # optional; default empty (AUDIT-06)
 #       - path: <exact repo-relative path that matches one of the globs>
-#         issue: <URL or '#issue-ref' of the tracking issue>
+#         # AUDIT-20260525-20: `issue:` is OPTIONAL. When present, must
+#         # be a URL or '#'-prefixed ref. When ABSENT, `reason:` must
+#         # be SUBSTANTIVE (see Tracked-holdouts contract below).
+#         issue: <URL or '#issue-ref', OR OMIT the field entirely>
 #         reason: |
 #           <multi-line explanation naming the deferral context — e.g.,
 #            "pending ROLAND-BUGFIX-V3-IMPORT; v3 SlideDrawer migration
@@ -71,18 +74,31 @@
 #
 # Tracked holdouts (AUDIT-20260522-06): `tracked_holdouts:` is a
 # distinct disposition from `exceptions:`. Tracked holdouts are files
-# the operator KNOWS need to migrate but has explicitly deferred via a
-# tracking issue. The gate exits 0 when only tracked-holdouts remain
-# (no real holdouts); they appear under their own report section + the
-# editor-symmetry matrix renders them as `⏳ A/E (T tracked)` instead
-# of being masked as `✓`. Each entry MUST carry:
+# the operator KNOWS need to migrate but has explicitly deferred. The
+# gate exits 0 when only tracked-holdouts remain (no real holdouts);
+# they appear under their own report section + the editor-symmetry
+# matrix renders them as `⏳ A/E (T tracked)` instead of being masked
+# as `✓`. Each entry MUST carry:
 #   - `path:` (matches at least one glob, just like exceptions)
-#   - `issue:` (URL containing `://` OR a `#`-prefixed GitHub-style ref;
-#     prevents the field from being used as a "fix-it-later" dumping
-#     ground without operator-tracked follow-up)
 #   - `reason:` (multi-line explanation naming the deferral context)
-# A path cannot appear in BOTH `exceptions:` and `tracked_holdouts:`
-# for the same entry — these dispositions are mutually exclusive.
+# Each entry MUST carry follow-up signal under one of two shapes (AUDIT-
+# 20260525-20):
+#   - `issue:` URL (containing `://`) OR `#`-prefixed GitHub-style ref —
+#     a navigable tracker artifact. Any `reason:` shape accepted when
+#     `issue:` is present.
+#   - `issue:` ABSENT — then `reason:` must be SUBSTANTIVE: >= 80 chars
+#     after trim AND not a placeholder/anti-gaming phrase ("TODO",
+#     "deferred", "see issue", "tracking pending", "fix later", etc.).
+#     The substantive-reason check rejects symbolic placeholders that
+#     satisfy the parser but defeat the registry's tracking-discipline
+#     contract (the field's purpose is to prevent the registry from
+#     becoming a "fix-it-later" dumping ground; placeholder refs
+#     looked-like-issues without being navigable, which is the same
+#     failure mode).
+# Entries with NEITHER a well-formed `issue:` NOR a substantive `reason:`
+# are rejected at parse time. A path cannot appear in BOTH `exceptions:`
+# and `tracked_holdouts:` for the same entry — these dispositions are
+# mutually exclusive.
 #
 # Import detection: the gate matches `import ... from '<from>'`,
 # `import('<from>')`, `export ... from '<from>'`, and

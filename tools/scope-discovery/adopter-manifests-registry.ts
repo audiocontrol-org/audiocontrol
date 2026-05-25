@@ -21,7 +21,13 @@
  *           reason: <multi-line explanation>
  *       tracked_holdouts:            # deferred-but-known holdouts (AUDIT-06)
  *         - path: <exact repo-relative file path>
- *           issue: <URL / GitHub-ref of the tracking issue>
+ *           # AUDIT-20260525-20: `issue:` is OPTIONAL. When present it
+ *           # must be a URL (containing `://`) or a `#`-prefixed ref.
+ *           # When ABSENT, `reason:` must be SUBSTANTIVE (>= 80 chars
+ *           # trimmed, no placeholder phrases like "TODO" / "deferred"
+ *           # / "see issue") — encode what the deferred work is, why
+ *           # deferred, and what would unlock it.
+ *           issue: <URL / GitHub-ref of the tracking issue, OR OMIT>
  *           reason: <multi-line explanation>
  *       message: <multi-line replacement instruction>
  *
@@ -42,7 +48,14 @@
  *   - `from:` that is neither a non-empty string nor a non-empty list
  *     of non-empty strings
  *   - exceptions whose `path` is empty or whose `reason` is empty
- *   - tracked-holdouts missing any of `path` / `issue` / `reason`
+ *   - tracked-holdouts missing `path` or `reason`
+ *   - tracked-holdouts WITHOUT `issue:` AND with non-substantive
+ *     `reason:` (AUDIT-20260525-20). Substantive = >= 80 chars after
+ *     trim AND not a placeholder phrase like "TODO" / "deferred" /
+ *     "see issue". The intent is that an issue-less entry MUST encode
+ *     enough inline context for an operator reading the registry to
+ *     understand the deferral without an external tracker artifact.
+ *   - tracked-holdouts with malformed `issue:` (must be URL or `#`-ref)
  *   - tracked-holdouts whose `path` doesn't match any glob
  *   - paths listed in BOTH `exceptions:` and `tracked_holdouts:`
  *   - duplicate ids
@@ -61,6 +74,7 @@ import {
   type ParsedKeyedListRegistry,
   type RegistrySchema,
 } from './util/registry-yaml.js';
+import { checkSubstantiveReason } from './util/substantive-reason.js';
 import { errorMessage, isPlainObject } from './util/typeguards.js';
 
 const NAMESPACE = 'adopter-manifests';
@@ -77,21 +91,43 @@ export interface AdopterException {
 /**
  * One tracked-holdout entry inside an adopter-manifest. Tracked holdouts
  * are files that DO need to adopt the primitive but have a tracked
- * follow-up issue deferring the migration. They are NOT findings (the
- * gate exits 0 when only tracked holdouts remain) but are surfaced in a
- * separate report section + render as a distinct `⏳` glyph in the
- * editor-symmetry matrix. The mandatory `issue:` URL prevents the field
- * from becoming a "I'll fix it later" deferral dumping ground.
+ * follow-up. They are NOT findings (the gate exits 0 when only tracked
+ * holdouts remain) but are surfaced in a separate report section + render
+ * as a distinct `⏳` glyph in the editor-symmetry matrix.
+ *
+ * Tracking-discipline contract (AUDIT-20260525-20): every entry must
+ * carry follow-up signal under one of two shapes:
+ *   1. `issue:` — URL (containing `://`) OR a GitHub-style `#`-prefixed
+ *      ref naming a real, navigable tracker artifact. Any `reason:` shape
+ *      is acceptable when `issue:` is present.
+ *   2. `issue:` ABSENT — then `reason:` must be SUBSTANTIVE: long enough
+ *      to encode (a) what the deferred work is, (b) why deferred, and
+ *      (c) what would unlock it. The substantive-reason check enforces
+ *      a minimum content density (>= 80 chars after trim) AND rejects
+ *      placeholder/anti-gaming phrases ("TODO", "deferred", "see issue",
+ *      "tracking pending", etc.) so the field cannot devolve into a
+ *      "fix-it-later" dumping ground without operator-visible context.
+ *
+ * Entries with NEITHER a well-formed `issue:` NOR a substantive `reason:`
+ * are rejected at parse time — the deferral has no follow-up target and
+ * no inline justification, so the gate would silently mask the holdout
+ * without recourse for the operator.
  */
 export interface TrackedHoldout {
   /** Exact repo-relative POSIX path of the deferred holdout file. */
   readonly path: string;
   /**
-   * Tracking issue. Must be non-empty and either contain `://`
-   * (URL-shaped) or start with `#` (GitHub-style cross-repo ref).
+   * Optional tracking issue. When present must be non-empty and either
+   * contain `://` (URL-shaped) or start with `#` (GitHub-style
+   * cross-repo ref). When absent, `reason:` must carry substantive
+   * inline tracking context (see `TrackedHoldout` docstring).
    */
-  readonly issue: string;
-  /** Multi-line explanation naming the deferral context. */
+  readonly issue?: string;
+  /**
+   * Multi-line explanation naming the deferral context. When `issue:`
+   * is absent, this field must satisfy the substantive-reason check
+   * (>= 80 chars after trim, not a placeholder phrase).
+   */
   readonly reason: string;
 }
 
@@ -299,6 +335,30 @@ function parseExceptions(raw: unknown, ctx: string): readonly AdopterException[]
   });
 }
 
+/**
+ * Parse the optional `issue:` field. Returns:
+ *   - the string when present + well-formed (URL or `#`-prefix);
+ *   - undefined when the field is absent (null / missing key);
+ *   - throws on malformed shapes (non-string, empty string, wrong prefix).
+ *
+ * The "issue absent → substantive-reason required" rule is enforced in
+ * `parseTrackedHoldouts` because it needs to see BOTH fields together.
+ */
+function parseOptionalIssue(raw: unknown, ctx: string): string | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (typeof raw !== 'string' || raw.length === 0) {
+    throw new Error(
+      `${NAMESPACE}: ${ctx} \`issue\`, when present, must be a non-empty string; got ${typeof raw}`,
+    );
+  }
+  if (!raw.includes('://') && !raw.startsWith('#')) {
+    throw new Error(
+      `${NAMESPACE}: ${ctx} \`issue\` must be a URL (containing \`://\`) or a GitHub-style ref (starting with \`#\`); got "${raw}"`,
+    );
+  }
+  return raw;
+}
+
 function parseTrackedHoldouts(raw: unknown, ctx: string): readonly TrackedHoldout[] {
   if (raw === undefined || raw === null) return [];
   if (!Array.isArray(raw)) {
@@ -314,14 +374,15 @@ function parseTrackedHoldouts(raw: unknown, ctx: string): readonly TrackedHoldou
     }
     const thCtx = `${ctx} tracked_holdouts[${index}]`;
     const path = requireString(value, 'path', thCtx, NAMESPACE);
-    const issue = requireString(value, 'issue', thCtx, NAMESPACE);
-    if (!issue.includes('://') && !issue.startsWith('#')) {
-      throw new Error(
-        `${NAMESPACE}: ${thCtx} \`issue\` must be a URL (containing \`://\`) or a GitHub-style ref (starting with \`#\`); got "${issue}"`,
-      );
-    }
+    const issue = parseOptionalIssue(value['issue'], thCtx);
     const reason = requireString(value, 'reason', thCtx, NAMESPACE);
-    return { path, issue, reason };
+    if (issue === undefined) {
+      const problem = checkSubstantiveReason(reason);
+      if (problem !== null) {
+        throw new Error(`${NAMESPACE}: ${thCtx} ${problem}`);
+      }
+    }
+    return issue === undefined ? { path, reason } : { path, issue, reason };
   });
 }
 
