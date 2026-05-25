@@ -127,7 +127,10 @@ test.describe('S-550 live Play-page design conformance', () => {
   });
 
   test('Part A row and drawer affordance remain pointer-reachable on the live route', async ({ page }) => {
-    const stickyHeader = page.locator('.ac-page-sticky-header');
+    // .ac-page-title-row is the canonical page-title chrome (promoted
+    // 2026-05-24 in akai-harmonization Phase 2 task 2.2; the legacy
+    // sticky-header chrome was retired in the same window).
+    const stickyHeader = page.locator('.ac-page-title-row');
     const partAChannel = page.locator('[aria-label="Part A MIDI channel"]');
     const openDrawerToggle = page.locator('button[title^="Open "]').first();
 

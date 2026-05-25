@@ -314,3 +314,68 @@ anti_patterns:
       2026-05-23 per RGM-001 sub-task 4). Replace with
       `import { downloadBlob } from '@audiocontrol/editor-core'` +
       `downloadBlob(blob, filename)`.
+
+  # akai-harmonization Phase 2 task 2.2 (2026-05-24) — harmonization-spec
+  # § 6 items 1 + 5 closure. Two entries:
+  #   - s3k-zone-tabs-inline: blocks re-introduction of the
+  #     `.s3k-zone-tab*` family deleted in this commit (Commit 3 of the
+  #     AcRadioTabs promotion sequence).
+  #   - ac-page-sticky-header-inline: PREVENTIVE registration. The class
+  #     family was removed in the PageTitleRow migration (commit bba5b13b);
+  #     no akai file currently uses it, but Phase 1 inventory named the
+  #     family as akai-specific drift that must not re-emerge.
+
+  - id: s3k-zone-tabs-inline
+    added_in: '0000aaaa'
+    primitive: AcRadioTabs
+    from: '@audiocontrol/editor-core'
+    # Matches the class family deleted in this commit:
+    # `s3k-zone-tabs` (container), `s3k-zone-tab` (button),
+    # `s3k-zone-tab--active` (modifier), `s3k-zone-tab-sample` (inner span).
+    shape_regex: '\bs3k-zone-tabs?\b'
+    excludes_paths:
+      - 'tools/scope-discovery/anti-patterns.s3k-zone-tabs-scenarios.ts'
+    message: |
+      `.s3k-zone-tab*` was a parallel primitive for tab-selector chrome
+      (harmonization-spec.md § 6 item 5). The canonical replacement is
+      AcRadioTabs from @audiocontrol/editor-core (use controlled mode
+      when a sibling component depends on the active tab id — pass
+      activeId + onActiveIdChange). Re-registering the class family
+      would re-introduce the migration debt this commit closed
+      (akai-harmonization Phase 2 task 2.2, Commit 3 of the AcRadioTabs
+      promotion sequence).
+
+  - id: ac-page-sticky-header-inline
+    added_in: '0000aaaa'
+    primitive: PageTitleRow
+    from: '@audiocontrol/editor-core'
+    # Matches `.ac-page-sticky-header` and `.ac-page-header` — the
+    # hand-rolled akai page-title pattern that the PageTitleRow
+    # promotion removed in commit bba5b13b. Active scan across all
+    # editors so future drift is caught regardless of which dialect
+    # introduces it.
+    shape_regex: '\bac-page-(sticky-header|header)\b'
+    excludes_paths:
+      # Scenario fixture (registry strings here would otherwise self-match).
+      - 'tools/scope-discovery/anti-patterns.ac-page-header-scenarios.ts'
+      # Documentation comments referencing the legacy class name (the
+      # MIGRATION HISTORY — not chrome usage). Keeping these references
+      # readable is important for future-archeology context.
+      - 'modules/editor-core/src/components/PageTitleRow.tsx'
+      - 'modules/roland-sxx0-editor/src/pages/LibraryPage.tsx'
+      - 'modules/roland-sxx0-editor/src/pages/PlayPage.tsx'
+      - 'modules/roland-sxx0-editor/src/pages/WorkflowsPage.tsx'
+      # d110-editor TonesPage holdout — not migrated yet (out of scope
+      # for feature/akai-harmonization). Surfaced by this entry's
+      # active scan; deferred under the d110-editor feature workplan.
+      # Listed as an excludes_paths exception (not tracked_holdouts —
+      # that's an adopter-manifest concept) so the gate doesn't block
+      # commits until the d110 migration lands.
+      - 'modules/d110-editor/src/pages/TonesPage.tsx'
+    message: |
+      `.ac-page-sticky-header` / `.ac-page-header` was a hand-rolled
+      page-title pattern (harmonization-spec.md § 6 item 1). The
+      canonical replacement is the PageTitleRow component from
+      @audiocontrol/editor-core. Migrated in commit bba5b13b; this
+      entry prevents re-introduction in akai-harmonization Phase 2
+      task 2.2.

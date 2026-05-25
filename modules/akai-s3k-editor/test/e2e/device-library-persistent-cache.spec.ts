@@ -142,9 +142,13 @@ test.describe('Persistent editor cache (sessionStorage)', () => {
     await waitForProgramList(page);
 
     // 2. The CacheAge component renders as a span.text-xs.text-gray-500
-    //    next to the page title, showing relative time like "just now"
-    // The CacheAge span is inside the page header, near the "Programs" h2
-    const cacheAge = page.locator('.ac-page-header span.text-xs.text-gray-500').first();
+    //    next to the page title, showing relative time like "just now".
+    //    The CacheAge span is inside the canonical .ac-page-title-row
+    //    header (the akai-harmonization Phase 2 task 2.2 migration
+    //    promoted the page-title chrome to PageTitleRow + canonical
+    //    .ac-page-title-* classes). The metric slot wraps the relative-
+    //    time span.
+    const cacheAge = page.locator('.ac-page-title-row span.text-xs.text-gray-500').first();
     await expect(cacheAge).toBeVisible({ timeout: 5_000 });
 
     // 3. The text should match a relative time pattern

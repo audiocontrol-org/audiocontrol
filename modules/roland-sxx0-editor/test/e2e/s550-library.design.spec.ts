@@ -95,7 +95,10 @@ test.describe('S-550 live Library-page design conformance', () => {
 
   test('fixed library shell exposes approved header controls and opens Save dialog after OPFS connect', async ({ page }) => {
     const pageShell = page.locator('.ac-page-shell--fixed-viewport');
-    const stickyHeader = page.locator('.ac-page-sticky-header');
+    // .ac-page-title-row is the canonical page-title chrome (promoted
+    // 2026-05-24 in akai-harmonization Phase 2 task 2.2; the legacy
+    // sticky-header chrome was retired in the same window).
+    const stickyHeader = page.locator('.ac-page-title-row');
     const pageBody = page.locator('.ac-page-shell-body');
 
     await expect(pageShell).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
+import { AcRadioTabs, type AcRadioTabDef } from '@audiocontrol/editor-core';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
 import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
@@ -152,6 +153,34 @@ export function VelocityZoneEditor({
     [onParameterChange],
   );
 
+  // Build the AcRadioTabs tabs[] + panels{} from the four zone indices.
+  // Tab label inlines the sample name when present so the operator sees
+  // which zone holds which sample without needing a per-tab secondary
+  // slot. If a future design needs a dedicated secondary-text slot per
+  // tab, the right move is to extend AcRadioTabDef with an optional
+  // `secondaryLabel?:` field rather than re-introducing a parallel
+  // chrome primitive here.
+  const tabs: readonly AcRadioTabDef[] = ZONE_INDICES.map((zone) => {
+    const sname = getZoneString(header, 'SNAME', zone).trim();
+    return {
+      id: `vz-zone-${zone}`,
+      label: sname ? `Zone ${zone} — ${sname}` : `Zone ${zone}`,
+    };
+  });
+
+  const panels: Record<string, JSX.Element> = Object.fromEntries(
+    ZONE_INDICES.map((zone) => [
+      `vz-zone-${zone}`,
+      <SingleZoneEditor
+        key={zone}
+        zone={zone}
+        header={header}
+        sampleNames={sampleNames}
+        onParameterChange={onParameterChange}
+      />,
+    ]),
+  );
+
   return (
     <div>
       <VelocityRangeBar
@@ -162,29 +191,18 @@ export function VelocityZoneEditor({
         onSplitCommit={handleSplitDrag}
       />
 
-      <div className="s3k-zone-tabs">
-        {ZONE_INDICES.map((zone) => {
-          const sname = getZoneString(header, 'SNAME', zone).trim();
-          const isActive = activeZone === zone;
-          return (
-            <button
-              key={zone}
-              type="button"
-              onClick={() => setActiveZone(zone)}
-              className={`s3k-zone-tab ${isActive ? 's3k-zone-tab--active' : ''}`}
-            >
-              <span>Zone {zone}</span>
-              {sname && <span className="s3k-zone-tab-sample">{sname}</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      <SingleZoneEditor
-        zone={activeZone}
-        header={header}
-        sampleNames={sampleNames}
-        onParameterChange={onParameterChange}
+      <AcRadioTabs
+        tabs={tabs}
+        panels={panels}
+        activeId={`vz-zone-${activeZone}`}
+        onActiveIdChange={(id) => {
+          const zoneNum = Number(id.replace('vz-zone-', ''));
+          if (zoneNum >= 1 && zoneNum <= 4) {
+            setActiveZone(zoneNum as ZoneIndex);
+          }
+        }}
+        groupName="velocity-zone-tabs"
+        ariaLabel="Velocity zone selector"
       />
     </div>
   );

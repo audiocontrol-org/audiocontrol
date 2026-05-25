@@ -243,49 +243,18 @@
 
   /* ================================================================
    * Velocity Zone Editor
+   *
+   * The `.s3k-zone-tab*` family (display: flex container + per-tab
+   * button chrome + active-state modifier + secondary sample-name
+   * span) was deleted on 2026-05-24 per akai-harmonization Phase 2
+   * task 2.2 (harmonization-spec § 6 item 5 closure). VelocityZoneEditor
+   * now consumes the canonical AcRadioTabs primitive from editor-core
+   * in controlled mode (activeId + onActiveIdChange) so the
+   * VelocityRangeBar above the tabs can read the active zone index.
+   * Re-introducing any `.s3k-zone-tab*` class is blocked by the
+   * `s3k-zone-tabs-inline` anti-pattern entry in
+   * `docs/scope-discovery/anti-patterns.yaml`.
    * ================================================================ */
-
-  .s3k-zone-tabs {
-    display: flex;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
-
-  .s3k-zone-tab {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.125rem;
-    padding: 0.5rem 0.25rem;
-    font-size: 0.8125rem;
-    color: var(--ac-color-text-muted, #9ca3af);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    transition: color 0.15s, background 0.15s;
-  }
-
-  .s3k-zone-tab:hover {
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--ac-color-text-primary, #e5e7eb);
-  }
-
-  .s3k-zone-tab--active {
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--ac-color-text-primary, #e5e7eb);
-    font-weight: 600;
-    border-bottom: 2px solid var(--ac-color-accent, #d4a843);
-  }
-
-  .s3k-zone-tab-sample {
-    font-size: 0.6875rem;
-    opacity: 0.6;
-    font-family: ui-monospace, 'Cascadia Code', monospace;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 8rem;
-  }
 
   .s3k-zone-editor {
     display: grid;

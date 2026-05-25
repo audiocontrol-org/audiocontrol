@@ -216,6 +216,11 @@ adopter_manifests:
     expected_adopters_glob:
       - 'modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx'
       - 'modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx'
+      # akai VelocityZoneEditor — added in akai-harmonization Phase 2
+      # task 2.2 (2026-05-24); first cross-editor consumer; uses
+      # controlled mode because the VelocityRangeBar above the tabs
+      # needs to read the active zone index.
+      - 'modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx'
     message: |
       Radio-driven tab strips should use the shared AcRadioTabs primitive
       (introduced in commit 1fa334f5; promoted to @audiocontrol/editor-core
