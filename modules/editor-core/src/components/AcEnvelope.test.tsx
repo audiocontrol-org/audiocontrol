@@ -394,7 +394,7 @@ describe('AcEnvelope', () => {
     expect(activeButton?.getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('clicking a graph point button triggers onPointSelect', () => {
+  it('pointer-down on a graph point button triggers onPointSelect', () => {
     const onPointSelect = vi.fn();
     const { container } = render(
       <AcEnvelope
@@ -413,7 +413,11 @@ describe('AcEnvelope', () => {
     if (target === undefined) {
       throw new Error('AcEnvelope did not render expected graph point buttons');
     }
-    fireEvent.click(target);
+    // The graph point's select callback is wired to onPointerDown (so the
+    // same handler that begins a drag also selects the segment for the
+    // "press without movement" case). fireEvent.click would NOT trigger
+    // it because the button has no onClick prop — only onPointerDown.
+    fireEvent.pointerDown(target);
     // Index 3 in the NodeList is segment 4 (segment 0 anchor is not a button).
     expect(onPointSelect).toHaveBeenCalledWith(4);
   });
