@@ -27,6 +27,13 @@ export {
   type AcToggleOption,
 } from './AcToggle';
 export {
+  AcZoneStrip,
+  defaultZoneHue,
+  type AcZoneStripProps,
+  type AcZoneStripZone,
+  type AcZoneStripHandle,
+} from './AcZoneStrip';
+export {
   AcNumberInput,
   type AcNumberInputProps,
   type AcNumberInputReadProps,

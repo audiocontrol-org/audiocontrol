@@ -20,6 +20,9 @@
  *                               ac-checkbox, ac-slider, ac-range-bar,
  *                               ac-number-input)
  *   - envelope-primitives.css — v3 8-segment VFD-glow envelope primitive
+ *   - zone-strip-primitives.css — segmented 1D zone-strip chrome (.ac-zone-*)
+ *                               consumed by AcZoneStrip; promoted from
+ *                               roland's patches.css 2026-05-24
  *   - list-primitives.css     — shared list-pane chrome (ac-list,
  *                               ac-list-bank-header, ac-list-name, ...)
  *   - loop-editor-primitives.css — loop-editor surface chrome (toolbar,
@@ -40,3 +43,4 @@
 @import './library.css';
 @import './chevron-primitives.css';
 @import './tab-primitives.css';
+@import './zone-strip-primitives.css';

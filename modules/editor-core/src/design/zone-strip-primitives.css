@@ -1,0 +1,193 @@
+/**
+ * Zone-strip primitives — chrome for the segmented 1D zone bar used by
+ * roland's ToneZoneEditor and the akai keygroup velocity / key-range
+ * editors. Promoted from `roland-sxx0-editor/src/styles/patches.css`
+ * during akai-harmonization Phase 2 task 2.2 (the AcZoneStrip primitive
+ * extraction).
+ *
+ * Per-zone hue derives from `--ac-zone-hue` (set inline by the JSX);
+ * the rules below hold the HSL math so consumers only need to pass a
+ * hue degree per zone. The hue offset constants (`200deg` base) match
+ * roland's pre-extraction palette so the existing 8-color rotation
+ * (0, 31, 62, ... = `toneIndex * 31`) is byte-identical post-lift.
+ *
+ * Visual model (see AcZoneStrip.tsx for the JSX shape):
+ *   .ac-zone-bar                 outer track (relative positioned)
+ *     .ac-zone-bar-empty         "no zones" placeholder (when zones[].length === 0)
+ *     .ac-zone-segment           per-zone tinted card (absolute via left/width %)
+ *       .ac-zone-segment--off    OFF / inactive zone state
+ *       .ac-zone-segment--editing   selected zone (inset accent ring)
+ *       .ac-zone-segment--dragging  drag-in-flight cursor swap
+ *       .ac-zone-handle             edge handle (start/end OR boundary split)
+ *         .ac-zone-handle--start    per-edge mode, zone start
+ *         .ac-zone-handle--end      per-edge mode, zone end
+ *         .ac-zone-handle--split    splitHandles mode, between-zones boundary
+ *         .ac-zone-handle--dragging active drag visual feedback
+ *       .ac-zone-segment-body       click-to-select inner target
+ */
+
+.ac-zone-bar {
+  position: relative;
+  height: 2.5rem;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+  overflow: hidden;
+}
+
+.ac-zone-bar-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-zone-segment {
+  /* The base hue derives from the zone's `--ac-zone-hue` (set inline by
+     JSX as `style={{'--ac-zone-hue': N}}`); the segment's fill + 1px
+     outline pick up two lightness stops of the same hue so every zone
+     reads as a self-contained tinted card against the darker bar
+     gradient, regardless of selection state. */
+  --ac-zone-fill: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 52% 42%);
+  --ac-zone-stroke: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 60% 56%);
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  background: var(--ac-zone-fill);
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  letter-spacing: 0.02em;
+  border: var(--ac-rule-hairline) solid var(--ac-zone-stroke);
+  border-radius: calc(var(--ac-radius-sm) - 1px);
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  overflow: hidden;
+}
+
+.ac-zone-segment:hover {
+  background: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 58% 50%);
+  border-color: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 65% 64%);
+}
+
+.ac-zone-segment[aria-pressed="true"],
+.ac-zone-segment--editing {
+  /* Inset outline + inset glow so the selected ring lives entirely
+     inside the segment — when a zone touches the left or right edge
+     of the bar, the ring would otherwise be clipped by the bar's
+     `overflow: hidden` (the previous outer box-shadow recipe). */
+  outline: var(--ac-rule-medium) solid var(--ac-color-accent);
+  outline-offset: calc(-1 * var(--ac-rule-medium));
+  box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+}
+
+.ac-zone-segment--off {
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, var(--ac-color-text-muted));
+  border-color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+  color: var(--ac-color-text-muted);
+}
+
+/* Drag handles — two thin strips at the start + end of every zone in
+   per-edge mode, OR a single strip at the boundary between adjacent
+   zones in splitHandles mode. They share the segment's stroke color
+   so they read as part of the zone chrome, then brighten on hover
+   to invite a pointer drag. The ::after pseudo paints a tiny grip
+   glyph for the visual affordance; the outer rect carries the cursor
+   + hit area. */
+.ac-zone-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0.5rem;
+  cursor: ew-resize;
+  touch-action: none;
+  background: color-mix(in srgb, var(--ac-zone-stroke, var(--ac-color-text-muted)) 70%, transparent);
+  transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+  z-index: 1;
+}
+
+.ac-zone-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0.125rem;
+  height: 0.875rem;
+  background: var(--ac-color-text-primary);
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  opacity: 0.5;
+}
+
+.ac-zone-handle--start {
+  left: 0;
+  border-top-left-radius: calc(var(--ac-radius-sm) - 1px);
+  border-bottom-left-radius: calc(var(--ac-radius-sm) - 1px);
+}
+
+.ac-zone-handle--end {
+  right: 0;
+  border-top-right-radius: calc(var(--ac-radius-sm) - 1px);
+  border-bottom-right-radius: calc(var(--ac-radius-sm) - 1px);
+}
+
+/* splitHandles mode — boundary handle between zoneIndex and
+   zoneIndex+1. Positioned absolutely on the BAR root (not inside any
+   segment), so the JSX places it at the post-segment boundary in %
+   coordinates via inline `left:`. Centered on its position via the
+   negative half-width margin emitted by the component. */
+.ac-zone-handle--split {
+  z-index: 2;
+}
+
+.ac-zone-handle:hover,
+.ac-zone-handle--dragging {
+  background: var(--ac-color-accent);
+}
+
+.ac-zone-handle:hover::after,
+.ac-zone-handle--dragging::after {
+  opacity: 1;
+  background: var(--ac-color-surface-canvas);
+}
+
+/* The center click-to-select target. Sized to fill the segment
+   between the two edge handles so the handles' hit areas never
+   compete with selection. */
+.ac-zone-segment-body {
+  position: absolute;
+  inset: 0 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  padding: 0 var(--ac-space-1);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* When a drag is in flight the body's click handler is suppressed
+   in JSX (pointerdown handler stops propagation); still hide the
+   pointer cursor so the affordance reads as ongoing-drag, not
+   click-pending. */
+.ac-zone-segment--dragging .ac-zone-segment-body {
+  cursor: ew-resize;
+}

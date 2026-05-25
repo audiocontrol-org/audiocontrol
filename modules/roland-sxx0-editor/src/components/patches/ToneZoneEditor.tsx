@@ -8,13 +8,22 @@
  * immediately via `onUpdate`. There is no Apply / Cancel / draft
  * state; the only explicit action is Delete (destructive).
  *
- * Chrome: composed from `.ac-zone-*` primitives defined in
- * `patches.css`. Each zone segment carries an inline
- * `--ac-zone-hue: N` custom property so its color derives from its
- * tone-index without a hard-coded class palette.
+ * Chrome: consumes the shared `<AcZoneStrip>` primitive from
+ * `@audiocontrol/editor-core`. Per-zone hue derives from the
+ * tone-index via `zoneHueOffset` (the same formula
+ * AcZoneStrip's `defaultZoneHue` uses; passed explicitly here so
+ * intermediate OFF zones don't shift the rotation against the
+ * sibling-zone palette). Overlap resolution + drag-lifecycle stay
+ * roland-local in `useZoneDrag` — AcZoneStrip only signals
+ * drag-start; the hook resolves overlaps and commits on pointer-up.
+ *
+ * Promoted from inline `.ac-zone-*` JSX on 2026-05-24 during
+ * akai-harmonization Phase 2 task 2.2 (Commit 1 of the AcZoneStrip
+ * primitive-extraction sequence).
  */
 
-import { type CSSProperties, useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { AcZoneStrip, type AcZoneStripZone } from '@audiocontrol/editor-core';
 import type { SamplerKeyMode, SamplerTone } from '@/core/midi/SamplerClient';
 import { cn, midiNoteToName } from '@/lib/utils';
 import { useMidiLearn } from '@/hooks/useMidiLearn';
@@ -244,75 +253,37 @@ export function ToneZoneEditor({
         </Tooltip>
       </header>
 
-      <div ref={barRef} className="ac-zone-bar">
-        {renderedZones.length === 0 ? (
-          <div className="ac-zone-bar-empty">
-            No zones · click + Add Zone to create one
-          </div>
-        ) : (
-          renderedZones.map((zone, index) => {
-            const startPercent = ((zone.startKey - MIN_KEY) / TOTAL_KEYS) * 100;
-            const widthPercent = Math.max(
-              ((zone.endKey - zone.startKey + 1) / TOTAL_KEYS) * 100,
-              1,
-            );
-            const isSelected = selectedZoneIndex === index;
-            const isOff = zone.tone < 0;
-            const isDragging = drag.dragging?.zoneIndex === index;
-            const style: CSSProperties = {
-              left: `${startPercent}%`,
-              width: `${widthPercent}%`,
-              ['--ac-zone-hue' as string]: zoneHueOffset(zone.tone),
-            };
-            return (
-              <div
-                key={`${index}-${zone.tone}`}
-                aria-pressed={isSelected}
-                role="group"
-                aria-label={`${getToneName(zone.tone)}: ${midiNoteToName(zone.startKey)} – ${midiNoteToName(zone.endKey)}`}
-                className={cn(
-                  'ac-zone-segment',
-                  isOff && 'ac-zone-segment--off',
-                  isSelected && 'ac-zone-segment--editing',
-                  isDragging && 'ac-zone-segment--dragging',
-                )}
-                style={style}
-                title={`${getToneName(zone.tone)}: ${midiNoteToName(zone.startKey)} – ${midiNoteToName(zone.endKey)}`}
-              >
-                <div
-                  className={cn(
-                    'ac-zone-handle',
-                    'ac-zone-handle--start',
-                    drag.dragging?.zoneIndex === index && drag.dragging.handle === 'start' && 'ac-zone-handle--dragging',
-                  )}
-                  onPointerDown={(e) => drag.startDrag(e, index, 'start')}
-                  aria-label="Drag to set start key"
-                  role="separator"
-                />
-                <Tooltip content={TONE_MAPPING_TOOLTIPS.zone}>
-                  <button
-                    type="button"
-                    onClick={() => handleZoneClick(index)}
-                    className="ac-zone-segment-body"
-                  >
-                    {widthPercent > 8 ? getShortToneName(zone.tone) : ''}
-                  </button>
-                </Tooltip>
-                <div
-                  className={cn(
-                    'ac-zone-handle',
-                    'ac-zone-handle--end',
-                    drag.dragging?.zoneIndex === index && drag.dragging.handle === 'end' && 'ac-zone-handle--dragging',
-                  )}
-                  onPointerDown={(e) => drag.startDrag(e, index, 'end')}
-                  aria-label="Drag to set end key"
-                  role="separator"
-                />
-              </div>
-            );
-          })
-        )}
-      </div>
+      <AcZoneStrip
+        barRef={barRef}
+        zones={renderedZones.map<AcZoneStripZone>((zone, index) => ({
+          startValue: zone.startKey,
+          endValue: zone.endKey,
+          // Pass the tone-derived hue explicitly. AcZoneStrip's index-
+          // derived default would advance with each rendered zone, but
+          // the roland palette is keyed off the TONE INDEX so OFF /
+          // gap zones don't rotate the hue against the next active
+          // zone's color identity.
+          hue: zoneHueOffset(zone.tone),
+          label: getShortToneName(zone.tone),
+          isOff: zone.tone < 0,
+          isSelected: selectedZoneIndex === index,
+          isDragging: drag.dragging?.zoneIndex === index,
+          ariaLabel: `${getToneName(zone.tone)}: ${midiNoteToName(zone.startKey)} – ${midiNoteToName(zone.endKey)}`,
+          title: `${getToneName(zone.tone)}: ${midiNoteToName(zone.startKey)} – ${midiNoteToName(zone.endKey)}`,
+        }))}
+        range={{ min: MIN_KEY, max: MIN_KEY + TOTAL_KEYS - 1 }}
+        onSelect={handleZoneClick}
+        onStartDrag={(zoneIndex, handle, event) => {
+          // useZoneDrag owns overlap resolution + window listener
+          // binding; AcZoneStrip only signals drag-start. splitHandles
+          // is false here (per-edge mode), so handle is 'start'|'end'.
+          if (handle === 'start' || handle === 'end') {
+            drag.startDrag(event, zoneIndex, handle);
+          }
+        }}
+        ariaLabel={`Layer ${layer} zone strip`}
+        emptyText="No zones · click + Add Zone to create one"
+      />
 
       <div className="ac-zone-axis" aria-hidden="true">
         <span>{midiNoteToName(MIN_KEY)}</span>

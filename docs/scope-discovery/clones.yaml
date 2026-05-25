@@ -1,4 +1,4 @@
-generated_at: 2026-05-24T23:55:52.507Z
+generated_at: 2026-05-25T03:15:43.879Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -1734,6 +1734,41 @@ clones:
       - modules/editor-core/src/components/__broken__/AcRangeBar/no-pointer-events.tsx:116:124
     disposition: keep-with-reason
     reason: Broken-variant registry intentionally mirrors the canonical primitive. modules/editor-core/src/components/__broken__/AcRangeBar/* exists explicitly to deliberately break the canonical AcRangeBar (no-pointer-events, etc.) for the Tier 3 credibility-check dispatcher (BrokenContextWrapper). Each broken variant MUST mirror canonical exactly except for the one targeted break — sharing code would defeat the credibility-check premise.
+  - id: 67546c2ba513
+    lines: 8
+    members:
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:103:110
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:40:47
+    disposition: keep-with-reason
+    reason: Intra-file test boilerplate in AcZoneStrip.test.tsx — each test case restates a 4-6 line zones[] fixture + render() pair so scenario-to-assertion mapping stays self-contained per the project's vitest pattern (scenario fixtures defined inline per-test, not via factory helpers)
+  - id: 583fccc1e333
+    lines: 6
+    members:
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:133:138
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:27:31
+    disposition: keep-with-reason
+    reason: Intra-file test boilerplate in AcZoneStrip.test.tsx — each test case restates a 4-6 line zones[] fixture + render() pair so scenario-to-assertion mapping stays self-contained per the project's vitest pattern (scenario fixtures defined inline per-test, not via factory helpers)
+  - id: 144c2ed2180a
+    lines: 8
+    members:
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:146:153
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:40:110
+    disposition: keep-with-reason
+    reason: Intra-file test boilerplate in AcZoneStrip.test.tsx — each test case restates a 4-6 line zones[] fixture + render() pair so scenario-to-assertion mapping stays self-contained per the project's vitest pattern (scenario fixtures defined inline per-test, not via factory helpers)
+  - id: a8118cb841e0
+    lines: 11
+    members:
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:217:223
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:244:254
+    disposition: keep-with-reason
+    reason: Intra-file test boilerplate in AcZoneStrip.test.tsx — each test case restates a 4-6 line zones[] fixture + render() pair so scenario-to-assertion mapping stays self-contained per the project's vitest pattern (scenario fixtures defined inline per-test, not via factory helpers)
+  - id: b477b460ee0c
+    lines: 7
+    members:
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:368:374
+      - modules/editor-core/src/components/AcZoneStrip.test.tsx:384:390
+    disposition: keep-with-reason
+    reason: Intra-file test boilerplate in AcZoneStrip.test.tsx — each test case restates a 4-6 line zones[] fixture + render() pair so scenario-to-assertion mapping stays self-contained per the project's vitest pattern (scenario fixtures defined inline per-test, not via factory helpers)
   - id: 024fb9164587
     lines: 12
     members:
@@ -2451,15 +2486,15 @@ clones:
   - id: dfe2f58d3ccc
     lines: 7
     members:
-      - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:361:367
-      - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:395:401
+      - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:332:338
+      - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:366:372
     disposition: keep-with-reason
     reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 56f714c9148b
     lines: 10
     members:
-      - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:367:376
-      - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:401:410
+      - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:338:347
+      - modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx:372:381
     disposition: keep-with-reason
     reason: Self-clone within a single file representing paired symmetric branches (per-mode render variants, paired event handlers, paired conditional branches, symmetric icon/type exports). Extracting the shared block would split tightly-coupled per-branch semantics into separate units, weakening readability of the per-branch intent. The clone is an architectural-correctness signal (the two branches MUST share the same shape), not a duplication that wants extraction. Batch-dispositioned 2026-05-22 as part of Phase 2 closure pass.
   - id: 3525fa88d07e
