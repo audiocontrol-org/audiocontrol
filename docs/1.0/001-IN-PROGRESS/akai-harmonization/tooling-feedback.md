@@ -31,7 +31,7 @@ This log tracks **scope-discovery + duplication tooling** friction only. Entries
 | TF-013 | Addressed | `6a1f8365` (PR #463) — disposition-survivor gate + strict-parse fix |
 | TF-014 | Open (low) | — — `batch-dispose.ts` workflow gap (refresh-baseline is a separate prereq step) |
 | TF-015 | Open (low) | — — anti-pattern regex prefix-matching trap (sibling classes false-positive without explicit negative-test scenarios) |
-| TF-016 | Open (medium) | — — primitive-extraction dispatches recurrently land integration-layer regressions (3 audit cycles 2026-05-24); dispatch hygiene is the upstream issue |
+| TF-016 | Canonical pending (deskwork) — defensive countermeasure local | deskwork repository is shipping a canonical implementation that will land in every repo on release. Until then: [`.claude/rules/primitive-extraction-checklist.md`](../../../../.claude/rules/primitive-extraction-checklist.md) is the local defensive countermeasure the controller applies before every primitive-extraction dispatch. |
 
 A parallel improvement landed in `676dd164` on this branch — the `imports:` field on adopter-manifests entries lets the gate distinguish "imports the canonical primitive" from "imports some other symbol from the same package," and recognizes transitive adoption via wrapping primitives (e.g., SteppedProgressDrawer wraps SlideDrawer; importing the wrapper now counts). Not a TF entry of its own — it surfaced as a finding during the SlideDrawer adoption work and was fixed in the same commit pair.
 
@@ -230,6 +230,10 @@ Each fix has been small and contained (a single follow-up commit closes both fin
 The Medium option is operator-actionable now: drafting `.claude/rules/primitive-extraction-checklist.md` requires no agent-template changes and produces immediate value for the next primitive extraction (virtual front panel, AcEnvelope's `kind: 'adsr'` consumer adapter on roland if needed, etc.). The Light option is also incremental but requires the controller to remember to paste the section into every brief. The Heavy option closes the loop structurally but requires sub-agent prompt updates the operator may want to vet separately.
 
 **Note on validator-paired-changes interaction:** the `.claude/rules/agent-discipline.md` "Validator-paired changes" section requires adversarial scenarios for new gate-semantic behavior. Each of the 3 audit-cycle fixes added such scenarios (with teeth, confirmed by stash-and-rerun). TF-016 is upstream of that rule — it asks "did the DISPATCH itself surface the integration-layer concerns that need adversarial scenarios?" The current discipline is reactive (audit catches, fix scenarios get written); TF-016 makes it proactive (dispatch identifies concerns up-front, scenarios land with the primary commit).
+
+**Update 2026-05-25 — pattern recurred again.** A fourth audit cycle landed on the AcLiveStatusFooter dispatch (commits 1e6e40ad + a7b1773f + 16f97e34): AUDIT-20260525-16 (HIGH, a11y — `role="status"` + 100ms ticker = continuous live-region announcement spam), AUDIT-20260525-17 (medium, adapter wiring — rename handlers missed `setLastEditAt`), AUDIT-20260525-18 (medium, test-contract drift — pre-existing test stale; the dispatch touched the page but didn't update the test). Closed via `f2f3e1e0` + `f3a03e1c`. The recurring shape now spans 4 dispatches and 9 findings; the discipline gap is real.
+
+**Addressed by:** the deskwork repository is shipping a canonical implementation of the dispatch-hygiene contract that will be available to every repo when it's released. Until the canonical lands, the local defensive countermeasure is [`.claude/rules/primitive-extraction-checklist.md`](../../../../.claude/rules/primitive-extraction-checklist.md) — written 2026-05-25 to encode the lessons from the 4 audit cycles into a controller-side pre-dispatch checklist. When deskwork's canonical lands, the local checklist gets superseded.
 
 ---
 
