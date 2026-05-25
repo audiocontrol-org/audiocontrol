@@ -11,6 +11,25 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-24 Feature review — latest AcRadioTabs closure verification
+
+Reviewed the implementation work through `8545e839` / `e18987cb` on 2026-05-24, covering the `AcRadioTabs` class-namespace + a11y fix that closed `AUDIT-20260524-10` and `AUDIT-20260524-11`.
+
+Scope checked:
+
+- `modules/editor-core/src/components/AcRadioTabs.tsx`
+- `modules/editor-core/src/components/AcRadioTabs.test.tsx`
+- `modules/editor-core/src/design/tab-primitives.css`
+- `modules/roland-sxx0-editor/src/styles/_shared.css`
+- `modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx`
+- updated roland wiring tests for the radio-group contract
+
+Verification:
+
+- `pnpm --filter @audiocontrol/editor-core test -- AcRadioTabs.test.tsx` — passed (`1` file, `19` tests)
+
+Result: no new audit findings in this pass. The class-namespace split (`.ac-radio-*` vs the pre-existing `.ac-tabs` button-tab chrome) and the radio-group semantics cleanup both appear coherent in the current patch set, and I did not find a new correctness or regression issue beyond the already-recorded and verified `AUDIT-20260524-10` / `-11`.
+
 ## 2026-05-24 Feature review — latest AcRadioTabs promotion/migration work
 
 Surfaced while reviewing the latest `AcRadioTabs` promotion and Akai `VelocityZoneEditor` migration commits through `1ae3420f` on 2026-05-24 (`a444acd5`, `b5d30089`, `3b93fa91`). This pass was a code-review audit of the shared primitive, its CSS promotion, and the Akai consumer.
