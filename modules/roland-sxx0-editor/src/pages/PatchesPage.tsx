@@ -36,7 +36,7 @@ import type { SamplerClientInterface, SamplerPatch, SamplerTone } from '@/core/m
 import { PatchList } from '@/components/patches/PatchList';
 import { PatchEditor } from '@/components/patches/PatchEditor';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
-import { useLibraryConnection, PageTitleRow } from '@audiocontrol/editor-core';
+import { useLibraryConnection, AcLiveStatusFooter, PageTitleRow } from '@audiocontrol/editor-core';
 
 export function PatchesPage() {
   const config = useDeviceConfig();
@@ -175,9 +175,19 @@ export function PatchesPage() {
     tonesPerBank,
   ]);
 
-  // Handle patch updates from the editor
+  // Live-status footer timestamp — updated whenever a parameter edit
+  // streams to the device. Per harmonization-spec section 2.5 plus the
+  // `feedback_live_editing_no_save` operator memory.
+  const [lastEditAt, setLastEditAt] = useState<number | null>(null);
+
+  // Handle patch updates from the editor — invoked AFTER a successful
+  // device write inside PatchEditor (setPatchName / setPatchKeyMode /
+  // setPatchBenderRange / setPatchOutput resolve before the editor
+  // calls onUpdate), so the timestamp here corresponds to a confirmed
+  // device write.
   const handlePatchUpdate = useCallback((index: number, patch: SamplerPatch) => {
     setPatch(index, patch, totalPatches);
+    setLastEditAt(Date.now());
   }, [setPatch, totalPatches]);
 
   // (Open-export-dialog handler removed alongside the per-row Export
@@ -328,6 +338,19 @@ export function PatchesPage() {
           </button>
         </div>
       )}
+
+      {/* Live-editing footer — every parameter edit streams to the
+          device via the PatchEditor's individual setPatchName /
+          setPatchKeyMode / setPatchBenderRange / setPatchOutput calls;
+          the editor invokes onUpdate AFTER each await resolves, so the
+          handlePatchUpdate timestamp corresponds to a confirmed device
+          write. Per harmonization-spec section 2.5 + project memories
+          `feedback_live_editing_no_save` and `feedback_rec_led_accent`. */}
+      <AcLiveStatusFooter
+        deviceLabel={deviceName}
+        lastEditAt={lastEditAt}
+        state={isConnected ? 'live' : 'offline'}
+      />
 
       {/* Export to library dialog */}
       {exportOps.exportPatchDialog && (

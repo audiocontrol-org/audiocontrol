@@ -35,7 +35,7 @@ import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerCli
 import { toneSampleRateHz } from '@/core/midi/SamplerClient';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
-import { PageTitleRow } from '@audiocontrol/editor-core';
+import { AcLiveStatusFooter, PageTitleRow } from '@audiocontrol/editor-core';
 import { useLoopEditor } from '@audiocontrol/loop-editor/ui';
 
 export function TonesPage() {
@@ -168,7 +168,13 @@ export function TonesPage() {
     setTone(selectedToneIndex, tone, totalTones);
   }, [selectedToneIndex, setTone, totalTones]);
 
-  // Commit changes to device
+  // Live-status footer timestamp — updated whenever a parameter edit
+  // streams to the device. Per harmonization-spec section 2.5 plus the
+  // `feedback_live_editing_no_save` operator memory.
+  const [lastEditAt, setLastEditAt] = useState<number | null>(null);
+
+  // Commit changes to device — sendToneData is the explicit
+  // device-write callback (handleToneUpdate above is store-only).
   const handleToneCommit = useCallback(
     (tone?: SamplerTone) => {
       if (selectedToneIndex === null || !clientRef.current) return;
@@ -178,7 +184,9 @@ export function TonesPage() {
       const toneData = tone ?? useDeviceDataStore.getState().tones[selectedToneIndex];
       if (!toneData) return;
 
-      clientRef.current.sendToneData(selectedToneIndex, toneData).catch((err) => {
+      clientRef.current.sendToneData(selectedToneIndex, toneData).then(() => {
+        setLastEditAt(Date.now());
+      }).catch((err) => {
         console.error('[TonesPage] Failed to send tone data:', err);
         setError(err instanceof Error ? err.message : 'Failed to send tone data');
       });
@@ -302,6 +310,17 @@ export function TonesPage() {
           </button>
         </div>
       )}
+
+      {/* Live-editing footer — parameter edits stream to the device via
+          sendToneData (wired through handleToneCommit). The footer
+          surfaces the last-edit timestamp instead of a save/cancel/undo
+          affordance. Per harmonization-spec section 2.5 + project
+          memories `feedback_live_editing_no_save` and `feedback_rec_led_accent`. */}
+      <AcLiveStatusFooter
+        deviceLabel={deviceName}
+        lastEditAt={lastEditAt}
+        state={isConnected ? 'live' : 'offline'}
+      />
     </div>
   );
 }
