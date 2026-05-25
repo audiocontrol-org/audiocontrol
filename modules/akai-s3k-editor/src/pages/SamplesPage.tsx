@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { ConfirmDialog, PageTitleRow, SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
+import { AcLiveStatusFooter, ConfirmDialog, PageTitleRow, SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
 import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
 import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
@@ -47,6 +47,11 @@ export function SamplesPage(): JSX.Element {
   const [cloneComplete, setCloneComplete] = useState(false);
   const [cloneError, setCloneError] = useState(false);
 
+  // Live-status footer timestamp — updated whenever a parameter edit
+  // streams to the device. Per harmonization-spec section 2.5 plus the
+  // `feedback_live_editing_no_save` operator memory.
+  const [lastEditAt, setLastEditAt] = useState<number | null>(null);
+
   // Load sample names on first connect
   // Load sample names on connect (background refresh if cached)
   useEffect(() => {
@@ -90,6 +95,7 @@ export function SamplesPage(): JSX.Element {
       writeSampleField(updated, field, value);
       try {
         await client.writeSampleHeader(updated);
+        setLastEditAt(Date.now());
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to write sample parameter');
       }
@@ -292,6 +298,17 @@ export function SamplesPage(): JSX.Element {
           )}
         </div>
       </div>
+
+      {/* Live-editing footer — every parameter edit streams to the
+          device, so the rec-LED-tinted footer surfaces the last-edit
+          timestamp instead of a save/cancel/undo affordance. Per
+          harmonization-spec section 2.5 + project memories
+          `feedback_live_editing_no_save` and `feedback_rec_led_accent`. */}
+      <AcLiveStatusFooter
+        deviceLabel="S3000XL"
+        lastEditAt={lastEditAt}
+        state={isConnected ? 'live' : 'offline'}
+      />
 
       <ConfirmDialog
         open={deletingIndex !== null}

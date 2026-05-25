@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { PageTitleRow } from '@audiocontrol/editor-core';
+import { PageTitleRow, AcLiveStatusFooter } from '@audiocontrol/editor-core';
 import { KeygroupList, KeygroupEditor, ZoneOverview } from '@/components/keygroups';
 import type { ZoneDragField, NewZoneRange } from '@/components/keygroups';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
@@ -38,6 +38,11 @@ export function KeygroupsPage(): JSX.Element {
   const keygroupLastRefreshed = useKeygroupStore((s) => s.lastRefreshed);
 
   const lastLoadedProgram = useRef<number | null>(null);
+
+  // Live-status footer timestamp — updated whenever a parameter edit
+  // streams to the device. Per harmonization-spec section 2.5 plus the
+  // `feedback_live_editing_no_save` operator memory.
+  const [lastEditAt, setLastEditAt] = useState<number | null>(null);
 
   const selectedProgram =
     selectedProgramIndex !== null ? programs[selectedProgramIndex] : undefined;
@@ -83,6 +88,7 @@ export function KeygroupsPage(): JSX.Element {
         const toSend = { ...updated, raw: [...header.raw] };
         writeKeygroupField(toSend, field, value);
         client.writeKeygroupHeader(toSend);
+        setLastEditAt(now);
       }
     },
     [selectedKeygroupIndex, client],
@@ -105,6 +111,7 @@ export function KeygroupsPage(): JSX.Element {
     }
 
     await client.writeKeygroupHeader(toSend);
+    setLastEditAt(Date.now());
   }, [selectedKeygroupIndex, client]);
 
   const handleParameterChange = useCallback(
@@ -120,6 +127,7 @@ export function KeygroupsPage(): JSX.Element {
       writeKeygroupField(updated, field, value);
 
       await client.writeKeygroupHeader(updated);
+      setLastEditAt(Date.now());
     },
     [selectedKeygroupIndex, client, keygroups],
   );
@@ -147,6 +155,7 @@ export function KeygroupsPage(): JSX.Element {
       useKeygroupStore.getState().setKeygroup(keygroupIndex, updated);
       writeKeygroupField(updated, field, value);
       await client.writeKeygroupHeader(updated);
+      setLastEditAt(Date.now());
     },
     [client],
   );
@@ -225,6 +234,7 @@ export function KeygroupsPage(): JSX.Element {
           writeKeygroupField(updated, 'LOVEL1', range.lowVel);
           writeKeygroupField(updated, 'HIVEL1', range.highVel);
           await client.writeKeygroupHeader(updated);
+          setLastEditAt(Date.now());
           selectKeygroup(newIndex);
         }
       } catch (err) {
@@ -366,6 +376,17 @@ export function KeygroupsPage(): JSX.Element {
           )}
         </div>
       </div>
+
+      {/* Live-editing footer — every parameter edit streams to the
+          device, so the rec-LED-tinted footer surfaces the last-edit
+          timestamp instead of a save/cancel/undo affordance. Per
+          harmonization-spec section 2.5 + project memories
+          `feedback_live_editing_no_save` and `feedback_rec_led_accent`. */}
+      <AcLiveStatusFooter
+        deviceLabel="S3000XL"
+        lastEditAt={lastEditAt}
+        state={isConnected ? 'live' : 'offline'}
+      />
     </div>
   );
 }

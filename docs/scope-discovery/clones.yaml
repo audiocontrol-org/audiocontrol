@@ -499,11 +499,11 @@ clones:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:214:235
     disposition: pending
     reason: null
-  - id: 821e163d9d47
-    lines: 8
+  - id: b6cf68c9b528
+    lines: 13
     members:
-      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:38:45
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:43:50
+      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:38:50
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:43:55
     disposition: pending
     reason: null
   - id: 0c8162dddb47
