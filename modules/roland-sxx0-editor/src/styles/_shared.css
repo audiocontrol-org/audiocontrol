@@ -172,153 +172,16 @@
    ============================================================ */
 
 /* ============================================================
-   TAB SHELL — radio-driven, CSS-only activation chrome promoted
-   to `modules/editor-core/src/design/tab-primitives.css` on
-   2026-05-24 per akai-harmonization Phase 2 task 2.2. The
-   generic chrome (`.ac-radio-tabs`, `.ac-radio-tab-strip`,
-   `.ac-radio-tab`, `.ac-radio-panels`, `.ac-radio-panel`,
-   `.ac-panel-stack`, the `ac-tab-fade-in` keyframes) now lives
-   there so cross-editor consumers (akai's VelocityZoneEditor;
-   jv1080/d110 later) get it without duplication.
-
-   Renamed from `.ac-tabs` / `.ac-tab-strip` / `.ac-tab` /
-   `.ac-panels` / `.ac-panel` to the `.ac-radio-*` prefix on
-   2026-05-24 per AUDIT-20260524-10 (closed). The original bare
-   names collided with the pre-existing `.ac-tabs` / `.ac-tab` /
-   `.ac-tab--active` button-tab chrome consumed by LibraryPanel +
-   BuildInfo in editor-core; the radio-tab rules silently regressed
-   those button-tab surfaces (vertical stack + missing underline)
-   when they loaded after layout-primitives.css. The rename below
-   keeps both systems independent at the class-name layer.
-
-   The per-tab-ID active-state selector list BELOW stays here
-   because the radio-input ids are consumer-owned and roland-
-   specific (`tt-*`, `pt-*`) plus the cross-editor mockup-staging
-   ids (`ap-*`, `ak-*`, `as-*` for akai). Each new uncontrolled-
-   mode adopter registers its ids in this list.
-
-   Controlled-mode adopters (akai VelocityZoneEditor via the
-   `activeId` + `onActiveIdChange` props on AcRadioTabs) do NOT
-   register here — controlled mode renders only the active panel
-   via React state, bypassing the `:checked` selector chain.
+   TAB ACTIVE-STATE SELECTOR LIST — the per-tab-ID `:checked`
+   chains for uncontrolled-mode AcRadioTabs adopters. Extracted
+   to `modules/roland-sxx0-editor/src/styles/tab-active-state.css`
+   on 2026-05-25 per akai-harmonization Phase 2 task 2.8 (decompose
+   `_shared.css` toward the 500-line cap). The generic tab chrome
+   lives in `editor-core/src/design/tab-primitives.css`; the ID
+   selector chains stay roland-internal because the radio-input
+   ids are consumer-owned (roland uses `tt-*`/`pt-*`; akai uses
+   `ap-*`/`ak-*`/`as-*`).
    ============================================================ */
-
-/* ------------------------------------------------------------
-   Tab active-state — radio-driven, CSS-only.
-
-   The chrome above is generic; the rules below are the single
-   source of truth for *which* tab IDs the editor recognizes.
-   Every new tab group adds its `id="<group>-<tab>"` to all four
-   selector lists (lit-tab fill, tab underline, panel show, and
-   reduced-motion). Co-locating them here is the DRY choice:
-   one list to keep in sync, not one per page.
-
-   Current consumers:
-     · roland tones page    — tt-wave, tt-pitch-lfo, tt-filter, tt-amp
-     · roland patches page  — pt-common, pt-mapping
-     · akai programs page   — ap-common, ap-midi, ap-effects, ap-output
-     · akai keygroups page  — ak-zones, ak-pitch, ak-filter, ak-amp, ak-lfo
-     · akai samples page    — as-wave, as-loop, as-trim, as-misc
-
-   The akai tab groups were hosted in mockups/akai-dialect.css during
-   Phase 1 of akai-harmonization while the canonical chrome was
-   exercised against the static mockups. Phase 2 task 2.2 lifts them
-   here so the live akai editor — when it adopts AcRadioTabs — gets
-   the canonical activation behavior the same way the roland pages do.
-   ------------------------------------------------------------ */
-
-#tt-wave:checked       ~ .ac-radio-tab-strip [for="tt-wave"],
-#tt-pitch-lfo:checked  ~ .ac-radio-tab-strip [for="tt-pitch-lfo"],
-#tt-filter:checked     ~ .ac-radio-tab-strip [for="tt-filter"],
-#tt-amp:checked        ~ .ac-radio-tab-strip [for="tt-amp"],
-#pt-common:checked     ~ .ac-radio-tab-strip [for="pt-common"],
-#pt-mapping:checked    ~ .ac-radio-tab-strip [for="pt-mapping"],
-#ap-common:checked     ~ .ac-radio-tab-strip [for="ap-common"],
-#ap-midi:checked       ~ .ac-radio-tab-strip [for="ap-midi"],
-#ap-effects:checked    ~ .ac-radio-tab-strip [for="ap-effects"],
-#ap-output:checked     ~ .ac-radio-tab-strip [for="ap-output"],
-#ak-zones:checked      ~ .ac-radio-tab-strip [for="ak-zones"],
-#ak-pitch:checked      ~ .ac-radio-tab-strip [for="ak-pitch"],
-#ak-filter:checked     ~ .ac-radio-tab-strip [for="ak-filter"],
-#ak-amp:checked        ~ .ac-radio-tab-strip [for="ak-amp"],
-#ak-lfo:checked        ~ .ac-radio-tab-strip [for="ak-lfo"],
-#as-wave:checked       ~ .ac-radio-tab-strip [for="as-wave"],
-#as-loop:checked       ~ .ac-radio-tab-strip [for="as-loop"],
-#as-trim:checked       ~ .ac-radio-tab-strip [for="as-trim"],
-#as-misc:checked       ~ .ac-radio-tab-strip [for="as-misc"] {
-  color: var(--ac-color-accent);
-  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
-}
-
-#tt-wave:checked       ~ .ac-radio-tab-strip [for="tt-wave"]::after,
-#tt-pitch-lfo:checked  ~ .ac-radio-tab-strip [for="tt-pitch-lfo"]::after,
-#tt-filter:checked     ~ .ac-radio-tab-strip [for="tt-filter"]::after,
-#tt-amp:checked        ~ .ac-radio-tab-strip [for="tt-amp"]::after,
-#pt-common:checked     ~ .ac-radio-tab-strip [for="pt-common"]::after,
-#pt-mapping:checked    ~ .ac-radio-tab-strip [for="pt-mapping"]::after,
-#ap-common:checked     ~ .ac-radio-tab-strip [for="ap-common"]::after,
-#ap-midi:checked       ~ .ac-radio-tab-strip [for="ap-midi"]::after,
-#ap-effects:checked    ~ .ac-radio-tab-strip [for="ap-effects"]::after,
-#ap-output:checked     ~ .ac-radio-tab-strip [for="ap-output"]::after,
-#ak-zones:checked      ~ .ac-radio-tab-strip [for="ak-zones"]::after,
-#ak-pitch:checked      ~ .ac-radio-tab-strip [for="ak-pitch"]::after,
-#ak-filter:checked     ~ .ac-radio-tab-strip [for="ak-filter"]::after,
-#ak-amp:checked        ~ .ac-radio-tab-strip [for="ak-amp"]::after,
-#ak-lfo:checked        ~ .ac-radio-tab-strip [for="ak-lfo"]::after,
-#as-wave:checked       ~ .ac-radio-tab-strip [for="as-wave"]::after,
-#as-loop:checked       ~ .ac-radio-tab-strip [for="as-loop"]::after,
-#as-trim:checked       ~ .ac-radio-tab-strip [for="as-trim"]::after,
-#as-misc:checked       ~ .ac-radio-tab-strip [for="as-misc"]::after {
-  background: var(--ac-color-accent);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
-}
-
-#tt-wave:checked       ~ .ac-radio-panels > [data-tab="tt-wave"],
-#tt-pitch-lfo:checked  ~ .ac-radio-panels > [data-tab="tt-pitch-lfo"],
-#tt-filter:checked     ~ .ac-radio-panels > [data-tab="tt-filter"],
-#tt-amp:checked        ~ .ac-radio-panels > [data-tab="tt-amp"],
-#pt-common:checked     ~ .ac-radio-panels > [data-tab="pt-common"],
-#pt-mapping:checked    ~ .ac-radio-panels > [data-tab="pt-mapping"],
-#ap-common:checked     ~ .ac-radio-panels > [data-tab="ap-common"],
-#ap-midi:checked       ~ .ac-radio-panels > [data-tab="ap-midi"],
-#ap-effects:checked    ~ .ac-radio-panels > [data-tab="ap-effects"],
-#ap-output:checked     ~ .ac-radio-panels > [data-tab="ap-output"],
-#ak-zones:checked      ~ .ac-radio-panels > [data-tab="ak-zones"],
-#ak-pitch:checked      ~ .ac-radio-panels > [data-tab="ak-pitch"],
-#ak-filter:checked     ~ .ac-radio-panels > [data-tab="ak-filter"],
-#ak-amp:checked        ~ .ac-radio-panels > [data-tab="ak-amp"],
-#ak-lfo:checked        ~ .ac-radio-panels > [data-tab="ak-lfo"],
-#as-wave:checked       ~ .ac-radio-panels > [data-tab="as-wave"],
-#as-loop:checked       ~ .ac-radio-panels > [data-tab="as-loop"],
-#as-trim:checked       ~ .ac-radio-panels > [data-tab="as-trim"],
-#as-misc:checked       ~ .ac-radio-panels > [data-tab="as-misc"] {
-  display: block;
-  animation: ac-tab-fade-in 180ms var(--ac-easing-default);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #tt-wave:checked       ~ .ac-radio-panels > [data-tab="tt-wave"],
-  #tt-pitch-lfo:checked  ~ .ac-radio-panels > [data-tab="tt-pitch-lfo"],
-  #tt-filter:checked     ~ .ac-radio-panels > [data-tab="tt-filter"],
-  #tt-amp:checked        ~ .ac-radio-panels > [data-tab="tt-amp"],
-  #pt-common:checked     ~ .ac-radio-panels > [data-tab="pt-common"],
-  #pt-mapping:checked    ~ .ac-radio-panels > [data-tab="pt-mapping"],
-  #ap-common:checked     ~ .ac-radio-panels > [data-tab="ap-common"],
-  #ap-midi:checked       ~ .ac-radio-panels > [data-tab="ap-midi"],
-  #ap-effects:checked    ~ .ac-radio-panels > [data-tab="ap-effects"],
-  #ap-output:checked     ~ .ac-radio-panels > [data-tab="ap-output"],
-  #ak-zones:checked      ~ .ac-radio-panels > [data-tab="ak-zones"],
-  #ak-pitch:checked      ~ .ac-radio-panels > [data-tab="ak-pitch"],
-  #ak-filter:checked     ~ .ac-radio-panels > [data-tab="ak-filter"],
-  #ak-amp:checked        ~ .ac-radio-panels > [data-tab="ak-amp"],
-  #ak-lfo:checked        ~ .ac-radio-panels > [data-tab="ak-lfo"],
-  #as-wave:checked       ~ .ac-radio-panels > [data-tab="as-wave"],
-  #as-loop:checked       ~ .ac-radio-panels > [data-tab="as-loop"],
-  #as-trim:checked       ~ .ac-radio-panels > [data-tab="as-trim"],
-  #as-misc:checked       ~ .ac-radio-panels > [data-tab="as-misc"] {
-    animation: none;
-  }
-}
 
 /* ============================================================
    PARAMETER-PANEL CHROME — .ac-compact-grid / .ac-compact-field /

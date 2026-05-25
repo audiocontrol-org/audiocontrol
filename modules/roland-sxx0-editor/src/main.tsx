@@ -16,6 +16,7 @@ import '@/styles/export-dialog-primitives.css';
 import '@/styles/parameter-panel-primitives.css';
 import '@/styles/play-page-primitives.css';
 import '@/styles/preview-pane-primitives.css';
+import '@/styles/tab-active-state.css';
 import '@/styles/patches.css';
 import '@/styles/tones.css';
 
