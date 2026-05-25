@@ -346,7 +346,7 @@ export function DrumKitEditorDialog({
               <span>-2 oct</span>
               <button
                 onClick={() => updateSetting({ transpose: 0 })}
-                className="text-blue-400 hover:underline"
+                className="ac-link"
               >
                 Reset
               </button>

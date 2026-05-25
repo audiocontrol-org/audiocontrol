@@ -139,7 +139,7 @@ export function S3kKitOutputConfig({
           <span>-2 oct</span>
           <button
             onClick={() => update({ transpose: 0 })}
-            className="text-blue-400 hover:underline"
+            className="ac-link"
           >
             Reset
           </button>

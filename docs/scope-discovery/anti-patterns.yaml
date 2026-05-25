@@ -464,6 +464,47 @@ anti_patterns:
       class family would re-introduce the migration debt this commit
       sequence closed (akai-harmonization Phase 2 task 2.2 Commits 1-6).
 
+  # akai-harmonization Phase 2 task 2.5 (2026-05-25) — harmonization-spec
+  # § 6 item 3 closure. Catches `text-blue-* hover:underline` tailwind
+  # link chrome on <a> or <button> elements; the canonical replacement
+  # is `<a className="ac-link">` or `<button className="ac-link">`
+  # (the .ac-link primitive is button-or-anchor-agnostic). Paired
+  # adversarial scenarios live in
+  # tools/scope-discovery/anti-patterns.tailwind-link-chrome-scenarios.ts
+  # (positive anchor + positive button + negative canonical + TF-015
+  # sibling-class negative for informational <span text-blue-*> +
+  # gutted-stub self-check).
+  #
+  # Multi-pattern fingerprint with min_distance: 5 — JSX
+  # `onClick={() => ...}` arrows contain `>` characters that defeat a
+  # single-regex `<(a|button)[^>]*` match (the regex stops at `=>`).
+  # The two-pattern approach co-locates `<(a|button)` with the
+  # `text-blue/cyan + hover:underline` className shape within 5 source
+  # lines, which disambiguates "link chrome on a link element" from
+  # "non-link informational blue text" (the akai codebase has spans +
+  # divs carrying `text-blue-200` / `text-blue-400` for selection
+  # tinting + drop-target callouts that must NOT flag).
+  - id: tailwind-link-chrome-inline
+    added_in: '0000eeee'
+    primitive: ac-link
+    from: '@audiocontrol/editor-core'
+    shape_regex:
+      - '<(a|button)\b'
+      - 'className=["''`][^"''`]*\b(text-blue-\d+|text-cyan-\d+)\b[^"''`]*\bhover:underline\b'
+    min_distance: 5
+    excludes_paths:
+      - 'tools/scope-discovery/anti-patterns.tailwind-link-chrome-scenarios.ts'
+    message: |
+      Tailwind `text-blue-* hover:underline` (or `text-cyan-*`) link
+      chrome on `<a>` or `<button>` elements is an anti-pattern
+      (harmonization-spec.md § 6 item 3). The canonical replacement is
+      `.ac-link` from `@audiocontrol/editor-core`'s `primitives.css`
+      (button-or-anchor-agnostic):
+        <a className="ac-link">link</a>
+        <button className="ac-link">Reset</button>
+      Re-registering would re-introduce the design-system bypass this
+      akai-harmonization Phase 2 task 2.5 commit closed.
+
   - id: ac-page-sticky-header-inline
     added_in: '0000aaaa'
     primitive: PageTitleRow
