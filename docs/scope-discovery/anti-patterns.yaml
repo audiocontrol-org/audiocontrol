@@ -414,6 +414,56 @@ anti_patterns:
       source-of-truth and re-create the dialect-leak this commit
       sequence closed.
 
+  # akai-harmonization Phase 2 task 2.2 (2026-05-24) — AcEnvelope kind
+  # 'adsr' variant + AcFrequencyResponse extraction dispatch. Prevents
+  # re-introduction of the .s3k-envelope-display / .s3k-adsr-* SVG-
+  # direct envelope chrome that the dispatch deleted. The classes were
+  # a parallel primitive for envelope + filter-response visualization;
+  # the canonical replacements are <AcEnvelope> (kind='multi-segment'
+  # or kind='adsr') and <AcFrequencyResponse>, both from
+  # @audiocontrol/editor-core.
+
+  - id: s3k-envelope-display-inline
+    added_in: '0000cccc'
+    primitive: AcEnvelope
+    from: '@audiocontrol/editor-core'
+    # Matches both the s3k-envelope-display class AND the s3k-adsr-*
+    # SVG chrome subclasses that were part of the deleted family.
+    # Regex anchors on \b token boundaries; sibling classes like
+    # `s3k-envelope-section` or `s3k-section-title` do NOT match
+    # (their identifiers don't start with the `s3k-envelope-display`
+    # or `s3k-adsr-` tokens). Suffixed variants like `s3k-envelope-
+    # display-history` DO match (intentionally — re-introducing the
+    # family under a longer name is still the legacy chrome). Per
+    # TF-015 the paired scenarios file (anti-patterns.s3k-envelope-
+    # display-scenarios.ts) covers both the over-match guard
+    # (sibling-class negative) and the suffix positive case.
+    shape_regex: '\bs3k-(envelope-display|adsr-(bg|fill|line|dot|hit|label))\b'
+    excludes_paths:
+      # Scenario fixture (registry strings here would otherwise self-match).
+      - 'tools/scope-discovery/anti-patterns.s3k-envelope-display-scenarios.ts'
+      # Documentation comments in the canonical primitives that
+      # reference the legacy class name as MIGRATION HISTORY (not
+      # chrome usage). Keeping these readable preserves future-
+      # archeology context.
+      - 'modules/editor-core/src/components/AcEnvelopeAdsr.tsx'
+      - 'modules/editor-core/src/components/AcFrequencyResponse.tsx'
+      - 'modules/editor-core/src/design/frequency-response-primitives.css'
+    message: |
+      `.s3k-envelope-display` / `.s3k-adsr-*` was a parallel primitive
+      family for SVG-direct envelope + filter-response chrome
+      (harmonization-spec.md § 6 item 6). The canonical replacements
+      are:
+        - <AcEnvelope kind="multi-segment"> for uniform N-segment
+          envelopes (roland tones, akai filter envelope)
+        - <AcEnvelope kind="adsr"> for classic 4-parameter ADSR
+          envelopes (akai amp envelope)
+        - <AcFrequencyResponse> for filter frequency-response curves
+          (akai filter cutoff + Q)
+      All three live in @audiocontrol/editor-core. Re-registering the
+      class family would re-introduce the migration debt this commit
+      sequence closed (akai-harmonization Phase 2 task 2.2 Commits 1-6).
+
   - id: ac-page-sticky-header-inline
     added_in: '0000aaaa'
     primitive: PageTitleRow

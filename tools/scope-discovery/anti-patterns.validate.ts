@@ -35,6 +35,7 @@ import { S3K_PARAM_SHAPE_SCENARIOS } from './anti-patterns.s3k-param-shape-scena
 import { S3K_ZONE_TABS_SCENARIOS } from './anti-patterns.s3k-zone-tabs-scenarios.js';
 import { AC_PAGE_HEADER_SCENARIOS } from './anti-patterns.ac-page-header-scenarios.js';
 import { INLINE_ZONE_SEGMENT_BAR_SCENARIOS } from './anti-patterns.inline-zone-segment-bar-scenarios.js';
+import { S3K_ENVELOPE_DISPLAY_SCENARIOS } from './anti-patterns.s3k-envelope-display-scenarios.js';
 
 const SCANNER_ENTRY = 'tools/scope-discovery/check-anti-patterns.ts';
 
@@ -373,6 +374,13 @@ async function runAll(): Promise<readonly ScenarioResult[]> {
     // alongside the AcZoneStrip primitive extraction (Commits 1-4 of
     // the same dispatch).
     ...INLINE_ZONE_SEGMENT_BAR_SCENARIOS,
+    // akai-harmonization Phase 2 task 2.2 (AcEnvelope kind variants +
+    // AcFrequencyResponse extraction dispatch) Commit 6 — paired
+    // scenarios for the s3k-envelope-display-inline anti-pattern
+    // entry registered alongside the .s3k-envelope-display CSS
+    // deletion. Includes a TF-015 sibling-class prefix-collision
+    // negative scenario (s3k-envelope-section MUST NOT match).
+    ...S3K_ENVELOPE_DISPLAY_SCENARIOS,
     scenarioGuttedStub,
   ];
   const results: ScenarioResult[] = [];
