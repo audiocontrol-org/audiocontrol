@@ -1,0 +1,119 @@
+/**
+ * Export-dialog form chrome (v3 SlideDrawer body).
+ *
+ * Module-scoped primitives for ExportToneDialog + ExportPatchDialog +
+ * BatchExportDrawer bodies. The drawer chrome itself lives in
+ * editor-core's overlay-primitives; these classes carry the form +
+ * detail-summary + batch-list composition inside it.
+ *
+ * Extracted from `_shared.css` 2026-05-25 per akai-harmonization
+ * Phase 2 task 2.8 (decompose `_shared.css` toward the 500-line cap).
+ *
+ * Promote to editor-core once a second editor adopts the same
+ * export-form pattern (per the Phase 9 promotion gate documented in
+ * DESIGN-SYSTEM §"Phase 9 shared page primitives"). Until then this
+ * stays roland-internal; the akai editor doesn't yet have an export
+ * surface so cross-editor promotion would be speculative.
+ */
+
+.ac-export-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+}
+
+.ac-export-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+.ac-export-form-error {
+  margin: 0;
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-danger);
+}
+
+/* Read-only detail summary rendered as a dl. Each row is a single
+   dt+dd pair, aligned with the eyebrow rhythm above. The list itself
+   sits inside a subdued panel to telegraph "this is context, not an
+   input" — matches the .ac-preview-pane convention. */
+.ac-export-summary {
+  margin: 0;
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border: 1px solid color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+  border-radius: var(--ac-radius-sm, 4px);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
+  display: grid;
+  gap: var(--ac-space-2);
+}
+
+.ac-export-summary-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, max-content) 1fr;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  margin: 0;
+}
+
+.ac-export-summary-row > dt {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  letter-spacing: var(--ac-tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--ac-color-text-muted);
+}
+
+.ac-export-summary-row > dd {
+  margin: 0;
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text);
+}
+
+.ac-export-summary-row > dd.ac-capitalize {
+  text-transform: capitalize;
+}
+
+/* Batch-export item list — used by BatchExportDrawer to enumerate the
+   N items the operator is about to ship. Same subdued panel as
+   .ac-export-summary so the list reads as context (not editable). */
+.ac-batch-export-list {
+  margin: 0;
+  padding: var(--ac-space-3) var(--ac-space-4);
+  list-style: none;
+  border: 1px solid color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+  border-radius: var(--ac-radius-sm, 4px);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 60%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+  max-height: 22rem;
+  overflow-y: auto;
+}
+
+.ac-batch-export-row {
+  display: grid;
+  grid-template-columns: minmax(3.5rem, max-content) 1fr;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  padding: var(--ac-space-1) 0;
+}
+
+.ac-batch-export-slot {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-batch-export-name {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

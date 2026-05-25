@@ -9,6 +9,7 @@ import { initLogCapture } from '@audiocontrol/editor-core';
 import '@audiocontrol/editor-core/styles.css';
 import '@/index.css';
 import '@/styles/_shared.css';
+import '@/styles/export-dialog-primitives.css';
 import '@/styles/patches.css';
 import '@/styles/tones.css';
 
