@@ -47,29 +47,29 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:84:92
       - modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:65:71
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: 5f51abbeaf50
     lines: 37
     members:
       - modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx:13:49
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:13:52
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Roster-list parallelism between ProgramList, SampleList, and KeygroupList. The three akai-s3k-editor list components share the same vertical-roster shape: eyebrow row (title + refresh-all / add icon-buttons) pinned outside an .ac-list-scroll container, with per-row slot + name + per-row action group (delete / clone / refresh / device-specific). Each component locally redeclares the ActionButton helper, the eyebrow header, the loading/empty branches, the rename input field state machine, and the keyboard navigation handlers. Refactor candidate: lift the chrome to AcRosterList in editor-core, parameterized by a per-row actions slot + per-list eyebrow content. Deferred because: (1) per-list affordances diverge meaningfully — SampleList exposes loop-editor / sample-editor / chopper actions on each row, ProgramList exposes clone, KeygroupList renders a generated Array.from(keygroupCount) with formatMidiNote labels and has no rename. The lifted primitive needs an action-set polymorphism contract (likely a render-prop or actions-by-row prop) that itself is a design decision; (2) test coverage is partial — SampleList has a unit test (modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx) but ProgramList and KeygroupList do not. The refactor-preconditions checklist requires regression-detection tests proving extraction preserves behavior, and those tests don't yet exist for two of the three list shapes. Flip to refactor when (a) ProgramList + KeygroupList unit-test coverage lands and (b) editor-core gets an AcRosterList primitive design — likely paired with the equivalent Roland-side list extraction."
   - id: a8790ef526af
     lines: 13
     members:
       - modules/akai-s3k-editor/src/components/keygroups/ZoneOverviewZone.tsx:234:246
       - modules/akai-s3k-editor/src/components/keygroups/ZoneOverviewZone.tsx:295:307
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: 57773a4d6056
     lines: 10
     members:
       - modules/akai-s3k-editor/src/components/keygroups/use-zone-overview-drags.ts:120:129
       - modules/akai-s3k-editor/src/components/keygroups/use-zone-overview-drags.ts:176:185
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: 14ad000daf5b
     lines: 6
     members:
@@ -82,79 +82,79 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx:28:38
       - modules/akai-s3k-editor/src/plugins/s3k-library-plugin.tsx:35:45
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-file duplicate prop-interface declaration between DeviceMemoryPanel.tsx (DeviceMemoryPanelProps lines 28-38) and s3k-library-plugin.tsx (S3kMemoryPanelState lines 35-45). The plugin re-declares the panel's callback-prop shape because the plugin's customState gets passed through PreviewContext.customState without a shared interface contract. Refactor candidate: lift the shared callback shape to a shared types module (e.g. modules/akai-s3k-editor/src/components/library/device-memory-types.ts) exporting DeviceMemoryCallbacks; both files import from there. Small (11 lines) clean extraction with no behavior change. Deferred to task 3.3 with the other small primitive-extraction candidates rather than landing in this disposition pass. Flip to refactor when the cross-file callback set grows another field — the next addition is the trigger for the type-lift."
   - id: afc90b3b16da
     lines: 14
     members:
       - modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx:409:422
       - modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx:469:482
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: 01b9824c2c7b
     lines: 8
     members:
       - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:130:137
       - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:244:251
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: 7b39f4f46ba4
     lines: 12
     members:
       - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:477:488
       - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:512:523
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: 6b63f4518fa0
     lines: 14
     members:
       - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:477:490
       - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:497:510
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: e96e7b4fd73c
     lines: 10
     members:
       - modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx:141:150
       - modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx:197:206
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file save-handler boilerplate in DiskToLibraryDialog.tsx. The file orchestrates multiple save targets (S3K library raw bytes, common library WAV, common library YAML) and each save handler has parallel error / progress / step-update wrap-up. Refactor candidate: extract per-target save() helpers OR fold the per-handler structure into a tableDriven save-config array indexed by target. Deferred because: (1) the per-target divergence is meaningful — saveToS3kLibrary handles disk programs with embedded sample iteration; saveToCommonLibrary handles vendor-neutral conversion; the parallelism is at the SHELL level (try / onProgress / setStep) not the BODY; (2) the file is at 600+ lines and is itself a refactor target — splitting save targets to per-file modules is a more compelling reorganization than extracting helpers from within the current file. Flip to refactor when DiskToLibraryDialog is broken into per-save-target modules; the parallel boilerplate disappears naturally when each save target owns its own file with its own shell."
   - id: d7114c9a048b
     lines: 11
     members:
       - modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx:225:235
       - modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx:377:387
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file save-handler boilerplate in DiskToLibraryDialog.tsx. The file orchestrates multiple save targets (S3K library raw bytes, common library WAV, common library YAML) and each save handler has parallel error / progress / step-update wrap-up. Refactor candidate: extract per-target save() helpers OR fold the per-handler structure into a tableDriven save-config array indexed by target. Deferred because: (1) the per-target divergence is meaningful — saveToS3kLibrary handles disk programs with embedded sample iteration; saveToCommonLibrary handles vendor-neutral conversion; the parallelism is at the SHELL level (try / onProgress / setStep) not the BODY; (2) the file is at 600+ lines and is itself a refactor target — splitting save targets to per-file modules is a more compelling reorganization than extracting helpers from within the current file. Flip to refactor when DiskToLibraryDialog is broken into per-save-target modules; the parallel boilerplate disappears naturally when each save target owns its own file with its own shell."
   - id: 9e1217df05f5
     lines: 11
     members:
       - modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx:248:259
       - modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx:404:414
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file save-handler boilerplate in DiskToLibraryDialog.tsx. The file orchestrates multiple save targets (S3K library raw bytes, common library WAV, common library YAML) and each save handler has parallel error / progress / step-update wrap-up. Refactor candidate: extract per-target save() helpers OR fold the per-handler structure into a tableDriven save-config array indexed by target. Deferred because: (1) the per-target divergence is meaningful — saveToS3kLibrary handles disk programs with embedded sample iteration; saveToCommonLibrary handles vendor-neutral conversion; the parallelism is at the SHELL level (try / onProgress / setStep) not the BODY; (2) the file is at 600+ lines and is itself a refactor target — splitting save targets to per-file modules is a more compelling reorganization than extracting helpers from within the current file. Flip to refactor when DiskToLibraryDialog is broken into per-save-target modules; the parallel boilerplate disappears naturally when each save target owns its own file with its own shell."
   - id: c70d3fe0516d
     lines: 7
     members:
       - modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx:293:299
       - modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx:47:53
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:43:50
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 28cfeeca6470
     lines: 8
     members:
       - modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx:303:310
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:48:55
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 4d27bb1c2629
     lines: 16
     members:
       - modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx:446:461
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:112:127
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 4fa4e7ba3ead
     lines: 8
     members:
@@ -167,64 +167,64 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx:150:156
       - modules/loop-editor/dev/main.tsx:153:159
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Cross-editor clone between modules/akai-s3k-editor/src/components/library/DrumKitEditorDialog.tsx (lines 150-156) and modules/loop-editor/dev/main.tsx (lines 153-159). The 7-line shared shape is the 'persist sample.yaml under library/common/samples/<path>/<safeName>' tail: const fullPath = ['library', 'common', 'samples', ...path]; getNestedDirectory + getDirectoryHandle + getFileHandle('sample.yaml',{create:true}) + createWritable + write(stringifyYaml) + close. Refactor candidate: extract saveSampleYamlToCommon(libraryRoot, name, path, yaml) helper into sampler-library/browser (it already exports loadSampleMeta + getNestedDirectory + sanitizeForFilename — this is the missing write-side companion). Deferred because: (1) the loop-editor caller is a dev/test harness (modules/loop-editor/dev/main.tsx), not a production code path — the duplication risk is asymmetric (a real bug in the helper would only hit the akai prod code via the lifted call site); (2) sampler-library/browser's API surface is itself under review (the library zone split is settling), and a new helper is a binding decision; (3) the akai side wraps a different domain shape (DrumKit save) than the loop-editor side (loop-points save) so the helper needs to NOT thread per-caller fields. Flip to refactor when sampler-library/browser's write-side API gets formalized, or when a third caller appears that wants the same tail."
   - id: 1dd5737157c2
     lines: 15
     members:
       - modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx:200:214
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:112:184
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: f03efd9533fb
     lines: 20
     members:
       - modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx:51:70
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:43:62
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 20049e6c0c3f
     lines: 21
     members:
       - modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx:158:178
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:112:132
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 7a27edc754a5
     lines: 17
     members:
       - modules/akai-s3k-editor/src/components/library/ImportDrumKitDialog.tsx:54:70
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:48:64
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 012396c275f7
     lines: 8
     members:
       - modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx:60:67
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:43:50
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 13660a88b83f
     lines: 15
     members:
       - modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx:170:184
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:112:126
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 3ba95378a39e
     lines: 21
     members:
       - modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx:80:100
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:43:63
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: b845689e6d70
     lines: 11
     members:
       - modules/akai-s3k-editor/src/components/library/LibraryDetailPanel.tsx:33:43
       - modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx:75:85
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Exact-duplicate MetaRow component between LibraryDetailPanel.tsx (lines 33-43) and S3kItemPreviewPanel.tsx (lines 75-85). Same shape: takes { label, value }, returns null when value is null/undefined, renders 'flex justify-between py-1 text-sm' row with .text-gray-400 label + .text-gray-200 value. Clean refactor candidate: extract to modules/akai-s3k-editor/src/components/library/MetaRow.tsx (or sibling util) and import from both. Deferred to task 3.3 with the other small primitive-extraction candidates so all the trivial extractions land in one focused refactor batch (each with the canonical_side declarations + tests + tests_proof scaffolding the refactor-preconditions checklist requires). The extraction itself is < 15 lines of work but the refactor-preconditions ceremony per group is substantial; batching them produces a cleaner audit trail. Flip to refactor with canonical_side: 'new' (MetaRow as a new shared file) + tests_proof against a render-snapshot or unit test asserting the row geometry."
   - id: 0cbe1879b664
     lines: 17
     members:
@@ -244,36 +244,36 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx:100:106
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:48:54
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: b74f1b4a0240
     lines: 14
     members:
       - modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx:176:189
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:112:125
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 87affec5bcc9
     lines: 6
     members:
       - modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx:72:79
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:411:416
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 8a9862c34efd
     lines: 6
     members:
       - modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx:91:96
       - modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx:43:48
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 4ee3494c5b8f
     lines: 16
     members:
       - modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:106:121
       - modules/akai-s3k-editor/src/components/library/S3kKitOutputConfig.tsx:75:90
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file duplicate Base MIDI Note input rendering in S3kKitOutputConfig.tsx (createMode lines 75-90 vs editMode lines 106-121). Both blocks render the same input chrome (label + number input clamped 0..127 with parseInt + DEFAULT_BASE_NOTE fallback + Tailwind classes). Clean refactor candidate: extract a local BaseNoteInput({ value, onChange }) helper inside the same file. Trivial (16-line) extraction with no behavior change. Deferred to task 3.3 with the other small primitive-extraction candidates because the refactor-preconditions ceremony (canonical_side: 'new' + tests + tests_proof) outweighs the per-group savings; batching the trivial extractions into task 3.3 keeps the audit trail focused. Flip to refactor with canonical_side: 'new' (BaseNoteInput as a local helper) + tests_proof against a render test asserting both modes render the same input."
   - id: 4691e8b7d2fc
     lines: 12
     members:
@@ -300,29 +300,29 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:106:117
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:112:123
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Roster-list parallelism between ProgramList, SampleList, and KeygroupList. The three akai-s3k-editor list components share the same vertical-roster shape: eyebrow row (title + refresh-all / add icon-buttons) pinned outside an .ac-list-scroll container, with per-row slot + name + per-row action group (delete / clone / refresh / device-specific). Each component locally redeclares the ActionButton helper, the eyebrow header, the loading/empty branches, the rename input field state machine, and the keyboard navigation handlers. Refactor candidate: lift the chrome to AcRosterList in editor-core, parameterized by a per-row actions slot + per-list eyebrow content. Deferred because: (1) per-list affordances diverge meaningfully — SampleList exposes loop-editor / sample-editor / chopper actions on each row, ProgramList exposes clone, KeygroupList renders a generated Array.from(keygroupCount) with formatMidiNote labels and has no rename. The lifted primitive needs an action-set polymorphism contract (likely a render-prop or actions-by-row prop) that itself is a design decision; (2) test coverage is partial — SampleList has a unit test (modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx) but ProgramList and KeygroupList do not. The refactor-preconditions checklist requires regression-detection tests proving extraction preserves behavior, and those tests don't yet exist for two of the three list shapes. Flip to refactor when (a) ProgramList + KeygroupList unit-test coverage lands and (b) editor-core gets an AcRosterList primitive design — likely paired with the equivalent Roland-side list extraction."
   - id: c171bce2c3d3
     lines: 10
     members:
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:117:126
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:123:132
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Roster-list parallelism between ProgramList, SampleList, and KeygroupList. The three akai-s3k-editor list components share the same vertical-roster shape: eyebrow row (title + refresh-all / add icon-buttons) pinned outside an .ac-list-scroll container, with per-row slot + name + per-row action group (delete / clone / refresh / device-specific). Each component locally redeclares the ActionButton helper, the eyebrow header, the loading/empty branches, the rename input field state machine, and the keyboard navigation handlers. Refactor candidate: lift the chrome to AcRosterList in editor-core, parameterized by a per-row actions slot + per-list eyebrow content. Deferred because: (1) per-list affordances diverge meaningfully — SampleList exposes loop-editor / sample-editor / chopper actions on each row, ProgramList exposes clone, KeygroupList renders a generated Array.from(keygroupCount) with formatMidiNote labels and has no rename. The lifted primitive needs an action-set polymorphism contract (likely a render-prop or actions-by-row prop) that itself is a design decision; (2) test coverage is partial — SampleList has a unit test (modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx) but ProgramList and KeygroupList do not. The refactor-preconditions checklist requires regression-detection tests proving extraction preserves behavior, and those tests don't yet exist for two of the three list shapes. Flip to refactor when (a) ProgramList + KeygroupList unit-test coverage lands and (b) editor-core gets an AcRosterList primitive design — likely paired with the equivalent Roland-side list extraction."
   - id: 7fcb9c2e7b29
     lines: 37
     members:
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:13:49
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:16:52
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Roster-list parallelism between ProgramList, SampleList, and KeygroupList. The three akai-s3k-editor list components share the same vertical-roster shape: eyebrow row (title + refresh-all / add icon-buttons) pinned outside an .ac-list-scroll container, with per-row slot + name + per-row action group (delete / clone / refresh / device-specific). Each component locally redeclares the ActionButton helper, the eyebrow header, the loading/empty branches, the rename input field state machine, and the keyboard navigation handlers. Refactor candidate: lift the chrome to AcRosterList in editor-core, parameterized by a per-row actions slot + per-list eyebrow content. Deferred because: (1) per-list affordances diverge meaningfully — SampleList exposes loop-editor / sample-editor / chopper actions on each row, ProgramList exposes clone, KeygroupList renders a generated Array.from(keygroupCount) with formatMidiNote labels and has no rename. The lifted primitive needs an action-set polymorphism contract (likely a render-prop or actions-by-row prop) that itself is a design decision; (2) test coverage is partial — SampleList has a unit test (modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx) but ProgramList and KeygroupList do not. The refactor-preconditions checklist requires regression-detection tests proving extraction preserves behavior, and those tests don't yet exist for two of the three list shapes. Flip to refactor when (a) ProgramList + KeygroupList unit-test coverage lands and (b) editor-core gets an AcRosterList primitive design — likely paired with the equivalent Roland-side list extraction."
   - id: dcea235e9673
     lines: 18
     members:
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:152:169
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:159:176
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Roster-list parallelism between ProgramList, SampleList, and KeygroupList. The three akai-s3k-editor list components share the same vertical-roster shape: eyebrow row (title + refresh-all / add icon-buttons) pinned outside an .ac-list-scroll container, with per-row slot + name + per-row action group (delete / clone / refresh / device-specific). Each component locally redeclares the ActionButton helper, the eyebrow header, the loading/empty branches, the rename input field state machine, and the keyboard navigation handlers. Refactor candidate: lift the chrome to AcRosterList in editor-core, parameterized by a per-row actions slot + per-list eyebrow content. Deferred because: (1) per-list affordances diverge meaningfully — SampleList exposes loop-editor / sample-editor / chopper actions on each row, ProgramList exposes clone, KeygroupList renders a generated Array.from(keygroupCount) with formatMidiNote labels and has no rename. The lifted primitive needs an action-set polymorphism contract (likely a render-prop or actions-by-row prop) that itself is a design decision; (2) test coverage is partial — SampleList has a unit test (modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx) but ProgramList and KeygroupList do not. The refactor-preconditions checklist requires regression-detection tests proving extraction preserves behavior, and those tests don't yet exist for two of the three list shapes. Flip to refactor when (a) ProgramList + KeygroupList unit-test coverage lands and (b) editor-core gets an AcRosterList primitive design — likely paired with the equivalent Roland-side list extraction."
   - id: 5a74b915439b
     lines: 29
     members:
@@ -335,71 +335,71 @@ clones:
     members:
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:206:224
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:212:230
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Roster-list parallelism between ProgramList, SampleList, and KeygroupList. The three akai-s3k-editor list components share the same vertical-roster shape: eyebrow row (title + refresh-all / add icon-buttons) pinned outside an .ac-list-scroll container, with per-row slot + name + per-row action group (delete / clone / refresh / device-specific). Each component locally redeclares the ActionButton helper, the eyebrow header, the loading/empty branches, the rename input field state machine, and the keyboard navigation handlers. Refactor candidate: lift the chrome to AcRosterList in editor-core, parameterized by a per-row actions slot + per-list eyebrow content. Deferred because: (1) per-list affordances diverge meaningfully — SampleList exposes loop-editor / sample-editor / chopper actions on each row, ProgramList exposes clone, KeygroupList renders a generated Array.from(keygroupCount) with formatMidiNote labels and has no rename. The lifted primitive needs an action-set polymorphism contract (likely a render-prop or actions-by-row prop) that itself is a design decision; (2) test coverage is partial — SampleList has a unit test (modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx) but ProgramList and KeygroupList do not. The refactor-preconditions checklist requires regression-detection tests proving extraction preserves behavior, and those tests don't yet exist for two of the three list shapes. Flip to refactor when (a) ProgramList + KeygroupList unit-test coverage lands and (b) editor-core gets an AcRosterList primitive design — likely paired with the equivalent Roland-side list extraction."
   - id: cb1708096026
     lines: 10
     members:
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:225:234
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:231:240
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Roster-list parallelism between ProgramList, SampleList, and KeygroupList. The three akai-s3k-editor list components share the same vertical-roster shape: eyebrow row (title + refresh-all / add icon-buttons) pinned outside an .ac-list-scroll container, with per-row slot + name + per-row action group (delete / clone / refresh / device-specific). Each component locally redeclares the ActionButton helper, the eyebrow header, the loading/empty branches, the rename input field state machine, and the keyboard navigation handlers. Refactor candidate: lift the chrome to AcRosterList in editor-core, parameterized by a per-row actions slot + per-list eyebrow content. Deferred because: (1) per-list affordances diverge meaningfully — SampleList exposes loop-editor / sample-editor / chopper actions on each row, ProgramList exposes clone, KeygroupList renders a generated Array.from(keygroupCount) with formatMidiNote labels and has no rename. The lifted primitive needs an action-set polymorphism contract (likely a render-prop or actions-by-row prop) that itself is a design decision; (2) test coverage is partial — SampleList has a unit test (modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx) but ProgramList and KeygroupList do not. The refactor-preconditions checklist requires regression-detection tests proving extraction preserves behavior, and those tests don't yet exist for two of the three list shapes. Flip to refactor when (a) ProgramList + KeygroupList unit-test coverage lands and (b) editor-core gets an AcRosterList primitive design — likely paired with the equivalent Roland-side list extraction."
   - id: 3ce232024fd4
     lines: 9
     members:
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:6:14
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:6:14
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Roster-list parallelism between ProgramList, SampleList, and KeygroupList. The three akai-s3k-editor list components share the same vertical-roster shape: eyebrow row (title + refresh-all / add icon-buttons) pinned outside an .ac-list-scroll container, with per-row slot + name + per-row action group (delete / clone / refresh / device-specific). Each component locally redeclares the ActionButton helper, the eyebrow header, the loading/empty branches, the rename input field state machine, and the keyboard navigation handlers. Refactor candidate: lift the chrome to AcRosterList in editor-core, parameterized by a per-row actions slot + per-list eyebrow content. Deferred because: (1) per-list affordances diverge meaningfully — SampleList exposes loop-editor / sample-editor / chopper actions on each row, ProgramList exposes clone, KeygroupList renders a generated Array.from(keygroupCount) with formatMidiNote labels and has no rename. The lifted primitive needs an action-set polymorphism contract (likely a render-prop or actions-by-row prop) that itself is a design decision; (2) test coverage is partial — SampleList has a unit test (modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx) but ProgramList and KeygroupList do not. The refactor-preconditions checklist requires regression-detection tests proving extraction preserves behavior, and those tests don't yet exist for two of the three list shapes. Flip to refactor when (a) ProgramList + KeygroupList unit-test coverage lands and (b) editor-core gets an AcRosterList primitive design — likely paired with the equivalent Roland-side list extraction."
   - id: f74fe175ec99
     lines: 17
     members:
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:84:100
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:90:106
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Roster-list parallelism between ProgramList, SampleList, and KeygroupList. The three akai-s3k-editor list components share the same vertical-roster shape: eyebrow row (title + refresh-all / add icon-buttons) pinned outside an .ac-list-scroll container, with per-row slot + name + per-row action group (delete / clone / refresh / device-specific). Each component locally redeclares the ActionButton helper, the eyebrow header, the loading/empty branches, the rename input field state machine, and the keyboard navigation handlers. Refactor candidate: lift the chrome to AcRosterList in editor-core, parameterized by a per-row actions slot + per-list eyebrow content. Deferred because: (1) per-list affordances diverge meaningfully — SampleList exposes loop-editor / sample-editor / chopper actions on each row, ProgramList exposes clone, KeygroupList renders a generated Array.from(keygroupCount) with formatMidiNote labels and has no rename. The lifted primitive needs an action-set polymorphism contract (likely a render-prop or actions-by-row prop) that itself is a design decision; (2) test coverage is partial — SampleList has a unit test (modules/akai-s3k-editor/test/unit/components/SampleList.test.tsx) but ProgramList and KeygroupList do not. The refactor-preconditions checklist requires regression-detection tests proving extraction preserves behavior, and those tests don't yet exist for two of the three list shapes. Flip to refactor when (a) ProgramList + KeygroupList unit-test coverage lands and (b) editor-core gets an AcRosterList primitive design — likely paired with the equivalent Roland-side list extraction."
   - id: 3ad90c76f457
     lines: 9
     members:
       - modules/akai-s3k-editor/src/hooks/useDiskBrowser.ts:281:289
       - modules/akai-s3k-editor/src/hooks/useDiskBrowser.ts:305:313
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file partition-setup duplication in useDiskBrowser.ts between downloadSample (lines 281-289) and downloadProgram (lines 305-313). Both helpers run ensureFileBlocks → parsePartitionTable → first-partition offset → subarray → readFileData; the divergence is the per-format payload parse (parseSampleHeaderFromDisk + extractSampleAudio + akaiSampleToWav vs parseProgramFromDisk). Refactor candidate: extract readPartitionFile(targetId, partitionData, fileEntry) returning the file bytes ready to parse; downloadSample / downloadProgram each call it then run their format-specific parser. Small (9-line) clean extraction with no behavior change. Deferred to task 3.3 with other small primitive-extraction candidates because the hook is stable and the extraction has no urgency. Flip to refactor when a third format (e.g. drum-kit download, multi-file download) needs the same partition setup."
   - id: c02ae64b8398
     lines: 7
     members:
       - modules/akai-s3k-editor/src/hooks/useKeygroupLoader.ts:21:27
       - modules/akai-s3k-editor/src/hooks/useProgramLoader.ts:25:31
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Hook parallelism between useKeygroupLoader and useProgramLoader. The 7-line clone is the loader-with-error-guard pattern: if (!client) setError; try setLoading; await fetch; setStore; catch err setError. Each hook binds a different store (useKeygroupStore vs useProgramStore) and a different fetch (fetchKeygroupHeader vs fetchProgramNames + fetchProgramHeader). Refactor candidate: extract withLoaderGuard(client, errorReporter, work) helper or a useDeviceLoader<T>(client, fetch, setStore) generic hook. Deferred because: (1) the loaders read DIFFERENT editor-store actions (setLoading message text, setProgress incrementally for the batch-fetch path) — a generic loader needs a callback-bag for store-side writes that grows quickly past the 7-line savings; (2) the akai-s3k-editor data-loading layer is moving toward a more sophisticated cache + invalidation pattern (see useDiskBrowser for the direction) and a premature generic loader could harden an interface that's about to be revised. Flip to refactor when the data-loading layer settles, OR when a third loader (useSampleLoader etc.) repeats the pattern again."
   - id: 6f38d769e5ea
     lines: 7
     members:
       - modules/akai-s3k-editor/src/lib/program-promotion.ts:174:180
       - modules/akai-s3k-editor/src/lib/program-promotion.ts:227:233
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file duplicate 'write common-area program.yaml' helper in program-promotion.ts (lines 174-180 vs lines 227-233). Both blocks resolve commonProgramsDir → safeName → getDirectoryHandle({create:true}) → getFileHandle('program.yaml',{create:true}) → createWritable → write(stringifyYaml) → close. Clean refactor candidate: extract writeCommonProgramYaml(libraryRoot, safeName, programYaml) helper. Trivial (7-line) extraction with no behavior change. Deferred to task 3.3 with the other small primitive-extraction candidates; the refactor-preconditions ceremony per group (canonical_side: 'new' + tests + tests_proof) is what's gating this from landing in the disposition pass — batching trivial extractions into task 3.3 keeps the audit trail focused. Flip to refactor with canonical_side: 'new' (writeCommonProgramYaml in program-storage.ts or new common-program-writer.ts) + tests_proof against an existing program-promotion unit test."
   - id: 6c2f65b03ac2
     lines: 8
     members:
       - modules/akai-s3k-editor/src/lib/program-serialization.ts:149:156
       - modules/akai-s3k-editor/src/lib/program-serialization.ts:278:285
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file parallel format-handler duplication in program-serialization.ts between sysex-origin (s3000xl-program) and disk-origin (s3000xl-disk-program) serialize/deserialize helpers. The deserialize boilerplate (parseYaml + format check + version check + field-presence checks + return object literal) is structurally parallel because the two formats encode genuinely different data (SerializedProgram has programRaw + keygroupsRaw; SerializedDiskProgram has fileRaw). Refactor candidate: extract a generic parseSerializedYaml<T>(yaml, expectedFormat, fieldChecks, build) helper that runs the common parse + version-check + field-presence pipeline. Deferred because: (1) the per-format field validation diverges (programRaw is a string, keygroupsRaw is a string array, fileRaw is a single string) and the generic helper either needs per-call validators (which moves the duplication, doesn't remove it) or runtime schema (zod / valibot) which is a larger dependency decision; (2) the file is at 350+ lines and a generic deserializer would itself bloat to 50-80 lines — the savings are marginal. Flip to refactor if a third serialized format (e.g. s3000xl-multi-program-bundle) lands; that's the trigger for the generic deserializer."
   - id: f6a49ee74e0b
     lines: 12
     members:
       - modules/akai-s3k-editor/src/lib/program-serialization.ts:157:170
       - modules/akai-s3k-editor/src/lib/program-serialization.ts:285:296
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file parallel format-handler duplication in program-serialization.ts between sysex-origin (s3000xl-program) and disk-origin (s3000xl-disk-program) serialize/deserialize helpers. The deserialize boilerplate (parseYaml + format check + version check + field-presence checks + return object literal) is structurally parallel because the two formats encode genuinely different data (SerializedProgram has programRaw + keygroupsRaw; SerializedDiskProgram has fileRaw). Refactor candidate: extract a generic parseSerializedYaml<T>(yaml, expectedFormat, fieldChecks, build) helper that runs the common parse + version-check + field-presence pipeline. Deferred because: (1) the per-format field validation diverges (programRaw is a string, keygroupsRaw is a string array, fileRaw is a single string) and the generic helper either needs per-call validators (which moves the duplication, doesn't remove it) or runtime schema (zod / valibot) which is a larger dependency decision; (2) the file is at 350+ lines and a generic deserializer would itself bloat to 50-80 lines — the savings are marginal. Flip to refactor if a third serialized format (e.g. s3000xl-multi-program-bundle) lands; that's the trigger for the generic deserializer."
   - id: 6c20c006e3ac
     lines: 6
     members:
       - modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:26:31
       - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:26:32
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Page-level store selector boilerplate between KeygroupsPage and ProgramsPage. Each page wires its own selector calls into useS3000xlClient + useEditorStore + per-page store (keygroup vs program). The 6-line clone is the useEditorStore selector cluster (isLoading / loadingMessage / loadingProgress / error / setError). Extracting a shared usePageEditorState() hook is possible but would obscure per-page selector intent at the page top — each page reads slightly different selector subsets depending on whether it writes errors (KeygroupsPage does, ProgramsPage reads only). The duplication is small (6 lines) and the per-page locality is more readable than a partially-applied hook. Refactor candidate only if a future page-shell harmonization dispatch lifts the entire fixed-viewport page chrome (selectors + footer + drawer wiring) into a useAkaiPageChrome() hook.
   - id: 02412f22d1aa
     lines: 18
     members:
@@ -412,8 +412,8 @@ clones:
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:473:484
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:492:503
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: ac0330ff40c0
     lines: 25
     members:
@@ -426,8 +426,8 @@ clones:
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:739:756
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:360:669
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Editor-dialog mount JSX block parallelism between LibraryPage and SamplesPage. Both pages mount the same trio of editor dialogs (SampleChopperDialog with S3kKitOutputConfig render-prop, SampleEditorDialog, DrumKitEditorDialog) using the shared useEditorDialogs hook. The clone is the JSX render block (18 lines). Refactor candidate: extract an <S3kEditorDialogsMount editorDialogs={...} root={...} /> component that encapsulates the three Dialog mounts + the render-output-config wiring. Deferred because: (1) per-page differences exist — LibraryPage's chopper uses root for onSave gating (onSave={root ? editorDialogs.handleChopperSave : undefined}) while SamplesPage passes handleChopperSave unconditionally because the SamplesPage flow only runs when a sample is selected; the component lift needs to thread the per-page conditional through; (2) the akai-s3k-editor module is moving toward a per-page-shell pattern where each page composes its own dialogs explicitly; a premature lift would harden a pattern that's still being shaped. Flip to refactor when the page-shell layout has settled across both pages AND the per-page onSave-conditional has a consistent shape."
   - id: 2af001e22e7f
     lines: 26
     members:
@@ -440,8 +440,8 @@ clones:
     members:
       - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:38:50
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:43:55
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Clone-flow state machine boilerplate between ProgramsPage and SamplesPage. Each page hosts a clone operation that drives SteppedProgressDrawer state: deletingIndex + deleteInProgress + cloneSteps + cloneDrawerOpen + cloneComplete + cloneError + lastEditAt. The clone is the useState declarations cluster (13 lines). Refactor candidate: extract useCloneFlow() hook returning { steps, drawerOpen, isComplete, hasError, beginClone, completeClone, errorClone, closeDrawer }. Deferred because: (1) the clone-step ORCHESTRATION differs per page (program-clone reads source program + writes to slot; sample-clone reads sample header + sends via SDS) — the hook would only abstract the state slot, not the work, so the savings are modest; (2) a future cross-page footer-state lift (the lastEditAt timestamp is also needed for the AcLiveStatusFooter) is the more compelling refactor candidate. Flip to refactor when (a) the editor-store gains a centralized clone-flow slice OR (b) a useAkaiPageChrome() lift is scoped."
   - id: 0c8162dddb47
     lines: 28
     members:
@@ -461,22 +461,22 @@ clones:
     members:
       - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:100:111
       - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:71:82
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Test-harness page parallelism between TestKeygroupsPage and TestKeygroupsShellPage. Per the TestKeygroupsShellPage docstring at modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx, the two harnesses are intentionally SEPARATE: TestKeygroupsPage (/akai/s3000xl/editor/test/keygroups) is the inline-styled zone-overview interaction harness load-bearing for zone-overview.spec.ts; TestKeygroupsShellPage (/akai/s3000xl/editor/test/keygroups-shell) is the shell-compliant harness load-bearing for page-shell-contract.spec.ts (covering AUDIT-20260524-06 + AUDIT-20260524-08). Each harness has a load-bearing structural distinction (inline styles vs ac-page-shell wrapper; 4 keygroups vs 16; toolbar + overview shape) that the corresponding spec relies on. Unifying would defeat the point of having two independently-load-bearing fixtures — and the duplication is fixture data + handler setup, not production logic. Intentional duplication; the fixtures must stay separable so each spec can mount its harness without coupling."
   - id: dffe86242d93
     lines: 16
     members:
       - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:191:206
       - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:90:106
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Test-harness page parallelism between TestKeygroupsPage and TestKeygroupsShellPage. Per the TestKeygroupsShellPage docstring at modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx, the two harnesses are intentionally SEPARATE: TestKeygroupsPage (/akai/s3000xl/editor/test/keygroups) is the inline-styled zone-overview interaction harness load-bearing for zone-overview.spec.ts; TestKeygroupsShellPage (/akai/s3000xl/editor/test/keygroups-shell) is the shell-compliant harness load-bearing for page-shell-contract.spec.ts (covering AUDIT-20260524-06 + AUDIT-20260524-08). Each harness has a load-bearing structural distinction (inline styles vs ac-page-shell wrapper; 4 keygroups vs 16; toolbar + overview shape) that the corresponding spec relies on. Unifying would defeat the point of having two independently-load-bearing fixtures — and the duplication is fixture data + handler setup, not production logic. Intentional duplication; the fixtures must stay separable so each spec can mount its harness without coupling."
   - id: 790e82a56886
     lines: 11
     members:
       - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:90:100
       - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:72:82
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: "Test-harness page parallelism between TestKeygroupsPage and TestKeygroupsShellPage. Per the TestKeygroupsShellPage docstring at modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx, the two harnesses are intentionally SEPARATE: TestKeygroupsPage (/akai/s3000xl/editor/test/keygroups) is the inline-styled zone-overview interaction harness load-bearing for zone-overview.spec.ts; TestKeygroupsShellPage (/akai/s3000xl/editor/test/keygroups-shell) is the shell-compliant harness load-bearing for page-shell-contract.spec.ts (covering AUDIT-20260524-06 + AUDIT-20260524-08). Each harness has a load-bearing structural distinction (inline styles vs ac-page-shell wrapper; 4 keygroups vs 16; toolbar + overview shape) that the corresponding spec relies on. Unifying would defeat the point of having two independently-load-bearing fixtures — and the duplication is fixture data + handler setup, not production logic. Intentional duplication; the fixtures must stay separable so each spec can mount its harness without coupling."
   - id: 995ff9b62525
     lines: 7
     members:
