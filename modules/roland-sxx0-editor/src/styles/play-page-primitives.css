@@ -1,0 +1,123 @@
+/**
+ * Play-page chrome — video capture frame for the CRT-stream surface.
+ *
+ * Consumed by `VideoCapture.tsx`, which mounts inside `PlayPage.tsx`
+ * (the Play surface). Provides the fixed 4:3 frame, the paused-state
+ * skeleton with CRT scanline texture, the centered loading overlay,
+ * and the inline error banner.
+ *
+ * Extracted from `_shared.css` 2026-05-25 per akai-harmonization
+ * Phase 2 task 2.8 (decompose `_shared.css` toward the 500-line cap).
+ *
+ * Stays roland-internal: the akai editor doesn't have a CRT-stream
+ * surface (no on-device display), so cross-editor promotion would be
+ * speculative. If a future editor adopts a similar capture-frame
+ * pattern, the chrome here can be promoted to editor-core under a
+ * generic name (e.g., capture-frame-primitives.css).
+ */
+
+/* ============================================================
+   VIDEO CAPTURE FRAME — fixed 16:9 surface that hosts either the
+   live <video> stream OR the paused-state skeleton. Both render
+   in the same frame so toggling Stop/Start doesn't resize the
+   drawer or shift the front-panel below.
+
+   The skeleton placeholder uses subtle CRT-evoking texture
+   (horizontal scanline lines via repeating gradient) + a muted
+   camera glyph + "PAUSED" eyebrow + a small "click START" hint.
+   ============================================================ */
+.ac-video-frame {
+  position: relative;
+  width: 100%;
+  /* 4:3 — the S-330 / S-550 CRT is a 4:3 display. 16:9 left thick
+     letterbox bars on both sides because the captured frame is
+     actually 4:3 inside the 16:9 capture-device output. */
+  aspect-ratio: 4 / 3;
+  background: var(--ac-color-surface-canvas);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ac-video-frame > video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+.ac-video-frame > video[hidden] {
+  display: none;
+}
+
+/* Paused-state skeleton — full-bleed surface, faint CRT scanlines,
+   centered glyph + label + hint. Hidden when video is streaming. */
+.ac-video-frame-skeleton {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--ac-color-surface-panel) 30%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    radial-gradient(
+      ellipse at center,
+      color-mix(in srgb, var(--ac-color-surface-panel) 50%, transparent) 0%,
+      var(--ac-color-surface-canvas) 80%
+    );
+  box-shadow: inset 0 0 60px color-mix(in srgb, #000 60%, transparent);
+}
+
+.ac-video-frame-skeleton svg {
+  width: 2rem;
+  height: 2rem;
+  color: color-mix(in srgb, var(--ac-color-text-muted) 60%, transparent);
+}
+
+.ac-video-frame-skeleton-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-video-frame-skeleton-hint {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: color-mix(in srgb, var(--ac-color-text-muted) 60%, transparent);
+}
+
+/* Overlay states (no secure context, no permission, no devices,
+   errors) — sit on top of either the video OR the skeleton. */
+.ac-video-frame-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-3);
+  text-align: center;
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 90%, transparent);
+}
+
+.ac-video-frame-error {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--ac-space-1) var(--ac-space-3);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: #fff;
+  background: color-mix(in srgb, var(--ac-color-rec) 80%, transparent);
+}

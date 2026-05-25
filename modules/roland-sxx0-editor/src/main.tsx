@@ -11,6 +11,7 @@ import '@/index.css';
 import '@/styles/_shared.css';
 import '@/styles/connect-page-primitives.css';
 import '@/styles/export-dialog-primitives.css';
+import '@/styles/play-page-primitives.css';
 import '@/styles/patches.css';
 import '@/styles/tones.css';
 
