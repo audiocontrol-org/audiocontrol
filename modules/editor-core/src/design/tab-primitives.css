@@ -137,6 +137,24 @@
   display: none;
 }
 
+/* Controlled-mode AcRadioTabs renders ONLY the active panel (no
+   sibling panels in the DOM). The default `display: none` rule above
+   assumes the per-tab-ID `:checked` selectors flip the active panel to
+   `display: block`. Controlled mode bypasses those selectors, so this
+   modifier-scoped rule forces the single rendered panel visible.
+   Mirrors the canonical-state of an uncontrolled-mode `:checked` flip
+   so the panel chrome looks identical in both modes. */
+.ac-tabs--controlled .ac-panel {
+  display: block;
+  animation: ac-tab-fade-in 180ms var(--ac-easing-default);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-tabs--controlled .ac-panel {
+    animation: none;
+  }
+}
+
 .ac-panel-stack {
   display: flex;
   flex-direction: column;
