@@ -1,20 +1,32 @@
+import { AcEnvelopeAdsr, type AcEnvelopeAdsrProps } from './AcEnvelopeAdsr';
 import { AcEnvelopeGraph } from './AcEnvelopeGraph';
 import { AcEnvelopeMeta } from './AcEnvelopeMeta';
 import { AcEnvelopeTable } from './AcEnvelopeTable';
 
 /**
- * `<AcEnvelope>` — 8-segment VFD-glow envelope editor.
+ * `<AcEnvelope>` — VFD-glow envelope editor with two discriminated-union
+ * variants.
  *
- * Composes three sub-components:
- *   - `<AcEnvelopeGraph>`  — the "monitor" with grid, fill, line, points, axes.
- *   - `<AcEnvelopeMeta>`   — sustain + end segment pip rows.
- *   - `<AcEnvelopeTable>`  — per-segment numeric table with mini bars.
+ * Variant selection is via the `kind` prop:
  *
- * Drag interaction is OUT of scope for this dispatch — the points are
- * rendered visually with `cursor: grab`; wiring of actual drag handlers
- * arrives with the page-amendment dispatch that consumes this primitive.
- * Callbacks (`onPointSelect`, `onSustainChange`, `onEndChange`, `onExpand`)
- * are provided where the consuming page chooses to respond.
+ *   - `kind: 'multi-segment'` (default) — uniform N-segment envelope with a
+ *     per-segment `{time, level}` shape. Composes three sub-components:
+ *       - `<AcEnvelopeGraph>` — the "monitor" with grid, fill, line, points,
+ *         axes (cumulative-advance time model; see AcEnvelopeGraph.tsx).
+ *       - `<AcEnvelopeMeta>`  — sustain + end segment pip rows.
+ *       - `<AcEnvelopeTable>` — per-segment numeric table with mini bars.
+ *     Consumed by roland tone envelopes (8 segments) and akai filter
+ *     envelopes (4 segments).
+ *
+ *   - `kind: 'adsr'` — classic 4-parameter ADSR (attack time / decay time /
+ *     sustain LEVEL held / release time) with a fixed 75/25 horizontal
+ *     layout split (attack + decay + sustain-hold occupy the left 75%,
+ *     release the right 25%). Sustain is a HELD level, not a time value.
+ *     Consumed by the akai amp envelope (0–99 parameter range).
+ *
+ * Backwards compatibility: the discriminated union defaults to
+ * `kind: 'multi-segment'` when omitted. Every pre-extension consumer
+ * (roland tone envelopes) continues to render unchanged.
  *
  * Per project memory `feedback_envelope_pattern`. Mockup source:
  *   docs/1.0/001-IN-PROGRESS/s550-support/explorations/04-tones.html:1570-1862, 2640-2840
@@ -26,7 +38,10 @@ export interface AcEnvelopeSegment {
   level: number;
 }
 
-export interface AcEnvelopeProps {
+/** Multi-segment variant props (the original AcEnvelope contract). */
+export interface AcEnvelopeMultiSegmentProps {
+  /** Variant discriminator. Omit or pass `'multi-segment'` for this shape. */
+  kind?: 'multi-segment';
   /** Eyebrow label shown top-left of the graphic, e.g. "TVF · 8-SEGMENT". */
   label: string;
   /** Per-segment values; expected length is `endSegment`. */
@@ -76,7 +91,19 @@ export interface AcEnvelopeProps {
   disabled?: boolean;
 }
 
+/** Discriminated-union prop set for `<AcEnvelope>`. */
+export type AcEnvelopeProps = AcEnvelopeMultiSegmentProps | AcEnvelopeAdsrProps;
+
+export type { AcEnvelopeAdsrProps } from './AcEnvelopeAdsr';
+
 export function AcEnvelope(props: AcEnvelopeProps): JSX.Element {
+  if (props.kind === 'adsr') {
+    return <AcEnvelopeAdsr {...props} />;
+  }
+  return <AcEnvelopeMultiSegment {...props} />;
+}
+
+function AcEnvelopeMultiSegment(props: AcEnvelopeMultiSegmentProps): JSX.Element {
   const totalSegments = props.totalSegments ?? 8;
   const maxTime = props.maxTime ?? 127;
   const maxLevel = props.maxLevel ?? 127;

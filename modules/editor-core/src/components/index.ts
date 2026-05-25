@@ -43,8 +43,11 @@ export {
 export {
   AcEnvelope,
   type AcEnvelopeProps,
+  type AcEnvelopeMultiSegmentProps,
+  type AcEnvelopeAdsrProps,
   type AcEnvelopeSegment,
 } from './AcEnvelope';
+export { AcEnvelopeAdsr } from './AcEnvelopeAdsr';
 export {
   AcEnvelopeGraph,
   type AcEnvelopeGraphProps,

@@ -1,4 +1,14 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  pointerToCanvasPct,
+  tryCapturePointer,
+  tryReleasePointer,
+} from './envelopeDragHelpers';
+import {
+  EnvelopeAnchorPoint,
+  EnvelopeDragPoint,
+  EnvelopeGridLines,
+} from './envelopeChromeHelpers';
 
 /**
  * `<AcEnvelopeGraph>` — the VFD-glow "monitor" portion of `<AcEnvelope>`.
@@ -147,13 +157,7 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
       return;
     }
     e.preventDefault();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      /* setPointerCapture can throw on synthetic events; fall through to
-         the fallback global-listener path that pointermove on the button
-         still receives even without capture in most browsers. */
-    }
+    tryCapturePointer(e);
     dragStateRef.current = { segmentIdx };
   };
 
@@ -162,12 +166,12 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
     if (state === null) {
       return;
     }
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (rect === undefined || rect.width === 0 || rect.height === 0) {
+    const pointer = pointerToCanvasPct(canvasRef.current, e);
+    if (pointer === null) {
       return;
     }
-    const pointerXPct = ((e.clientX - rect.left) / rect.width) * 100;
-    const pointerYPct = ((e.clientY - rect.top) / rect.height) * 100;
+    const pointerXPct = pointer.xPct;
+    const pointerYPct = pointer.yPct;
 
     // X → slot fraction → rate. The dragged segment's slot starts at
     // the PREVIOUS point's x and is `slotWidthPct` wide. slotFill is
@@ -205,11 +209,7 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
     if (dragStateRef.current === null) {
       return;
     }
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      /* releasePointerCapture throws if no capture is active; ignore. */
-    }
+    tryReleasePointer(e);
     dragStateRef.current = null;
     props.onCommit?.();
   };
@@ -237,9 +237,7 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
       </div>
       <div className="ac-envelope-canvas" ref={canvasRef}>
         <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-          <line x1="0" y1="0" x2="100" y2="0" className="ac-envelope-grid-line" />
-          <line x1="0" y1="50" x2="100" y2="50" className="ac-envelope-grid-line ac-envelope-grid-line--baseline" />
-          <line x1="0" y1="100" x2="100" y2="100" className="ac-envelope-grid-line ac-envelope-grid-line--baseline" />
+          <EnvelopeGridLines />
           {renderDividers(n)}
           {props.activeSegment > 0 && props.activeSegment <= n ? (
             <line
@@ -336,18 +334,15 @@ function renderPoint(
   drag: DragCallbacks,
 ): JSX.Element {
   const isActive = i === props.activeSegment;
-  const pointClass = isActive
-    ? 'ac-envelope-point ac-envelope-point--active'
-    : 'ac-envelope-point';
   // Point 0 is the implicit anchor at (0%, 100%); it is not a selectable
   // segment and renders as a non-interactive marker.
   if (i === 0) {
     return (
-      <span
+      <EnvelopeAnchorPoint
         key={i}
-        className={pointClass}
-        style={{ left: `${p.x}%`, top: `${p.y}%` }}
-        aria-hidden="true"
+        xPct={p.x}
+        yPct={p.y}
+        isActive={isActive}
       />
     );
   }
@@ -357,26 +352,17 @@ function renderPoint(
   // fallback when onTimeChange/onLevelChange aren't provided.
   const disabled = props.disabled === true;
   return (
-    <button
+    <EnvelopeDragPoint
       key={i}
-      type="button"
-      className={pointClass}
-      style={{ left: `${p.x}%`, top: `${p.y}%` }}
-      onPointerDown={
-        disabled ? undefined : (e) => drag.onPointerDown(i, e)
-      }
-      onPointerMove={
-        drag.dragEnabled && !disabled ? drag.onPointerMove : undefined
-      }
-      onPointerUp={
-        drag.dragEnabled && !disabled ? drag.onPointerUp : undefined
-      }
-      onPointerCancel={
-        drag.dragEnabled && !disabled ? drag.onPointerUp : undefined
-      }
-      aria-label={`Select segment ${i}`}
-      aria-pressed={isActive}
+      xPct={p.x}
+      yPct={p.y}
+      isActive={isActive}
       disabled={disabled}
+      dragEnabled={drag.dragEnabled}
+      ariaLabel={`Select segment ${i}`}
+      onPointerDown={(e) => drag.onPointerDown(i, e)}
+      onPointerMove={drag.onPointerMove}
+      onPointerUp={drag.onPointerUp}
     />
   );
 }

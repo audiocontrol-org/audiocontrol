@@ -19,6 +19,17 @@
   margin-top: var(--ac-space-3);
 }
 
+/* ADSR variant: 4-parameter classic ADSR with fixed 75/25 layout split.
+ * Selected via `<AcEnvelope kind="adsr">`; rendered by AcEnvelopeAdsr.tsx.
+ * The variant shares all `.ac-envelope-graph` / `.ac-envelope-fill` /
+ * `.ac-envelope-line` / `.ac-envelope-point` chrome with the multi-segment
+ * variant — this modifier exists so future per-variant CSS tweaks have a
+ * stable hook, and so the meta + table sub-surfaces (which the ADSR
+ * variant does NOT mount) don't accidentally apply. */
+.ac-envelope--adsr {
+  gap: 0;
+}
+
 /* Graphic (the "monitor") */
 .ac-envelope-graph {
   position: relative;
