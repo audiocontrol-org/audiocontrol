@@ -28,6 +28,11 @@
  *   - loop-editor-primitives.css — loop-editor surface chrome (toolbar,
  *                               canvases, nudges, candidates)
  *   - library.css             — library tree/dialog chrome (large surface)
+ *   - live-status-footer-primitives.css — slim live-editing footer band
+ *                               consumed by AcLiveStatusFooter (rec-LED
+ *                               + status text; cross-editor canonical
+ *                               per project memories `feedback_live_editing_no_save`
+ *                               + `feedback_rec_led_accent`)
  */
 
 @import './tokens.css';
@@ -45,3 +50,4 @@
 @import './tab-primitives.css';
 @import './zone-strip-primitives.css';
 @import './frequency-response-primitives.css';
+@import './live-status-footer-primitives.css';

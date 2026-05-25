@@ -24,6 +24,7 @@
     "./control-primitives.css": "./src/design/control-primitives.css",
     "./envelope-primitives.css": "./src/design/envelope-primitives.css",
     "./frequency-response-primitives.css": "./src/design/frequency-response-primitives.css",
+    "./live-status-footer-primitives.css": "./src/design/live-status-footer-primitives.css",
     "./library.css": "./src/design/library.css",
     "./tab-primitives.css": "./src/design/tab-primitives.css",
     "./zone-strip-primitives.css": "./src/design/zone-strip-primitives.css",

@@ -49,6 +49,10 @@ export {
 } from './AcEnvelope';
 export { AcEnvelopeAdsr } from './AcEnvelopeAdsr';
 export {
+  AcLiveStatusFooter,
+  type AcLiveStatusFooterProps,
+} from './AcLiveStatusFooter';
+export {
   AcFrequencyResponse,
   type AcFrequencyResponseProps,
   type AcFrequencyResponseFilterType,

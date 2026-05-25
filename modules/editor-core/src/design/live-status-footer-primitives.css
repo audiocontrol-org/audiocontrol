@@ -1,0 +1,84 @@
+/*
+ * Live-editing footer primitive — the ONLY footer-band declaration for
+ * the parameter-streaming editor surfaces.
+ *
+ * Consumers MUST render via the AcLiveStatusFooter React component in
+ * editor-core/src/components/AcLiveStatusFooter.tsx. The footer mounts
+ * at the bottom of the detail column on every list-detail editing page
+ * (roland PatchesPage / TonesPage, akai ProgramsPage / KeygroupsPage /
+ * SamplesPage) — per project memories `feedback_live_editing_no_save`
+ * and `feedback_rec_led_accent`.
+ *
+ * Visual model:
+ *   .ac-live-status-footer (root, slim band ~32px)
+ *     .ac-live-status-footer__led (small filled circle, rec-LED token)
+ *     .ac-live-status-footer__text (status text in mono)
+ *
+ * State precedence is driven by `data-state="live|offline|error"`:
+ *   - 'live'    → rec-LED filled + glow halo; text in primary color
+ *   - 'offline' → rec-LED dimmed (no glow); text muted
+ *   - 'error'   → rec-LED in danger color; text in danger color
+ *
+ * The footer takes its background from --ac-color-surface-recessed when
+ * available (akai dialect introduces this); falls back to the panel
+ * surface for editors that don't override the token.
+ */
+
+.ac-live-status-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-top: 1px solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-recessed, var(--ac-color-surface-panel));
+  font-family: var(--ac-font-mono);
+  font-size: 0.75rem;
+  line-height: 1.2;
+  min-height: 2rem;
+  flex-shrink: 0;
+}
+
+.ac-live-status-footer__led {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--ac-color-rec);
+  box-shadow: 0 0 0.3rem var(--ac-color-rec-glow);
+  flex-shrink: 0;
+  transition: background var(--ac-duration-fast) var(--ac-easing-default),
+              box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-live-status-footer__text {
+  color: var(--ac-color-text-primary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ac-live-status-footer[data-state='offline'] .ac-live-status-footer__led {
+  background: var(--ac-color-text-muted);
+  box-shadow: none;
+  opacity: 0.5;
+}
+
+.ac-live-status-footer[data-state='offline'] .ac-live-status-footer__text {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-live-status-footer[data-state='error'] .ac-live-status-footer__led {
+  background: var(--ac-color-danger);
+  box-shadow: 0 0 0.3rem var(--ac-color-danger);
+}
+
+.ac-live-status-footer[data-state='error'] .ac-live-status-footer__text {
+  color: var(--ac-color-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-live-status-footer__led {
+    transition: none;
+  }
+}
