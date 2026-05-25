@@ -1,12 +1,56 @@
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
+import { AcEnvelope, type AcEnvelopeSegment } from '@audiocontrol/editor-core';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
 import { S3kParamToggleRow } from '@/components/ui/S3kParamToggleRow';
 import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
-import { AdsrDisplay, MultiPointEnvelopeDisplay } from '@/components/keygroups/AdsrDisplay';
+import { AdsrDisplay } from '@/components/keygroups/AdsrDisplay';
 import { FilterDisplay } from '@/components/keygroups/FilterDisplay';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
+
+/**
+ * Map the akai 4-segment filter envelope's flat (rates[4], levels[4])
+ * shape onto AcEnvelope's uniform `{time, level}[]` segment array.
+ * Akai's RATE parameters ARE the canonical "time" values for the
+ * envelope visualization (the cumulative-advance model in
+ * AcEnvelopeGraph treats higher `time` as advancing the cursor less,
+ * which is the same intent here: high rate = fast segment = short
+ * visible extent).
+ */
+function akaiFilterEnvSegments(header: KeygroupHeader): AcEnvelopeSegment[] {
+  return [
+    { time: header.ENV2R1, level: header.ENV2L1 },
+    { time: header.ENV2R2, level: header.ENV2L2 },
+    { time: header.ENV2R3, level: header.ENV2L3 },
+    { time: header.ENV2R4, level: header.ENV2L4 },
+  ];
+}
+
+/** Per-segment FIELD lookup so onTimeChange / onLevelChange can map
+ *  (segmentIndex, value) back to the akai header parameter to write. */
+const AKAI_FILTER_ENV_RATE_FIELDS = ['ENV2R1', 'ENV2R2', 'ENV2R3', 'ENV2R4'] as const;
+const AKAI_FILTER_ENV_LEVEL_FIELDS = ['ENV2L1', 'ENV2L2', 'ENV2L3', 'ENV2L4'] as const;
+
+/**
+ * Build the `onChange({ FIELD: value, ... })` dispatcher shape used by
+ * the legacy AdsrDisplay + FilterDisplay components. Drag-mode prefers
+ * `onDragChange` (optimistic UI only); fall back to `onParameterChange`
+ * (commits each change). Used by the two consumers below; will be
+ * removed when AdsrDisplay + FilterDisplay are migrated to the
+ * canonical primitives in Commits 4 + 5 of this dispatch.
+ */
+function makeFieldDispatcher(
+  onParameterChange: (field: string, value: number | string) => void,
+  onDragChange?: (field: string, value: number) => void,
+): (changes: Record<string, number>) => void {
+  return (changes) => {
+    for (const [f, v] of Object.entries(changes)) {
+      if (onDragChange) onDragChange(f, v);
+      else onParameterChange(f, v);
+    }
+  };
+}
 
 interface KeygroupEditorProps {
   header: KeygroupHeader;
@@ -102,10 +146,26 @@ export function KeygroupEditor({
         <Section
           title="Filter Envelope"
           headerContent={
-            <MultiPointEnvelopeDisplay
-              rates={[header.ENV2R1, header.ENV2R2, header.ENV2R3, header.ENV2R4]}
-              levels={[header.ENV2L1, header.ENV2L2, header.ENV2L3, header.ENV2L4]}
-              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+            <AcEnvelope
+              kind="multi-segment"
+              label="TVF · 4-SEGMENT"
+              totalSegments={4}
+              segments={akaiFilterEnvSegments(header)}
+              maxTime={99}
+              maxLevel={99}
+              sustainSegment={4}
+              endSegment={4}
+              activeSegment={0}
+              onTimeChange={(segIndex, time) => {
+                const field = AKAI_FILTER_ENV_RATE_FIELDS[segIndex - 1];
+                if (onDragChange) onDragChange(field, time);
+                else onParameterChange(field, time);
+              }}
+              onLevelChange={(segIndex, level) => {
+                const field = AKAI_FILTER_ENV_LEVEL_FIELDS[segIndex - 1];
+                if (onDragChange) onDragChange(field, level);
+                else onParameterChange(field, level);
+              }}
               onCommit={onCommitHeader}
             />
           }
@@ -131,7 +191,7 @@ export function KeygroupEditor({
             <FilterDisplay
               frequency={header.FILFRQ}
               resonance={header.FILQ}
-              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onChange={makeFieldDispatcher(onParameterChange, onDragChange)}
               onCommit={onCommitHeader}
             />
           }
@@ -155,7 +215,7 @@ export function KeygroupEditor({
               decay={header.DECAY1}
               sustain={header.SUSTN1}
               release={header.RELSE1}
-              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              onChange={makeFieldDispatcher(onParameterChange, onDragChange)}
               onCommit={onCommitHeader}
             />
           }

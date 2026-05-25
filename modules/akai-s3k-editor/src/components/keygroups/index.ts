@@ -15,7 +15,7 @@ export {
   lovelField,
   hivelField,
 } from '@/components/keygroups/use-zone-drag';
-export { AdsrDisplay, MultiPointEnvelopeDisplay } from '@/components/keygroups/AdsrDisplay';
+export { AdsrDisplay } from '@/components/keygroups/AdsrDisplay';
 export {
   type NoteRange,
   TOTAL_NOTES,
