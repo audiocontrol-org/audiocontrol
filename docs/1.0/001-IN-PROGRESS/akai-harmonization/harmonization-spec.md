@@ -24,10 +24,10 @@ A **dialect** is the EXACTLY-RECOVERABLE difference between two editor surfaces.
 
 - different values for color tokens (`--ac-color-accent`, surface colors, accent variants),
 - different font stack references (`--ac-font-display`, `--ac-font-body`, `--ac-font-mono`),
-- different label silkscreen on the virtual front panel,
-- different button layout / count on the virtual front panel (driven by the actual hardware),
 
 …then the editors are dialects. If the difference requires a `if (device === 'akai') { ... }` branch in JSX or a hook, it is not a dialect — it is a structural divergence and the `harmonization-spec.md` entry must say so explicitly and propose either (a) elevating the variance into a token / theme attribute, or (b) extracting the divergent shape into a per-editor strategy injected via dependency injection.
+
+**Note 2026-05-25 amendment:** earlier drafts of this spec listed "different label silkscreen on the virtual front panel" and "different button layout / count on the virtual front panel" as canonical dialect examples. The operator amended that direction: the akai editor does NOT mount a virtual front panel — the S3000XL is a 19" rackmount with a fully functional physical front panel, and a virtual one is extraneous. Roland's S-330/S-550 keep their virtual front panels (their hardware is harder to reach for many operators); akai does not. See § 2.4 + § 3.4 + § 3.5 amendments below.
 
 The standing CLAUDE.md guideline applies verbatim:
 
@@ -35,8 +35,8 @@ The standing CLAUDE.md guideline applies verbatim:
 
 The theme-token infrastructure ALREADY EXISTS at the design-system level. `tokens.css` scopes the per-editor color palette via `:root[data-editor='s3000xl']`, alongside `s330`, `s550`, `d110`, and `jv1080`. The akai dialect work in Phase 2 will:
 
-1. Deepen the `[data-editor='s3000xl']` scope to override the typography tokens + the rec-LED tokens + the virtual-front-panel chassis tokens (currently global; not akai-appropriate).
-2. Migrate akai pages to consume the canonical `editor-core` primitives (PageTitleRow, AcRadioTabs, AcChevron, useExportDialogLifecycle, the front-panel component, the envelope/range-bar primitives) where they currently inline equivalents.
+1. Deepen the `[data-editor='s3000xl']` scope to override the typography tokens + the rec-LED tokens (currently global; not akai-appropriate). ~~Virtual-front-panel chassis tokens deferred~~ — out-of-scope per operator directive; see § 2.4 + § 3.4 amendments.
+2. Migrate akai pages to consume the canonical `editor-core` primitives (PageTitleRow, AcRadioTabs, AcChevron, useExportDialogLifecycle, the envelope/range-bar primitives) where they currently inline equivalents. ~~The front-panel component is NOT consumed by akai~~ per operator directive — akai's hardware has its own physical front panel; a virtual one is extraneous.
 3. Migrate akai's local `.s3k-*` parameter primitives to the canonical `.ac-*` primitives where the shape matches (slider, select, toggle, envelope) — promoting akai's local primitives to canonical where they hold the better shape.
 
 ## 2. Roland DNA inherited (the canonical side)
@@ -86,20 +86,21 @@ Current akai `KeygroupEditor`: dense single-pane parameter grid. Current akai `P
 
 (See per-page mockups for layout.)
 
-### 2.4 Virtual front panel beneath the CRT
+### 2.4 Virtual front panel beneath the CRT — ~~genuinely-dialect~~ → **out-of-scope (akai opts out)**
 
-Canonical: [`modules/roland-sxx0-editor/src/components/front-panel/`](../../../../modules/roland-sxx0-editor/src/components/front-panel/) + [`front-panel.css`](../../../../modules/roland-sxx0-editor/src/components/front-panel/front-panel.css). Memory `feedback_virtual_front_panel`: "every editor page with the CRT also mounts a virtual front panel mirroring the [device's] physical buttons; it's not optional."
+**Amended 2026-05-25 per operator directive.** Original draft proposed the akai editor mount its own virtual front panel mirroring the S3000XL's actual hardware (full content preserved below as historical context). Operator directive: *"We don't need a virtual front panel on the Akai editor — it has a fully functional front panel of its own. This is just extraneous."*
 
-The roland panel is 7-column × 2-row, 11 buttons (chunky molded plastic, three-stop vertical gradient, hairline bezel, ~80 ms transition mirroring real mechanical travel).
+The S3000XL is a 19" rackmount with a comprehensive physical front panel (mode buttons + LCD + 8 soft-function keys + numeric keypad + cursor cluster). Operators who own the device interact with that physical surface; the editor is for adding/editing functionality the physical front panel doesn't expose efficiently (envelope shaping, multi-zone keygroup editing, library transfer). Replicating the physical surface as a virtual panel is dead weight for this device family.
 
-The akai panel must mirror the **S3000XL's actual front panel**: a wider LCD-centric layout with:
-- 8 soft-function keys below the LCD (F1–F8 — actual S3000XL only had F1–F4 explicitly labelled, but it's the right metaphor for the dialect)
-- `MAIN` / `EDIT` / `DISK` / `MIDI` mode keys on the left cluster
-- `INC` / `DEC` value rocker on the right
-- Numeric keypad (1–9, 0, +/–) inset right of the LCD
-- `ENTER` / `EXIT` / `MARK` / `JUMP` navigation keys
+**Disposition: `out-of-scope`** for akai. Roland's S-330 and S-550 KEEP their virtual front panels — their hardware is older + harder to reach for many operators, and the virtual panel is the only operator-facing UI for some workflows. The `VirtualFrontPanel` component + `FrontPanelButton` primitive in `modules/roland-sxx0-editor/src/components/front-panel/` stay roland-local; no promotion to editor-core is needed (no second consumer).
 
-**Disposition: `genuinely-dialect`** — same chunky-button chrome (token-shifted to akai palette), different grid layout reflecting the actual hardware. The `VirtualFrontPanel` component takes a `layout` prop or is replaced by a per-device factory that returns the correct grid; the underlying `FrontPanelButton` primitive is shared.
+**Historical draft (preserved for context):**
+
+> Canonical: [`modules/roland-sxx0-editor/src/components/front-panel/`](../../../../modules/roland-sxx0-editor/src/components/front-panel/) + [`front-panel.css`](../../../../modules/roland-sxx0-editor/src/components/front-panel/front-panel.css). Memory `feedback_virtual_front_panel`: "every editor page with the CRT also mounts a virtual front panel mirroring the [device's] physical buttons; it's not optional." (That memory was operator-recorded in a roland-bugfix session context where it was true for the S-330/S-550; the operator's 2026-05-25 directive narrows it to roland-only.)
+>
+> The akai panel was originally proposed as a wider LCD-centric layout with: 8 soft-function keys below the LCD (F1–F8), `MAIN` / `EDIT` / `DISK` / `MIDI` mode keys on the left cluster, `INC` / `DEC` value rocker on the right, numeric keypad inset right of the LCD, `ENTER` / `EXIT` / `MARK` / `JUMP` navigation keys.
+>
+> The original disposition was `genuinely-dialect` (same chunky-button chrome token-shifted to akai palette, different grid layout per the actual hardware). That entire approach is moot under the operator's amendment.
 
 ### 2.5 Live-editing footer (no save/cancel/undo)
 
@@ -203,7 +204,7 @@ Pattern (memory `feedback_lean_page_header`): "editor headers are one row: h2 + 
 
 The current akai page header is already this lean. **Disposition: `genuinely-dialect`** at the level of the per-page eyebrow rows, but the H2 + accent rule + status metric pattern is `adopt-roland-pattern` so it goes through `PageTitleRow`.
 
-## 3. The akai dialect — palette + fonts + REC-LED + front panel
+## 3. The akai dialect — palette + fonts + REC-LED + LCD (~~+ front panel~~, out-of-scope per § 2.4 amendment)
 
 **Important: this section was rewritten on 2026-05-23 after operator-provided reference photos corrected two wrong assumptions in the original draft (warm-black chassis instead of cream; amber LCD instead of blue-backlit STN; Major Mono Display instead of a readable typeface).** The corrected dialect makes the akai surface a LIGHT theme — because the actual S3000XL chassis is cream. This is a genuine departure from the roland dialect's dark theme, but the dialect contract still holds: every difference reduces to a CSS-token value swap.
 
@@ -246,7 +247,7 @@ The actual S3000XL LCD is a blue-backlit STN display: bright turquoise-cyan fiel
 }
 ```
 
-LCD-bearing surfaces in the akai dialect: (a) the virtual front panel LCD readout, (b) the envelope graph background (the VFD-glow primitive renders into the LCD blue), (c) any waveform preview in the sample editor. The roland editor leaves these tokens at their global defaults (amber VFD-glow), so the envelope graph and waveform preview render in the roland's existing amber on dark.
+LCD-bearing surfaces in the akai dialect: ~~(a) the virtual front panel LCD readout~~ (out-of-scope per § 2.4 amendment), (a) the envelope graph background (the VFD-glow primitive renders into the LCD blue), (b) any waveform preview in the sample editor. The roland editor leaves these tokens at their global defaults (amber VFD-glow), so the envelope graph and waveform preview render in the roland's existing amber on dark.
 
 This requires a small extension to the canonical [envelope-primitives.css](../../../../modules/editor-core/src/design/envelope-primitives.css): the current `.ac-envelope-graph` hardcodes a radial-gradient via `var(--ac-color-surface-canvas)` and the line color via `var(--ac-color-accent)`. Phase 2 task 2.1 will introduce `--ac-lcd-bg` / `--ac-lcd-text` and re-point the envelope/waveform primitives to consume them — so the akai dialect's LCD blue and the roland dialect's VFD amber both flow through the same primitive.
 
@@ -265,9 +266,11 @@ All four fonts are Google Fonts (Open Font License). The `--ac-font-lcd` is a ne
 
 **Why this typography is more disciplined than the first draft:** display fonts that compete with mono fonts for the parameter-value slot are a category error. Display fonts belong on labels and headings; mono fonts belong on numeric values and identifiers. The first draft put a display mono (Major Mono Display) on values, which broke legibility. Big Shoulders Display sits on labels only; JetBrains Mono sits on values only; VT323 sits on the LCD only. Three roles, three fonts, no overlap.
 
-### 3.4 Virtual front panel — cream chassis with lighter cream button faces
+### 3.4 ~~Virtual front panel — cream chassis with lighter cream button faces~~ — **out-of-scope (akai opts out)**
 
-The roland chassis tokens (`--ac-fp-chassis-top`, etc.) describe a neutral matte-black plastic with darker button faces. The akai S3000XL has the inverse contrast: a cream chassis with LIGHTER cream button faces and warm dark bezels around each button cluster. New tokens for the akai dialect:
+**Amended 2026-05-25 per operator directive — see § 2.4.** Akai does not mount a virtual front panel, so the cream-chassis token table below is unused. Preserved for context in case a future device editor (e.g., a Mac Studio plugin host that DOES need a virtual front panel for an akai-style chassis) wants to lift the token shapes.
+
+The roland chassis tokens (`--ac-fp-chassis-top`, etc.) describe a neutral matte-black plastic with darker button faces. The original akai draft proposed the inverse contrast (cream chassis with LIGHTER cream button faces and warm dark bezels). Tokens proposed (NOT registered in the codebase per the 2026-05-25 amendment):
 
 | Token | Roland (global) | Akai dialect |
 |---|---|---|
@@ -287,11 +290,13 @@ The roland chassis tokens (`--ac-fp-chassis-top`, etc.) describe a neutral matte
 
 Mode-button active state is an exception: instead of darkening the button, it fills with the AKAI red brand color (`#D8262C`) with white text — exactly mirroring the way an active mode lights up the LED above the button on the real hardware.
 
-### 3.5 Front panel layout — S3000XL 3-cluster strip
+### 3.5 ~~Front panel layout — S3000XL 3-cluster strip~~ — **out-of-scope (akai opts out)**
 
-The roland virtual front panel is a 7×2 button grid (5:1.5 aspect ratio). The S3000XL is a 19" rackmount with a horizontal 3-cluster layout: mode buttons on the left (2 cols × 4 rows), LCD + soft-function keys in the center, numeric keypad + cursor cluster on the right. The mockup CSS captures this as a 3-column grid (`.ac-fp--akai` → `grid-template-columns: 0.7fr 1.6fr 1fr`).
+**Amended 2026-05-25 per operator directive — see § 2.4.** Akai does not mount a virtual front panel. The historical layout proposal preserved below.
 
-Per CLAUDE.md "Multi-Device Architecture": the `VirtualFrontPanel` component takes a `layout` prop (or is replaced by a per-device factory) so each editor mounts its own grid. The underlying `FrontPanelButton` primitive is shared; only the grid shape varies. This is the one place where the dialect needs structural (not just token-level) variance, and the variance is honest — the hardware genuinely differs.
+> The roland virtual front panel is a 7×2 button grid (5:1.5 aspect ratio). The S3000XL is a 19" rackmount with a horizontal 3-cluster layout: mode buttons on the left (2 cols × 4 rows), LCD + soft-function keys in the center, numeric keypad + cursor cluster on the right. The mockup CSS captured this as a 3-column grid (`.ac-fp--akai` → `grid-template-columns: 0.7fr 1.6fr 1fr`).
+>
+> Per CLAUDE.md "Multi-Device Architecture": the `VirtualFrontPanel` component would have taken a `layout` prop (or been replaced by a per-device factory) so each editor mounts its own grid. The underlying `FrontPanelButton` primitive would have been shared; only the grid shape varies.
 
 The actual S3000XL mode buttons (top-to-bottom in 2 columns):
 - SINGLE / MULTI / SAMPLE / EFFECTS (top 2 rows)
@@ -317,9 +322,9 @@ Mockup chrome:
 - ProgramEditor uses AcRadioTabs with 4 tabs (Common · MIDI · Effects · Output)
 - KeygroupSummary inside the Common tab (read-only listing of the program's keygroups, click-to-jump)
 - Live-edit footer beneath the detail column
-- Virtual front panel beneath the page body (akai layout)
+- ~~Virtual front panel beneath the page body (akai layout)~~ — out-of-scope per § 2.4 amendment (akai has physical front panel)
 
-Primitives consumed: PageTitleRow, AcRadioTabs, AcRangeBar (for the keyboard range), AcChevron (in KeygroupSummary), AcButton (Clone / Delete), VirtualFrontPanel (akai layout).
+Primitives consumed: PageTitleRow, AcRadioTabs, AcRangeBar (for the keyboard range), AcChevron (in KeygroupSummary), AcButton (Clone / Delete). ~~VirtualFrontPanel (akai layout)~~ removed per § 2.4 amendment.
 
 ### 4.2 KeygroupsPage — [`mockups/keygroups.html`](./mockups/keygroups.html)
 
@@ -333,9 +338,9 @@ Mockup chrome:
 - Amp tab contains the AcEnvelope (4-segment ADSR) primitive
 - Filter tab contains AcEnvelope + filter cutoff slider (interacting controls in same tab)
 - Live-edit footer beneath the detail column
-- Virtual front panel beneath
+- ~~Virtual front panel beneath~~ — out-of-scope per § 2.4 amendment
 
-Primitives consumed: PageTitleRow, AcRadioTabs, AcZoneStrip (per-zone velocity + key-range, § 2.7 amended), ZoneOverview (akai-local domain-component for the 2D canvas band, § 2.7 amended), AcEnvelope (segmentCount=4), AcSlider, AcSelect, AcCheckbox, VirtualFrontPanel.
+Primitives consumed: PageTitleRow, AcRadioTabs, AcZoneStrip (per-zone velocity + key-range, § 2.7 amended), ZoneOverview (akai-local domain-component for the 2D canvas band, § 2.7 amended), AcEnvelope (segmentCount=4), AcSlider, AcSelect, AcCheckbox. ~~VirtualFrontPanel~~ removed per § 2.4 amendment.
 
 ### 4.3 SamplesPage — [`mockups/samples.html`](./mockups/samples.html)
 
@@ -349,9 +354,9 @@ Mockup chrome:
 - Loop tab includes the AcRangeBar for loop in/out markers
 - Launch-editor row (Loop · Sample · Chopper) sits inside the Wave tab as a primary action cluster — promoted to `.ac-page-actions-inline` (a new shared primitive name) since it appears in only one place currently
 - Live-edit footer
-- Virtual front panel beneath
+- ~~Virtual front panel beneath~~ — out-of-scope per § 2.4 amendment
 
-Primitives consumed: PageTitleRow, AcRadioTabs, AcRangeBar, AcButton (launch-editor row, clone, delete), AcChevron (sample-list collapsible folders if present), VirtualFrontPanel.
+Primitives consumed: PageTitleRow, AcRadioTabs, AcRangeBar, AcButton (launch-editor row, clone, delete), AcChevron (sample-list collapsible folders if present). ~~VirtualFrontPanel~~ removed per § 2.4 amendment.
 
 ### 4.4 LibraryPage — [`mockups/library.html`](./mockups/library.html)
 
@@ -365,9 +370,9 @@ Mockup chrome:
   - Right: LibraryPreviewPanel (selected node's metadata + actions)
 - Drawer transitions for transfer dialogs (uses shared SlideDrawer)
 - Live-edit footer is NOT present on this page (no parameter editing)
-- Virtual front panel beneath
+- ~~Virtual front panel beneath~~ — out-of-scope per § 2.4 amendment
 
-Primitives consumed: PageTitleRow, PluginLibraryBrowser, TreeView, DeviceMemoryPanel, BankHeader, LibraryPreviewPanel, SlideDrawer, AcChevron (tree disclosure), VirtualFrontPanel.
+Primitives consumed: PageTitleRow, PluginLibraryBrowser, TreeView, DeviceMemoryPanel, BankHeader, LibraryPreviewPanel, SlideDrawer, AcChevron (tree disclosure). ~~VirtualFrontPanel~~ removed per § 2.4 amendment.
 
 ## 5. Disposition table (every primitive on every page)
 
@@ -381,8 +386,8 @@ The matrix below is the proof-of-design Phase 2 implementers cite for each `cano
 | PageTitleRow | absent (hand-rolled `.ac-page-sticky-header`) | `adopt-roland-pattern` | roland | 2.2 |
 | AcRadioTabs detail pane | ~~absent (single-pane parameter grid)~~ → AcRadioTabs (controlled mode) from editor-core | DONE 2026-05-24 (`a444acd5` + `b5d30089` + `3b93fa91`) | roland (promoted to editor-core) | 2.2 |
 | ~~Live-editing footer~~ → AcLiveStatusFooter | ~~absent (akai had no live-status footer; spec said adopt-roland-pattern but roland hadn't built it either)~~ → AcLiveStatusFooter consumed in 3 akai pages + 2 roland pages | ~~`adopt-roland-pattern`~~ → revised: build new in editor-core; both editors adopt atomically | new in editor-core | 2.2 — DONE 2026-05-24 (Commits 1e6e40ad + a7b1773f + 16f97e34) |
-| Virtual front panel — chassis chrome | absent | `genuinely-dialect` (tokens differ) | roland (component shape) | 2.1 + 2.2 |
-| Virtual front panel — button grid layout | absent | structural divergence — needs factory | shared `FrontPanelButton`, per-device layout | 2.2 |
+| ~~Virtual front panel — chassis chrome~~ | absent | ~~`genuinely-dialect`~~ → **`out-of-scope`** (akai opts out 2026-05-25 per operator directive; S3000XL has physical front panel; § 2.4 amended) | n/a — roland keeps its own front-panel component roland-local | n/a (removed from Phase 2) |
+| ~~Virtual front panel — button grid layout~~ | absent | ~~structural divergence — needs factory~~ → **`out-of-scope`** (same § 2.4 amendment) | n/a | n/a (removed from Phase 2) |
 | Theme/dialect tokens | partial (`[data-editor='s3000xl']` 8 tokens) | extend | new (deepen akai scope) | 2.1 |
 
 ### 5.2 Atomic control primitives
