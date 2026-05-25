@@ -49,6 +49,12 @@ export {
 } from './AcEnvelope';
 export { AcEnvelopeAdsr } from './AcEnvelopeAdsr';
 export {
+  AcFrequencyResponse,
+  type AcFrequencyResponseProps,
+  type AcFrequencyResponseFilterType,
+  type AcFrequencyResponseRange,
+} from './AcFrequencyResponse';
+export {
   AcEnvelopeGraph,
   type AcEnvelopeGraphProps,
   type AcEnvelopeGraphSegment,

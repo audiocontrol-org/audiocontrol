@@ -1,0 +1,22 @@
+/*
+ * Frequency-response primitive — landed in akai-harmonization Phase 2
+ * task 2.2 (this dispatch, Commit 2).
+ *
+ * Extracted from `modules/akai-s3k-editor/src/index.css` `.s3k-envelope-
+ * display` + `.s3k-adsr-*` rules (the filter-applicable subset). The
+ * canonical `<AcFrequencyResponse>` React component composes the markup
+ * and consumes the existing `.ac-envelope-graph` / `.ac-envelope-fill` /
+ * `.ac-envelope-line` / `.ac-envelope-grid-line` / `.ac-envelope-point`
+ * chrome from envelope-primitives.css; this file only carries the root
+ * modifier so future per-component tweaks have a stable hook.
+ *
+ * Paired with `envelope-primitives.css`; both are imported by
+ * `styles.css`.
+ */
+
+.ac-frequency-response {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-3);
+  margin-top: var(--ac-space-3);
+}

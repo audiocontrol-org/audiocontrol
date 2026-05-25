@@ -3,36 +3,18 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { AcEnvelope } from './AcEnvelope';
 import { AcEnvelopeAdsr } from './AcEnvelopeAdsr';
+import { stubElementRect } from './__test-utils__/envelopeTestHelpers';
 
 afterEach(() => {
   cleanup();
 });
-
-// jsdom doesn't measure layout, so getBoundingClientRect returns 0-size
-// rects by default. Tests that exercise the pointer-drag pipeline mock
-// the rect to a known fixed size so the pointer-X / pointer-Y math
-// reaches the value-conversion branches under test.
-function stubCanvasRect(canvas: HTMLElement, width = 400, height = 200): void {
-  canvas.getBoundingClientRect = (): DOMRect =>
-    ({
-      x: 0,
-      y: 0,
-      left: 0,
-      top: 0,
-      right: width,
-      bottom: height,
-      width,
-      height,
-      toJSON: () => ({}),
-    } as DOMRect);
-}
 
 function getEnvelopeCanvas(container: HTMLElement): HTMLDivElement {
   const canvas = container.querySelector<HTMLDivElement>('.ac-envelope-canvas');
   if (canvas === null) {
     throw new Error('.ac-envelope-canvas not rendered');
   }
-  stubCanvasRect(canvas);
+  stubElementRect(canvas);
   return canvas;
 }
 
