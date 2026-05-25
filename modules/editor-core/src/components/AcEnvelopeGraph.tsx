@@ -72,7 +72,15 @@ export interface AcEnvelopeGraphProps {
   maxTime?: number;
   maxLevel: number;
   sustainSegment: number;
-  activeSegment: number;
+  /**
+   * 1-based active segment index, or `null` for "no segment is active".
+   * Pre-AUDIT-20260524-15 the type was `number` and the graph relied on
+   * `activeSegment > 0 && <= n` short-circuiting to suppress the active
+   * guide line; new consumers should pass `null` explicitly instead of
+   * a sentinel like `0`, which silently coerces to segment 1 in the
+   * parent `AcEnvelope` clamp helper.
+   */
+  activeSegment: number | null;
   helpText?: string;
   /** Called on press of a segment point; receives the 1-based segment index. */
   onPointSelect?: (index: number) => void;
@@ -218,7 +226,11 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
     <div
       className="ac-envelope-graph"
       role="region"
-      aria-label={`${props.label} — ${n} segments, segment ${props.activeSegment} active`}
+      aria-label={
+        props.activeSegment === null
+          ? `${props.label} — ${n} segments`
+          : `${props.label} — ${n} segments, segment ${props.activeSegment} active`
+      }
     >
       <span className="ac-envelope-graph__label">{props.label}</span>
       {props.onExpand !== undefined ? (
@@ -239,7 +251,7 @@ export function AcEnvelopeGraph(props: AcEnvelopeGraphProps): JSX.Element {
         <svg viewBox="0 0 100 100" preserveAspectRatio="none">
           <EnvelopeGridLines />
           {renderDividers(n)}
-          {props.activeSegment > 0 && props.activeSegment <= n ? (
+          {props.activeSegment !== null && props.activeSegment > 0 && props.activeSegment <= n ? (
             <line
               x1={String(pointsXY[props.activeSegment - 1]?.x ?? 0)}
               y1="0"

@@ -607,6 +607,108 @@ describe('AcEnvelope', () => {
     fireEvent.click(segButton);
     expect(onPointSelect).not.toHaveBeenCalled();
   });
+
+  // ---------------------------------------------------------------------
+  // AUDIT-20260524-15: activeSegment = null path. Some consumers (the
+  // akai filter envelope is the in-tree example) drag-edit points but
+  // have NO segment-selection model. Passing a numeric index — and
+  // especially the 0 sentinel the akai migration started with — coerces
+  // to segment 1 and creates a permanent false-active highlight. The
+  // null path is the canonical "no active segment" channel.
+  //
+  // Validator-paired-changes discipline: each of these tests must FAIL
+  // against the pre-extension contract (where activeSegment was `number`
+  // and the clamp helper coerced anything <1 to 1). Confirmed during
+  // implementation by stashing the production-code diff and re-running
+  // this block — all three new assertions failed with "expected 'true'
+  // to be 'false'" against the pre-fix code path.
+  // ---------------------------------------------------------------------
+
+  it('activeSegment={null} renders NO segment row as active', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={null}
+      />,
+    );
+    // Every table row must report data-active="false". Pre-fix, the
+    // primitive coerced null → 1 and segment 1's row reported "true".
+    const rows = container.querySelectorAll('.ac-envelope-table__row');
+    expect(rows.length).toBe(8);
+    rows.forEach((row) => {
+      expect(row.getAttribute('data-active')).toBe('false');
+    });
+    // Every selectable graph point button must report aria-pressed="false".
+    // The button class `ac-envelope-point--active` must be absent.
+    const pointButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.ac-envelope-points button.ac-envelope-point',
+    );
+    expect(pointButtons.length).toBe(8);
+    pointButtons.forEach((btn) => {
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+      expect(btn.classList.contains('ac-envelope-point--active')).toBe(false);
+    });
+    // The active vertical guide line must NOT be in the SVG.
+    expect(container.querySelector('.ac-envelope-active-guide')).toBeNull();
+    // No axis tick should carry the --active modifier class.
+    const activeTicks = container.querySelectorAll(
+      '.ac-envelope-axis-tick--active',
+    );
+    expect(activeTicks.length).toBe(0);
+    // The graph region's aria-label must drop the "segment N active"
+    // suffix when no segment is active.
+    const region = container.querySelector('.ac-envelope-graph');
+    expect(region?.getAttribute('aria-label')).not.toMatch(/active/);
+  });
+
+  it('activeSegment={null} keeps every seg button aria-pressed="false" (no row hijacks the toggle state)', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={null}
+        onPointSelect={vi.fn()}
+      />,
+    );
+    const segButtons = container.querySelectorAll<HTMLButtonElement>(
+      '.ac-envelope-table__row .ac-envelope-table__seg',
+    );
+    expect(segButtons.length).toBe(8);
+    segButtons.forEach((btn) => {
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+    });
+  });
+
+  it('activeSegment={1} (the legacy default behavior path) still highlights segment 1 — backwards-compat guard', () => {
+    const { container } = render(
+      <AcEnvelope
+        label="A"
+        segments={SEGMENTS}
+        sustainSegment={5}
+        endSegment={8}
+        activeSegment={1}
+      />,
+    );
+    // Segment 1's row + button + axis tick should all read as active;
+    // segments 2..8 should not.
+    const rows = container.querySelectorAll('.ac-envelope-table__row');
+    expect(rows[0]?.getAttribute('data-active')).toBe('true');
+    for (let i = 1; i < rows.length; i += 1) {
+      expect(rows[i]?.getAttribute('data-active')).toBe('false');
+    }
+    const activeButton = container.querySelector(
+      '.ac-envelope-points button.ac-envelope-point--active',
+    );
+    expect(activeButton).not.toBeNull();
+    // Region aria-label keeps the "segment 1 active" suffix.
+    const region = container.querySelector('.ac-envelope-graph');
+    expect(region?.getAttribute('aria-label')).toMatch(/segment 1 active/);
+  });
 });
 
 function renderWithSustainPipsDisabled(

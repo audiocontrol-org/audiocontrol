@@ -50,8 +50,15 @@ export interface AcEnvelopeMultiSegmentProps {
   sustainSegment: number;
   /** 1-based final segment index (used as max for the meta end-pip row). */
   endSegment: number;
-  /** 1-based active segment index, used to highlight the active row + point. */
-  activeSegment: number;
+  /**
+   * 1-based active segment index, used to highlight the active row + point.
+   * Pass `null` (or omit) when the consumer has no segment-selection model
+   * and wants NO segment rendered as active. The akai filter envelope, for
+   * example, is drag-editable but has no selected-segment state — passing a
+   * numeric index there would create a false-active highlight. See
+   * AUDIT-20260524-15 for the regression context.
+   */
+  activeSegment: number | null;
   /** Maximum time value; defaults to 127. */
   maxTime?: number;
   /** Maximum level value; defaults to 127. */
@@ -109,7 +116,11 @@ function AcEnvelopeMultiSegment(props: AcEnvelopeMultiSegmentProps): JSX.Element
   const maxLevel = props.maxLevel ?? 127;
   const endSegment = clampSegment(props.endSegment, totalSegments);
   const sustainSegment = clampSegment(props.sustainSegment, endSegment);
-  const activeSegment = clampSegment(props.activeSegment, endSegment);
+  // `null` activeSegment is the "no segment is active" path; the clamp
+  // helper only runs when the consumer passed a numeric index. The two
+  // sub-surfaces (graph + table) both honor `null` as "do not highlight".
+  const activeSegment =
+    props.activeSegment === null ? null : clampSegment(props.activeSegment, endSegment);
   const segments = props.segments.slice(0, endSegment);
 
   const rootClass = props.className ? `ac-envelope ${props.className}` : 'ac-envelope';

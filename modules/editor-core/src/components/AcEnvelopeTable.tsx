@@ -22,7 +22,14 @@ export interface AcEnvelopeTableProps {
   segments: ReadonlyArray<AcEnvelopeTableSegment>;
   maxTime: number;
   maxLevel: number;
-  activeSegment: number;
+  /**
+   * 1-based active segment index, or `null` for "no row is active".
+   * Pass `null` when the consumer has no segment-selection model (e.g.
+   * the akai filter envelope) — every row will render with
+   * `data-active="false"` and `aria-pressed="false"`. See
+   * AUDIT-20260524-15 for the regression context.
+   */
+  activeSegment: number | null;
   sustainSegment: number;
   onPointSelect?: (index: number) => void;
   /** Called with (segmentIndex 1-based, newTime) when the time bar is dragged or keyboarded. */

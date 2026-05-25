@@ -10,6 +10,12 @@ import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
+import {
+  AKAI_FILTER_FREQ_HZ_RANGE,
+  AKAI_FILTER_RESONANCE_RANGE,
+  dispatchAkaiFilterChange,
+  filfrqToHz,
+} from '@/components/keygroups/akai-filter-adapter';
 
 /**
  * Map the akai 4-segment filter envelope's flat (rates[4], levels[4])
@@ -33,45 +39,6 @@ function akaiFilterEnvSegments(header: KeygroupHeader): AcEnvelopeSegment[] {
  *  (segmentIndex, value) back to the akai header parameter to write. */
 const AKAI_FILTER_ENV_RATE_FIELDS = ['ENV2R1', 'ENV2R2', 'ENV2R3', 'ENV2R4'] as const;
 const AKAI_FILTER_ENV_LEVEL_FIELDS = ['ENV2L1', 'ENV2L2', 'ENV2L3', 'ENV2L4'] as const;
-
-/**
- * Akai S3K FILFRQ parameter range (0..99) mapped to the canonical
- * frequency-response Hz range AcFrequencyResponse consumes. The
- * mapping is exponential — same curve the legacy FilterDisplay used:
- * 0 → 20 Hz, 99 → ~18 kHz, with logarithmic spacing in between.
- *
- * AcFrequencyResponse is the cross-editor primitive (consumed by any
- * future filter-response visualizer); it works in physics units (Hz +
- * dB) because that's the natural domain for filter math. The
- * device-specific 0..99 wire format only exists inside the akai
- * adapter at the call site.
- */
-const AKAI_FILTER_FREQ_MIN_HZ = 20;
-const AKAI_FILTER_FREQ_MAX_HZ = 20_000;
-const AKAI_FILTER_FREQ_RANGE_MAX = 99;
-const AKAI_FILTER_FREQ_HZ_RANGE = {
-  min: AKAI_FILTER_FREQ_MIN_HZ,
-  max: AKAI_FILTER_FREQ_MAX_HZ,
-};
-
-function akaiFilterFreqToHz(filfrq: number): number {
-  return (
-    AKAI_FILTER_FREQ_MIN_HZ *
-    Math.pow(
-      AKAI_FILTER_FREQ_MAX_HZ / AKAI_FILTER_FREQ_MIN_HZ,
-      filfrq / AKAI_FILTER_FREQ_RANGE_MAX,
-    )
-  );
-}
-
-function akaiHzToFilterFreq(hz: number): number {
-  const ratio = Math.log(hz / AKAI_FILTER_FREQ_MIN_HZ) /
-    Math.log(AKAI_FILTER_FREQ_MAX_HZ / AKAI_FILTER_FREQ_MIN_HZ);
-  return Math.max(
-    0,
-    Math.min(AKAI_FILTER_FREQ_RANGE_MAX, Math.round(ratio * AKAI_FILTER_FREQ_RANGE_MAX)),
-  );
-}
 
 
 interface KeygroupEditorProps {
@@ -177,7 +144,7 @@ export function KeygroupEditor({
               maxLevel={99}
               sustainSegment={4}
               endSegment={4}
-              activeSegment={0}
+              activeSegment={null}
               onTimeChange={(segIndex, time) => {
                 const field = AKAI_FILTER_ENV_RATE_FIELDS[segIndex - 1];
                 if (onDragChange) onDragChange(field, time);
@@ -212,19 +179,19 @@ export function KeygroupEditor({
           headerContent={
             <AcFrequencyResponse
               label="FILTER · LPF"
-              frequency={akaiFilterFreqToHz(header.FILFRQ)}
+              frequency={filfrqToHz(header.FILFRQ)}
               resonance={header.FILQ}
               filterType="lowpass"
               freqRange={AKAI_FILTER_FREQ_HZ_RANGE}
-              resonanceRange={{ min: 0, max: 15 }}
+              resonanceRange={AKAI_FILTER_RESONANCE_RANGE}
               onChange={(changes) => {
+                // dispatchAkaiFilterChange rounds + clamps both FILFRQ and
+                // FILQ before forwarding into the integer device fields.
+                // AcFrequencyResponse emits floats during drag; without
+                // this adapter boundary the floats leak into header
+                // writes. See AUDIT-20260524-14.
                 const dispatch = onDragChange ?? ((f: string, v: number) => onParameterChange(f, v));
-                if (changes.frequency !== undefined) {
-                  dispatch('FILFRQ', akaiHzToFilterFreq(changes.frequency));
-                }
-                if (changes.resonance !== undefined) {
-                  dispatch('FILQ', changes.resonance);
-                }
+                dispatchAkaiFilterChange(changes, dispatch);
               }}
               onCommit={onCommitHeader}
             />
