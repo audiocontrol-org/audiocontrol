@@ -210,6 +210,10 @@ export function ProgramsPage(): JSX.Element {
       // Send to device
       await client.renameProgram(index, newName);
       client.invalidateProgramCache();
+      // Rename is a device write — flip the live-status footer from
+      // READY to LIVE so the operator gets the same visible/assistive
+      // confirmation as for header-field edits (AUDIT-20260525-17).
+      setLastEditAt(Date.now());
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to rename program';
       useEditorStore.getState().setError(message);

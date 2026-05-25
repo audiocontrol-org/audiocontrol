@@ -107,6 +107,10 @@ export function SamplesPage(): JSX.Element {
     async (index: number, newName: string) => {
       if (!client) return;
       await client.renameSample(index, newName);
+      // Rename is a device write — flip the live-status footer from
+      // READY to LIVE so the operator gets the same visible/assistive
+      // confirmation as for header-field edits (AUDIT-20260525-17).
+      setLastEditAt(Date.now());
       // Optimistic update
       const names = [...sampleNames];
       names[index] = newName.padEnd(12);

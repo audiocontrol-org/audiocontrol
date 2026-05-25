@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useProgramStore } from '@/stores/programStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { useKeygroupStore } from '@/stores/keygroupStore';
@@ -134,7 +134,14 @@ describe('ProgramsPage delete flow', () => {
     expect(screen.queryByText('Delete Program')).not.toBeInTheDocument();
   });
 
-  it('shows loading status when isLoading with a message', () => {
+  // AUDIT-20260525-18 — the prior test queried screen.getByTestId('loading-status')
+  // and asserted the message included the "(50%)" suffix. The page no
+  // longer renders that test-id; it composes the canonical PageTitleRow
+  // which renders the loading message in `.ac-page-title-metric-status`
+  // (role=status + aria-live=polite) and shows the percentage via a
+  // separate `.ac-page-title-progress` bar's width. Updated test asserts
+  // against the actual current contract.
+  it('shows loading status via PageTitleRow metric-status span when isLoading with a message (AUDIT-20260525-18)', () => {
     useProgramStore.setState({
       programNames: ['PROGRAM1'],
       namesLoaded: true,
@@ -145,9 +152,86 @@ describe('ProgramsPage delete flow', () => {
       loadingProgress: 50,
     });
 
-    render(<ProgramsPage />);
+    const { container } = render(<ProgramsPage />);
 
-    const status = screen.getByTestId('loading-status');
-    expect(status).toHaveTextContent('Loading program names... (50%)');
+    // 1. The loading message is rendered in the canonical metric-status
+    //    span carried by PageTitleRow (the live-region announcement
+    //    surface for the page header — distinct from AcLiveStatusFooter's
+    //    announcement span).
+    const statusSpan = container.querySelector('.ac-page-title-metric-status');
+    expect(statusSpan).not.toBeNull();
+    expect(statusSpan?.textContent).toContain('Loading program names...');
+    expect(statusSpan?.getAttribute('role')).toBe('status');
+    expect(statusSpan?.getAttribute('aria-live')).toBe('polite');
+
+    // 2. The 50% progress is shown via the inline progress bar fill's
+    //    style.width (not appended to the message text). This is the
+    //    actual visual contract the page renders.
+    const progressFill = container.querySelector('.ac-page-title-progress-fill');
+    expect(progressFill).not.toBeNull();
+    expect((progressFill as HTMLElement).style.width).toBe('50%');
+  });
+
+  // AUDIT-20260525-17 — rename is a device write that previously failed
+  // to update lastEditAt; the footer stayed READY even after a successful
+  // rename. This test triggers a rename through the same UI interaction
+  // an operator uses (double-click name => type new name => press Enter)
+  // and asserts the AcLiveStatusFooter visible chrome flips from READY
+  // to LIVE.
+  it('rename via list-row UI flips AcLiveStatusFooter from READY to LIVE (AUDIT-20260525-17)', async () => {
+    const renameProgram = vi.fn().mockResolvedValue(undefined);
+    const invalidateProgramCache = vi.fn();
+    mockUseS3000xlClient.mockReturnValue({
+      client: {
+        renameProgram,
+        invalidateProgramCache,
+        invalidateKeygroupCache: vi.fn(),
+        fetchProgramHeader: vi.fn().mockResolvedValue(undefined),
+      } as unknown as ReturnType<typeof useS3000xlClient>['client'],
+      isConnected: true,
+    });
+
+    useProgramStore.setState({
+      programNames: ['MY PROGRAM '],
+      namesLoaded: true,
+    });
+
+    const { container } = render(<ProgramsPage />);
+
+    // Pre-rename: footer in READY state (no edits yet).
+    const footerText = container.querySelector('.ac-live-status-footer__text');
+    expect(footerText).not.toBeNull();
+    expect(footerText!.textContent).toContain('READY');
+    expect(footerText!.textContent).not.toContain('LIVE');
+
+    // Trigger rename via the same UI interaction the operator uses:
+    // double-click the program name to enter edit mode, type a new
+    // name, press Enter to commit.
+    const programItem = screen.getByTestId('program-item-0');
+    fireEvent.doubleClick(programItem);
+
+    const renameInput = container.querySelector('input.ac-akai-list-rename') as HTMLInputElement | null;
+    expect(renameInput).not.toBeNull();
+    fireEvent.change(renameInput!, { target: { value: 'NEW NAME' } });
+    await act(async () => {
+      fireEvent.keyDown(renameInput!, { key: 'Enter' });
+    });
+
+    // Wait for the async rename callback chain to flush:
+    //   commitRename -> onRename(handleRenameProgram) ->
+    //   client.renameProgram (resolves) -> setLastEditAt(Date.now())
+    await waitFor(() => {
+      expect(renameProgram).toHaveBeenCalledWith(0, 'NEW NAME');
+    });
+
+    await waitFor(() => {
+      const text = container.querySelector('.ac-live-status-footer__text');
+      expect(text!.textContent).toContain('LIVE');
+      expect(text!.textContent).not.toContain('READY');
+    });
+
+    // Discrete announcement also rose on the same edge.
+    const announcement = container.querySelector('.ac-live-status-footer__announcement');
+    expect(announcement!.textContent).toBe('Edit confirmed.');
   });
 });

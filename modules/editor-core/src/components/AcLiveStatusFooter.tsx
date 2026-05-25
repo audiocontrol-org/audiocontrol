@@ -30,11 +30,18 @@
  *         last edit X.Xs ago"; the X.Xs portion is driven by an internal
  *         tick.
  *
- * ARIA: footer is `role="status"` + `aria-live="polite"` so screen readers
- * announce edit confirmations without interrupting other speech.
+ * ARIA — split-contract design (AUDIT-20260525-16):
+ *   The visible chrome (`.ac-live-status-footer` + `__text`) carries NO
+ *   live-region role/aria-live. A dedicated visually-hidden
+ *   `__announcement` span carries `role="status"` + `aria-live="polite"`
+ *   and updates ONLY on the rising edge of `lastEditAt` or a `state`
+ *   transition. Without this split, the 100ms visual tick would re-emit
+ *   the announcement text on every tick and screen readers would
+ *   continuously narrate "...0.4s ago / ...0.5s ago / ..." for the life
+ *   of the session.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export interface AcLiveStatusFooterProps {
   /** Device name shown in the live status text, e.g. "S3000XL" / "S-330" / "S-550". */
@@ -85,6 +92,30 @@ function formatElapsed(elapsedMs: number): string {
   return `${hours}h ${minutes.toString().padStart(2, '0')}m ago`;
 }
 
+/**
+ * Compute the discrete announcement string from the current state +
+ * lastEditAt. Returns '' when there is nothing to announce on initial
+ * mount (state='live' + lastEditAt=null). The returned text is rendered
+ * into the dedicated `__announcement` span and only changes on rising-
+ * edge events — never on visual ticks.
+ */
+function computeAnnouncement(
+  state: 'live' | 'offline' | 'error',
+  lastEditAt: number | null,
+  errorMessage: string | undefined,
+): string {
+  if (state === 'error') {
+    return `Device error: ${errorMessage ?? 'unknown error'}.`;
+  }
+  if (state === 'offline') {
+    return 'Device offline.';
+  }
+  if (lastEditAt === null) {
+    return '';
+  }
+  return 'Edit confirmed.';
+}
+
 export function AcLiveStatusFooter({
   deviceLabel,
   lastEditAt,
@@ -104,31 +135,61 @@ export function AcLiveStatusFooter({
     return () => clearInterval(interval);
   }, [state, lastEditAt]);
 
+  // Announcement is a rising-edge string — derived ONLY from state +
+  // lastEditAt + errorMessage, never from the 100ms tick. Keeping it in
+  // local state (rather than recomputing every render) makes it explicit
+  // that the value changes on the discrete events the component cares
+  // about. The previous announcement is retained across visual ticks so
+  // the assistive-tech reader doesn't re-announce on every render.
+  const previousLastEditAtRef = useRef<number | null>(lastEditAt);
+  const previousStateRef = useRef<typeof state>(state);
+  const [announcement, setAnnouncement] = useState<string>(() =>
+    computeAnnouncement(state, lastEditAt, errorMessage),
+  );
+
+  useEffect(() => {
+    const stateChanged = previousStateRef.current !== state;
+    const editChanged = previousLastEditAtRef.current !== lastEditAt;
+    if (!stateChanged && !editChanged) return;
+    previousStateRef.current = state;
+    previousLastEditAtRef.current = lastEditAt;
+    setAnnouncement(computeAnnouncement(state, lastEditAt, errorMessage));
+  }, [state, lastEditAt, errorMessage]);
+
   const rootClassName = className
     ? `ac-live-status-footer ${className}`
     : 'ac-live-status-footer';
 
-  let statusText: string;
+  let visualText: string;
   if (state === 'error') {
-    statusText = errorMessage ?? 'ERROR';
+    visualText = errorMessage ?? 'ERROR';
   } else if (state === 'offline') {
-    statusText = 'OFFLINE · device disconnected';
+    visualText = 'OFFLINE · device disconnected';
   } else if (lastEditAt === null) {
-    statusText = `READY · ${deviceLabel} connected`;
+    visualText = `READY · ${deviceLabel} connected`;
   } else {
     const elapsed = now - lastEditAt;
-    statusText = `LIVE · writing to ${deviceLabel} · last edit ${formatElapsed(elapsed)}`;
+    visualText = `LIVE · writing to ${deviceLabel} · last edit ${formatElapsed(elapsed)}`;
   }
 
   return (
-    <div
-      className={rootClassName}
-      data-state={state}
-      role="status"
-      aria-live="polite"
-    >
+    <div className={rootClassName} data-state={state}>
       <span className="ac-live-status-footer__led" aria-hidden="true" />
-      <span className="ac-live-status-footer__text">{statusText}</span>
+      {/* Visible chrome — re-rendered every 100ms in 'live' state. NO
+          role/aria-live here; the visual tick must not pollute the
+          assistive-tech announcement queue (AUDIT-20260525-16). */}
+      <span className="ac-live-status-footer__text">{visualText}</span>
+      {/* Discrete announcement — updates ONLY on rising-edge of
+          `lastEditAt` or a `state` transition. Visually hidden via
+          .ac-sr-only so screen readers receive it but sighted users
+          see only the visible chrome above. */}
+      <span
+        className="ac-live-status-footer__announcement ac-sr-only"
+        role="status"
+        aria-live="polite"
+      >
+        {announcement}
+      </span>
     </div>
   );
 }

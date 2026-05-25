@@ -18,13 +18,28 @@ describe('AcLiveStatusFooter', () => {
       expect(html).toContain('ac-live-status-footer__text');
     });
 
-    it('sets role="status" and aria-live="polite" so edits are announced politely', () => {
+    it('split-announcement a11y contract — visible chrome has NO role/aria-live; dedicated visually-hidden announcement span carries them (AUDIT-20260525-16)', () => {
       const { container } = render(
         <AcLiveStatusFooter deviceLabel="S3000XL" lastEditAt={null} />,
       );
+      // Visible chrome: root + text span must NOT carry live-region
+      // attributes (the 100ms tick would otherwise spam announcements).
       const root = container.querySelector('.ac-live-status-footer');
-      expect(root?.getAttribute('role')).toBe('status');
-      expect(root?.getAttribute('aria-live')).toBe('polite');
+      expect(root).not.toBeNull();
+      expect(root?.getAttribute('role')).toBeNull();
+      expect(root?.getAttribute('aria-live')).toBeNull();
+      const text = container.querySelector('.ac-live-status-footer__text');
+      expect(text).not.toBeNull();
+      expect(text?.getAttribute('role')).toBeNull();
+      expect(text?.getAttribute('aria-live')).toBeNull();
+      // Dedicated announcement: in the DOM (so screen readers see it)
+      // and carries the live-region attributes. Visually hidden via
+      // .ac-sr-only utility.
+      const announcement = container.querySelector('.ac-live-status-footer__announcement');
+      expect(announcement).not.toBeNull();
+      expect(announcement?.getAttribute('role')).toBe('status');
+      expect(announcement?.getAttribute('aria-live')).toBe('polite');
+      expect(announcement?.classList.contains('ac-sr-only')).toBe(true);
     });
 
     it('appends a custom className to the root', () => {
@@ -220,5 +235,138 @@ describe('AcLiveStatusFooter', () => {
       expect(text?.textContent).toContain('LIVE');
       vi.useRealTimers();
     });
+  });
+
+  describe('split-announcement live-region behavior (AUDIT-20260525-16)', () => {
+    it('does NOT churn the live-region announcement during 100ms visual ticks', () => {
+      // 50 ticks over 5s with a fixed lastEditAt: the visual text MUST
+      // tick (proves the timer is running), the announcement text MUST
+      // stay frozen (proves the live region is not polluted).
+      const now = Date.now();
+      vi.useFakeTimers();
+      vi.setSystemTime(now);
+
+      const { container } = render(
+        <AcLiveStatusFooter deviceLabel="S3000XL" lastEditAt={now} state="live" />,
+      );
+
+      const announcement = container.querySelector('.ac-live-status-footer__announcement');
+      expect(announcement).not.toBeNull();
+      const initialAnnouncementText = announcement!.textContent;
+      // Rising-edge from initial mount with non-null lastEditAt =>
+      // announcement is "Edit confirmed."
+      expect(initialAnnouncementText).toBe('Edit confirmed.');
+
+      const visualText = container.querySelector('.ac-live-status-footer__text');
+      const initialVisualText = visualText!.textContent;
+      expect(initialVisualText).toMatch(/0\.0s ago/);
+
+      // Advance 5 seconds in 100ms increments (50 ticks).
+      for (let i = 0; i < 50; i++) {
+        act(() => {
+          vi.setSystemTime(now + 100 * (i + 1));
+          vi.advanceTimersByTime(100);
+        });
+      }
+
+      // Announcement text MUST be identical (no rising-edge events
+      // occurred — lastEditAt didn't change, state didn't change).
+      expect(announcement!.textContent).toBe(initialAnnouncementText);
+      expect(announcement!.textContent).toBe('Edit confirmed.');
+
+      // Visual text MUST have ticked forward (proves the 100ms timer is
+      // actually running — without this assertion a bug that froze the
+      // timer entirely would also "pass" the no-churn check). Allow
+      // ±100ms slop because setSystemTime + advanceTimersByTime can
+      // interleave a tick before/after the system-time bump.
+      expect(visualText!.textContent).not.toBe(initialVisualText);
+      expect(visualText!.textContent).toMatch(/(4\.9|5\.0|5\.1)s ago/);
+
+      vi.useRealTimers();
+    });
+
+    it('updates the announcement once on the rising edge of a new lastEditAt', () => {
+      const start = Date.now();
+      vi.useFakeTimers();
+      vi.setSystemTime(start);
+
+      // First mount: lastEditAt=null => empty announcement (no rising
+      // edge yet — initial-mount with null is the "ready" state and
+      // should not narrate anything).
+      const { container, rerender } = render(
+        <AcLiveStatusFooter deviceLabel="S3000XL" lastEditAt={null} state="live" />,
+      );
+      const announcement = container.querySelector('.ac-live-status-footer__announcement');
+      expect(announcement!.textContent).toBe('');
+
+      // First edit: lastEditAt transitions null -> timestamp. Rising
+      // edge fires; announcement becomes "Edit confirmed."
+      rerender(
+        <AcLiveStatusFooter deviceLabel="S3000XL" lastEditAt={start} state="live" />,
+      );
+      expect(announcement!.textContent).toBe('Edit confirmed.');
+
+      // Second edit (different timestamp): rising edge fires again.
+      // Even though the announcement text is the same string, the
+      // setState call still happens — assistive tech that watches for
+      // mutations will re-announce. We assert the state actually
+      // updated by switching to a different state value first, then
+      // back, to prove the rising-edge handler runs.
+      rerender(
+        <AcLiveStatusFooter deviceLabel="S3000XL" lastEditAt={start} state="offline" />,
+      );
+      expect(announcement!.textContent).toBe('Device offline.');
+      rerender(
+        <AcLiveStatusFooter deviceLabel="S3000XL" lastEditAt={start + 5_000} state="live" />,
+      );
+      expect(announcement!.textContent).toBe('Edit confirmed.');
+
+      vi.useRealTimers();
+    });
+
+    // State-transition matrix: rising-edge from `live` to each
+    // non-live state should produce the documented announcement.
+    // Parameterized to keep the DRY constraint — each row exercises
+    // exactly one state branch of `computeAnnouncement`.
+    const stateTransitionCases = [
+      {
+        label: 'state="offline"',
+        nextProps: { lastEditAt: 'start' as const, state: 'offline' as const },
+        expected: 'Device offline.',
+      },
+      {
+        label: 'state="error" (with errorMessage)',
+        nextProps: {
+          lastEditAt: 'start' as const,
+          state: 'error' as const,
+          errorMessage: 'SCSI timeout — write failed',
+        },
+        expected: 'Device error: SCSI timeout — write failed.',
+      },
+    ] as const;
+
+    for (const { label, nextProps, expected } of stateTransitionCases) {
+      it(`switches announcement to "${expected}" on ${label}`, () => {
+        const start = Date.now();
+        vi.useFakeTimers();
+        vi.setSystemTime(start);
+        const { container, rerender } = render(
+          <AcLiveStatusFooter deviceLabel="S3000XL" lastEditAt={start} state="live" />,
+        );
+        const announcement = container.querySelector('.ac-live-status-footer__announcement');
+        expect(announcement!.textContent).toBe('Edit confirmed.');
+        const resolvedLastEditAt = nextProps.lastEditAt === 'start' ? start : nextProps.lastEditAt;
+        rerender(
+          <AcLiveStatusFooter
+            deviceLabel="S3000XL"
+            lastEditAt={resolvedLastEditAt}
+            state={nextProps.state}
+            errorMessage={'errorMessage' in nextProps ? nextProps.errorMessage : undefined}
+          />,
+        );
+        expect(announcement!.textContent).toBe(expected);
+        vi.useRealTimers();
+      });
+    }
   });
 });
