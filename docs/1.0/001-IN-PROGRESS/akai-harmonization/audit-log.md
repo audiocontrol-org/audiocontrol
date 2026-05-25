@@ -11,6 +11,89 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-24 Feature review — latest AcRadioTabs promotion/migration work
+
+Surfaced while reviewing the latest `AcRadioTabs` promotion and Akai `VelocityZoneEditor` migration commits through `1ae3420f` on 2026-05-24 (`a444acd5`, `b5d30089`, `3b93fa91`). This pass was a code-review audit of the shared primitive, its CSS promotion, and the Akai consumer.
+
+### Promoting radio-tab chrome into global `.ac-tabs` / `.ac-tab` selectors regresses existing button-tab consumers in editor-core
+
+Finding-ID: AUDIT-20260524-10
+Status:     open
+Severity:   high
+Surface:    `modules/editor-core/src/design/tab-primitives.css`, `modules/editor-core/src/design/layout-primitives.css`, `modules/editor-core/src/components/library/LibraryPanel.tsx`, `modules/editor-core/src/components/layout/BuildInfo.tsx`
+
+The `AcRadioTabs` promotion moved the radio-tab chrome into `editor-core/src/design/tab-primitives.css`, but it did so by globally overriding the pre-existing `.ac-tabs` and `.ac-tab` classes used by non-radio tab bars elsewhere in editor-core. The new rule explicitly forces `.ac-tabs { display: block; border-bottom: 0; }` (`tab-primitives.css:45-56`) and redefines `.ac-tab` with `border: ... solid transparent; border-bottom: 0;` plus the radio-tab-specific underline model on `::after` (`tab-primitives.css:90-129`). Those rules are imported globally from `styles.css`, after the original generic tab styles in `layout-primitives.css`.
+
+That breaks the two existing button-tab consumers that still rely on the old flex-row + `.ac-tab--active` contract:
+
+- `LibraryPanel` renders `<div className="ac-tabs">` with `<button className="ac-tab ... ac-tab--active">` children (`LibraryPanel.tsx:102-117`)
+- `BuildInfo` does the same for its Info / Logs toggle (`BuildInfo.tsx:148-167`)
+
+Under the promoted CSS, those buttons no longer live in a flex row because `.ac-tabs` is now `display: block`, so the tabs stack vertically. Their active underline also disappears because the legacy active state still only sets `border-bottom-color` (`layout-primitives.css:527-530`), while the promoted `.ac-tab` zeroes the bottom-border width entirely (`tab-primitives.css:104-105`). The radio-tab pattern is correct for `AcRadioTabs`, but it is now unintentionally restyling unrelated button tabs that never opted into that primitive.
+
+**Evidence:**
+
+- Legacy generic tab contract:
+  - `modules/editor-core/src/design/layout-primitives.css:503-530`
+- Promoted radio-tab rules globally override the same class names:
+  - `modules/editor-core/src/design/tab-primitives.css:45-56`
+  - `modules/editor-core/src/design/tab-primitives.css:90-129`
+- Existing non-radio consumers still use those class names directly:
+  - `modules/editor-core/src/components/library/LibraryPanel.tsx:102-117`
+  - `modules/editor-core/src/components/layout/BuildInfo.tsx:148-167`
+
+**Expected:** the radio-tab promotion should scope its chrome to the `AcRadioTabs` structure (`.ac-tab-strip`, `.ac-panels`, etc.) or a dedicated modifier class, without changing the layout and active-state contract of existing button-tab bars.
+
+**Actual:** the shared promotion silently changes existing button-tab bars from horizontal flex tabs to vertical block-stacked tabs and removes their active underline.
+
+**Fix guidance:** separate the two tab systems instead of reusing the same top-level class names. Either:
+1. scope the radio-tab shell under a dedicated root class from `AcRadioTabs` (for example `ac-radio-tabs`), leaving `.ac-tabs` / `.ac-tab` for the old button-tab system, or
+2. migrate `BuildInfo` and `LibraryPanel` onto a new canonical button-tab primitive in the same commit-set and remove the old layout-primitives rules entirely.
+
+At minimum, add regression coverage for `BuildInfo` and `LibraryPanel` before changing any more shared tab CSS.
+
+### The promoted `AcRadioTabs` primitive exposes tab semantics on focusable labels, but it does not implement the ARIA tab interaction contract
+
+Finding-ID: AUDIT-20260524-11
+Status:     open
+Severity:   medium
+Surface:    `modules/editor-core/src/components/AcRadioTabs.tsx`, `modules/editor-core/src/components/AcRadioTabs.test.tsx`, `modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx`, `modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx`, `modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx`
+
+`AcRadioTabs` now lives in editor-core and is the canonical cross-editor primitive, but it still exposes a faux ARIA tablist without implementing the behavior or state that role set promises. The visible labels render as `role="tab"` with `tabIndex={0}` (`AcRadioTabs.tsx:120-129`), while the real controls are separate hidden radio inputs (`AcRadioTabs.tsx:99-117`, with the hide rules at `tab-primitives.css:58-66`). The labels never set `aria-selected`, never expose `aria-controls`, and there is no keyboard handler for Left/Right/Home/End tab navigation or activation. The panels similarly have `role="tabpanel"` with only `aria-labelledby`, but no matching panel id/controls relationship (`AcRadioTabs.tsx:162-167`).
+
+That creates a shared accessibility regression across every adopter of the promoted primitive:
+
+- Roland `PatchEditorTabs`
+- Roland `ToneEditorTabs`
+- Akai `VelocityZoneEditor`
+
+Keyboard and assistive-technology users will encounter elements announced as tabs, but the widget does not behave like a tablist. The new tests also do not cover this contract; they only assert DOM shape, checked-state serialization, and mouse-click forwarding (`AcRadioTabs.test.tsx:55-260`).
+
+**Evidence:**
+
+- Faux tab roles on labels and hidden radios as the real state carriers:
+  - `modules/editor-core/src/components/AcRadioTabs.tsx:99-129`
+  - `modules/editor-core/src/design/tab-primitives.css:58-66`
+- Panels expose `role="tabpanel"` but no `aria-controls` linkage from the tabs:
+  - `modules/editor-core/src/components/AcRadioTabs.tsx:162-167`
+- Current tests cover click and markup shape only, not keyboard/ARIA behavior:
+  - `modules/editor-core/src/components/AcRadioTabs.test.tsx:55-260`
+- Current adopters now depend on the shared primitive:
+  - `modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx:194-205`
+  - `modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx`
+  - `modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx`
+
+**Expected:** either expose honest radio-group semantics (and stop declaring `role="tablist"` / `role="tab"` / `role="tabpanel"`), or implement the full ARIA tabs contract: selected-state attributes, controls linkage, and keyboard navigation/activation behavior.
+
+**Actual:** the primitive advertises ARIA tab semantics without implementing the required state and keyboard behavior.
+
+**Fix guidance:** pick one model and make it coherent. The lower-risk path is usually to lean into radios:
+1. remove the tab roles,
+2. expose a real radio-group label,
+3. let the native radio inputs own focus/keyboard semantics.
+
+If the project wants actual tabs, then the component needs a proper tab roving-focus implementation plus `aria-selected` / `aria-controls` wiring and matching tests.
+
 ## 2026-05-24 Feature review — latest shell-contract closure verification
 
 Surfaced while reviewing the latest shell-contract closure commits through `0bcadbe1` on 2026-05-24, after `AUDIT-20260524-06` and `-07` were marked verified. This pass was a code-review audit of the new harness/spec work; I did not complete a full Playwright run in this pass. I did confirm that the ordinary module `pnpm test` script does not pick up `test/ui/**`, so these findings are based on the code and runner wiring rather than an end-to-end browser execution.
