@@ -49,6 +49,7 @@ STAGED_NAMES="$(git diff --cached --name-only --diff-filter=ACM || true)"
 HAS_CSS=0
 HAS_TS=0
 HAS_CLONES_YAML=0
+HAS_EDITOR_CORE_CSS_OR_PKG=0
 if printf '%s\n' "$STAGED_NAMES" | grep -qE '\.(css|scss)$'; then
   HAS_CSS=1
 fi
@@ -57,6 +58,20 @@ if printf '%s\n' "$STAGED_NAMES" | grep -qE '\.tsx?$'; then
 fi
 if printf '%s\n' "$STAGED_NAMES" | grep -qxF 'docs/scope-discovery/clones.yaml'; then
   HAS_CLONES_YAML=1
+fi
+# akai-harmonization workplan task 2.9 — fire the editor-core CSS-
+# exports gate when either side of the pairing is staged: a new/edited
+# CSS file under modules/editor-core/src/design/ OR a change to
+# modules/editor-core/package.json. The CSS-only check above also
+# fires on the design dir but does not invoke this specific gate;
+# the package.json case below is the one this conditional uniquely
+# covers (package.json is not a `.css`/`.scss` file, so HAS_CSS=0
+# when only the exports block changes).
+if printf '%s\n' "$STAGED_NAMES" | grep -qE '^modules/editor-core/src/design/[^/]+\.css$'; then
+  HAS_EDITOR_CORE_CSS_OR_PKG=1
+fi
+if printf '%s\n' "$STAGED_NAMES" | grep -qxF 'modules/editor-core/package.json'; then
+  HAS_EDITOR_CORE_CSS_OR_PKG=1
 fi
 
 # -----------------------------------------------------------------------
@@ -93,6 +108,14 @@ if [ "$PRE_COMMIT_SHORT_CIRCUIT" = "1" ]; then
     # zero cost for this gate.
     echo "pre-commit: checking clones.yaml disposition-survivor invariant…"
     make --no-print-directory check-disposition-survivor
+  fi
+  if [ "$HAS_EDITOR_CORE_CSS_OR_PKG" = "1" ]; then
+    # akai-harmonization workplan task 2.9 — every src/design/*.css
+    # file must have a matching exports entry, and every design-scoped
+    # exports entry must point to an existing file. Catches the
+    # "promoted a primitive but forgot the exports entry" pathology.
+    echo "pre-commit: checking editor-core CSS exports completeness…"
+    make --no-print-directory check-editor-core-css-exports
   fi
   exit 0
 fi
@@ -155,6 +178,13 @@ if [ "$HAS_CLONES_YAML" = "1" ]; then
   # silently transitions from a protected disposition to `pending` in
   # the staged diff against HEAD.
   run_gate check-disposition-survivor make --no-print-directory check-disposition-survivor
+fi
+if [ "$HAS_EDITOR_CORE_CSS_OR_PKG" = "1" ]; then
+  # akai-harmonization workplan task 2.9. Pre-commit invariant: every
+  # modules/editor-core/src/design/*.css file is exported via
+  # modules/editor-core/package.json "exports:", and no design-scoped
+  # exports entry points to a missing file.
+  run_gate check-editor-core-css-exports make --no-print-directory check-editor-core-css-exports
 fi
 
 # Tally failures + render the consolidated report. Format: failure
