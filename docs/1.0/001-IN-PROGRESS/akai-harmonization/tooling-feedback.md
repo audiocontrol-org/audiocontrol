@@ -18,7 +18,7 @@ Severity: **high** (blocks work or hides bugs) · **medium** (slows work meaning
 
 This log tracks **scope-discovery + duplication tooling** friction only. Entries that turned out to be implementation work in other modules were re-scoped into [`workplan.md`](./workplan.md) on 2026-05-24 (see "Re-scoped out of this log" below).
 
-**All 7 logged scope-discovery TF entries are now closed** — 6 by PR #462 (2026-05-24) and TF-013 by PR #463 (2026-05-24 evening). No open scope-discovery tooling friction remains from this feature's Phase 2 work.
+**7 of 9 logged scope-discovery TF entries are now closed** — 6 by PR #462 (2026-05-24) and TF-013 by PR #463 (2026-05-24 evening). 2 new entries (TF-014 + TF-015) filed 2026-05-24 evening from the AcZoneStrip extraction dispatch; both low-severity but real authoring-discipline gaps in the clone-detector + anti-pattern workflows.
 
 | TF | Status | Closing commit |
 |---|---|---|
@@ -29,6 +29,8 @@ This log tracks **scope-discovery + duplication tooling** friction only. Entries
 | TF-006 | Addressed | `4278986f` (PR #462) — synthesizer References warning gains paste-ready skeleton |
 | TF-010 | Addressed | `837c9336` (PR #462) — check-adopters summary moves to last line + --quiet flag |
 | TF-013 | Addressed | `6a1f8365` (PR #463) — disposition-survivor gate + strict-parse fix |
+| TF-014 | Open (low) | — — `batch-dispose.ts` workflow gap (refresh-baseline is a separate prereq step) |
+| TF-015 | Open (low) | — — anti-pattern regex prefix-matching trap (sibling classes false-positive without explicit negative-test scenarios) |
 
 A parallel improvement landed in `676dd164` on this branch — the `imports:` field on adopter-manifests entries lets the gate distinguish "imports the canonical primitive" from "imports some other symbol from the same package," and recognizes transitive adoption via wrapping primitives (e.g., SteppedProgressDrawer wraps SlideDrawer; importing the wrapper now counts). Not a TF entry of its own — it surfaced as a finding during the SlideDrawer adoption work and was fixed in the same commit pair.
 
@@ -160,6 +162,44 @@ This session: after the sub-agent dispatch for harness pages + shell-contract sp
 The middle option seems most aligned with the existing scope-discovery design (machine artifacts vs operator artifacts, audited separately). It would also make the `clones-dispositions.yaml` file the single place operators look for "what have we decided to keep, and why" — useful for new operators joining a feature.
 
 **Addressed by:** `6a1f8365` (fix(scope-discovery-protocol): disposition-survivor gate + strict-parse fix, PR #463). Tools team picked the "Heavy" option from my suggested-fix list — a pre-commit `check-disposition-survivor` gate (`tools/scope-discovery/check-disposition-survivor.ts`, 309 lines) that fails the commit if any staged diff transitions a clones.yaml group from `keep-with-reason` / `refactor` / `ignore-with-justification` → `pending` without operator-conscious confirmation. Paired strict-parse fix (`tools/scope-discovery/clones-yaml.parse.ts`, 237 lines) ensures the YAML loader is strict-mode about disposition shape so the gate's comparison is deterministic. Paired adversarial scenarios across two new validators: `disposition-survivor.validate.ts` (319 lines, full subprocess invocation suite) + `disposition-survivor.gate-scenarios.ts` (268 lines, fixture-based gate scenarios). Audit-log filed as AUDIT-20260524-14 in scope-discovery-protocol (referenced in `b6e32883`). Verified locally post-merge: `pnpm test:scope-discovery` includes the new validator suites in its run; all green. The recurrence of TF-013 across my session's 8+ commits (every commit had the workdir regen) should stop now — the gate either prevents the silent disposition wipe at commit time OR fires loudly to surface it.
+
+---
+
+## TF-014 · CL · low · `batch-dispose.ts` requires IDs to already exist in clones.yaml; refresh-baseline is a separate prereq step
+
+**Repro:** During the AcZoneStrip extraction dispatch (commits `03f36ce3..b9e7dbf8`), the sub-agent detected 5 NEW intra-file boilerplate clone groups created by the extraction. Tried to run `tsx tools/scope-discovery/batch-dispose.ts --ids <new-ids> --disposition keep-with-reason --reason "..."` to mark them. The tool rejected the call with an error indicating the IDs weren't present in `docs/scope-discovery/clones.yaml`. The sub-agent had to first run `tsx tools/scope-discovery/clone-detector.ts --refresh-baseline` to write the new IDs as `pending`, THEN batch-dispose worked.
+
+This is a two-step workflow that the operator-facing help text doesn't surface clearly. A new clone group's lifecycle is: `detector finds it → refresh-baseline writes it as pending → batch-dispose updates the disposition → pre-commit gate validates the diff`. Skipping the refresh-baseline step leaves the operator stuck (the error doesn't suggest the fix).
+
+**Workaround used:** ran refresh-baseline first, then batch-dispose. Documented for future dispatchers.
+
+**Suggested fix:** several shapes:
+- (Light) `batch-dispose.ts`'s error message could explicitly cite the `--refresh-baseline` prereq when it rejects unknown IDs ("ID `xxx` not in clones.yaml; run `tsx tools/scope-discovery/clone-detector.ts --refresh-baseline` first to add it as pending, then re-run this command").
+- (Medium) `batch-dispose.ts` could auto-run the refresh-baseline check internally when given IDs not currently in the file — single command, no operator-visible two-step.
+- (Heavy) The clone-detector could emit a paste-ready `batch-dispose.ts --ids X --disposition pending --reason "(default)"` command on stderr when it finds NEW groups, completing the loop already partially built by TF-003's closure (`10dee19f` — clone-detector cites batch-dispose for NEW groups). Currently the hint command works for IDs already in the file, not for the truly-new ones the detector just discovered.
+
+The Heavy option pairs well with the existing TF-003 fix: TF-003 closes the gap for IDs the detector finds but the operator hasn't dispositioned; TF-014 closes the gap for IDs that don't exist in the file yet.
+
+---
+
+## TF-015 · A · low · Anti-pattern regex authoring trips on prefix-matching; sibling classes silently false-positive
+
+**Repro:** During the AcZoneStrip extraction dispatch (commit `cfe6337b`), the sub-agent authored a new anti-pattern entry (`inline-zone-segment-bar`) with an initial pattern `\bac-zone-(segment|handle)\b`. The intent was to flag re-introduction of the canonical `.ac-zone-segment` / `.ac-zone-handle` chrome that AcZoneStrip now encapsulates. The pattern looked correct — both class-name fragments are bounded by word-boundaries.
+
+But the regex flagged 6 false positives in the broader codebase: JSDoc comments and CSS sibling classes that share the `ac-zone-` prefix but aren't the targeted shape (`.ac-zone-bar`, `.ac-zone-section`, `.ac-zone-axis`, `.ac-zone-form`, `.ac-keygroup-zone-rect`). The `\b` boundary doesn't help because `-` is a non-word character; `ac-zone-bar` matches `ac-zone-` as the prefix and `bar` happens to start a word. The pattern needed tightening to `\bac-zone-(segment(--off|--editing|--dragging|-body)?|handle(--start|--end|--dragging)?)\b` — explicit per-suffix alternation rather than naive prefix-plus-bare-segment.
+
+The author has to remember to write negative-test scenarios for prefix collisions. The gutted-stub self-check pattern (which every adversarial scenario file includes) covers the case "scanner returns empty → assertion fails" but does NOT cover "scanner matches sibling classes that share a prefix → assertion silently over-matches." The sub-agent caught this only because the false positives blocked the gate-clean assertion; without that secondary signal, the overbroad pattern could ship and silently flag every related class as an anti-pattern in future commits.
+
+**Workaround used:** tightened the regex to enumerate explicit class-suffix shapes. Added negative-test scenarios to the paired adversarial scenario file asserting that sibling classes (`.ac-zone-bar`, `.ac-zone-section`, `.ac-zone-axis`, `.ac-zone-form`, `.ac-keygroup-zone-rect`) do NOT match.
+
+**Suggested fix:**
+- (Light) Anti-pattern entry-author convention: every new entry with a `pattern:` field that uses prefix-style matching MUST include negative-test scenarios for each related sibling class. The convention lives in the `tools/scope-discovery/anti-patterns.<id>-scenarios.ts` author template (currently each scenario file has positive + gutted-stub; add a "negative-match sibling classes" section).
+- (Medium) Anti-pattern registry schema gains an optional `negative_match_classes:` array (e.g., `[".ac-zone-bar", ".ac-zone-section"]`); the validator auto-generates negative-test scenarios asserting those classes do NOT match the pattern. Authoring discipline shifts from "remember to write negative scenarios" to "declare the sibling classes to protect."
+- (Heavy) Anti-pattern validator runs the pattern against a corpus of common-prefix class names sampled from the actual codebase (grep for all `.${prefix}-*` classes) and reports any matches as authoring warnings ("your pattern matches N sibling classes; declare excludes or tighten the regex").
+
+The Medium option fits the existing scope-discovery design (registries are the source of truth; validators enforce shape). Pairs well with TF-002's primitive-relocation awareness, where the registry already carries `excludes_paths:` for the canonical-file case — extending to `negative_match_classes:` is a natural shape-fit.
+
+**Note on overlap with the validator-paired-changes rule:** the agent-discipline.md "Validator-paired changes" section says new gate-semantic changes ship with adversarial scenarios that would have FAILED against the prior behavior. That rule is upstream of THIS friction — it requires SOMEONE to write the negative scenarios, but doesn't enforce the "sibling-class prefix collision" specific case. TF-015's fix would close that subgap.
 
 ---
 
