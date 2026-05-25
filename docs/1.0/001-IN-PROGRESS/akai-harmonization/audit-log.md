@@ -11,6 +11,96 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-25 Feature review — latest AcLiveStatusFooter primitive + adoption work
+
+Surfaced while reviewing the `AcLiveStatusFooter` extraction/adoption commits `1e6e40ad`, `a7b1773f`, and `16f97e34` on 2026-05-25. Targeted local verification runs:
+
+- `pnpm --filter @audiocontrol/editor-core test -- AcLiveStatusFooter.test.tsx` — passed (`16` tests)
+- `pnpm --filter @audiocontrol/akai-s3k-editor test -- ProgramsPage.test.tsx` — failed (`1` of `5` tests), see `AUDIT-20260525-18`
+
+### AcLiveStatusFooter turns a 100ms self-updating elapsed timer into a polite live-region announcement source
+
+Finding-ID: AUDIT-20260525-16
+Status:     open
+Severity:   high
+Surface:    `modules/editor-core/src/components/AcLiveStatusFooter.tsx`, `modules/editor-core/src/components/AcLiveStatusFooter.test.tsx`
+
+`AcLiveStatusFooter` starts a `setInterval(..., 100)` whenever `state === 'live'` and `lastEditAt !== null`, updating its rendered text every tenth of a second (`AcLiveStatusFooter.tsx:99-105`, `119-120`). The same root node is exposed as `role="status"` and `aria-live="polite"` (`AcLiveStatusFooter.tsx:123-129`), and the current test suite explicitly locks that contract in (`AcLiveStatusFooter.test.tsx:21-27`).
+
+That means the component is not just visually updating every 100ms; it is mutating the contents of a polite live region every 100ms. After the first successful write, the text changes from `...0.1s ago` to `...0.2s ago` to `...0.3s ago` and so on. Screen readers are therefore being handed a continuous stream of live-region mutations for as long as the page stays open after an edit, which is not a reasonable announcement contract for a status footer.
+
+**Evidence:**
+
+- 100ms interval updates the rendered status text:
+  - `modules/editor-core/src/components/AcLiveStatusFooter.tsx:99-105`
+  - `modules/editor-core/src/components/AcLiveStatusFooter.tsx:119-120`
+- Same node is a live region:
+  - `modules/editor-core/src/components/AcLiveStatusFooter.tsx:123-129`
+- Tests currently bless that exact ARIA contract:
+  - `modules/editor-core/src/components/AcLiveStatusFooter.test.tsx:21-27`
+
+**Expected:** the footer may visually refresh elapsed time, but assistive-tech announcements should be tied to discrete state changes or confirmed writes, not to a continuously ticking timer string.
+
+**Actual:** every 100ms elapsed-time tick mutates a polite live region.
+
+**Fix guidance:** split the announcement contract from the visual timer. For example, keep a non-live visual `"last edit X.Xs ago"` readout, and expose only the discrete write confirmation through a separate announcement channel or a non-ticking status string. Closure should require a regression test that proves fake-timer advancement does NOT create repeated live-region text churn after the initial write announcement.
+
+### The Akai footer wiring misses successful rename writes, so the page can still say READY after a confirmed device edit
+
+Finding-ID: AUDIT-20260525-17
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx`, `modules/akai-s3k-editor/src/pages/SamplesPage.tsx`
+
+On both Akai adopters, the new footer timestamp is updated after successful detail-pane header writes (`ProgramsPage.tsx:87-110`, `SamplesPage.tsx:89-103`), but not after successful list-row rename writes. `handleRenameProgram` awaits `client.renameProgram(index, newName)` and invalidates cache, but never calls `setLastEditAt(...)` (`ProgramsPage.tsx:196-221`). `handleRename` on Samples does the same for `client.renameSample(...)` (`SamplesPage.tsx:106-121`).
+
+That leaves a visible behavior hole in the new live-status affordance: the operator can perform a successful device write from the page, watch the name update, and still see `READY · S3000XL connected` in the footer because the rename path never transitions it to a live-edited state.
+
+**Evidence:**
+
+- Program header writes update the footer timestamp:
+  - `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:87-110`
+- Program rename writes do not:
+  - `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:196-221`
+- Sample header writes update the footer timestamp:
+  - `modules/akai-s3k-editor/src/pages/SamplesPage.tsx:89-103`
+- Sample rename writes do not:
+  - `modules/akai-s3k-editor/src/pages/SamplesPage.tsx:106-121`
+
+**Expected:** any successful device write on a page that advertises the live-edit footer should transition the footer out of `READY` and record the latest confirmed write time.
+
+**Actual:** successful rename writes leave the footer stale.
+
+**Fix guidance:** call `setLastEditAt(Date.now())` after successful rename writes on both pages, then add page-level regression coverage that proves a rename action advances the footer from `READY` to `LIVE`. This should be tested at the page layer, not only in the shared primitive, because the bug is in the adopter wiring.
+
+### ProgramsPage’s local unit suite is stale and red at branch head, so the new shell/footer work is not landing with the required regression coverage
+
+Finding-ID: AUDIT-20260525-18
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/test/unit/pages/ProgramsPage.test.tsx`
+
+The existing `ProgramsPage` unit suite is currently failing at branch head. The `shows loading status when isLoading with a message` test still queries `screen.getByTestId('loading-status')` and expects the old combined text contract (`ProgramsPage.test.tsx:137-151`), but the page now renders the shared `PageTitleRow` metric/progress shape instead. Local run:
+
+- `pnpm --filter @audiocontrol/akai-s3k-editor test -- ProgramsPage.test.tsx`
+- Result: `1` failed, `4` passed
+- Failure: `Unable to find an element by: [data-testid="loading-status"]`
+
+This is not just a stale assertion. It means the implementation landed without a page-level regression gate for the new title-row/footer contract, and there is still no page test covering the new `AcLiveStatusFooter` READY/live transition wiring on ProgramsPage.
+
+**Evidence:**
+
+- Stale assertion against removed contract:
+  - `modules/akai-s3k-editor/test/unit/pages/ProgramsPage.test.tsx:137-151`
+- Local verification run at branch head fails with:
+  - `Unable to find an element by: [data-testid="loading-status"]`
+
+**Expected:** the page suite should be updated in the same implementation wave so the new shell/title-row/footer contract is both green and protective.
+
+**Actual:** the branch carries a red page-level test, and the surviving suite does not cover the new footer behavior.
+
+**Fix guidance:** update `ProgramsPage.test.tsx` to assert the shared `PageTitleRow` loading metric/progress contract that actually renders now, and add explicit footer regression coverage at the page layer. Minimum closure bar: one green test for the loading metric/progress shape, and one green test proving a successful page write flips the footer from `READY` to `LIVE`.
+
 ## 2026-05-24 Feature review — latest AcEnvelope / AcFrequencyResponse migration work
 
 Surfaced while reviewing the `AcEnvelope` / `AcFrequencyResponse` extraction and Akai migration commits through `d524da07`, `b83318d3`, `2f949329`, `1a47b60c`, and `0ffe43f6` on 2026-05-24. Targeted local verification runs:
