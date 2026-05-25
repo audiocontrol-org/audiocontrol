@@ -1,3 +1,28 @@
+/**
+ * KeyRangeEditor — unit tests post-AcZoneStrip migration.
+ *
+ * After akai-harmonization Phase 2 task 2.2 Commit 3, KeyRangeEditor
+ * is a thin wrapper around <AcZoneStrip> (per-edge handle mode) that
+ * (a) maps the single low/high note range to an AcZoneStripZone,
+ * (b) owns the pointer-driven low/high drag tracking, (c) keeps the
+ * range-display text + octave markers + numeric inputs as axis /
+ * paired editors around the strip.
+ *
+ * The pre-migration tests asserted `role="slider"` + `aria-valuenow`
+ * on the per-edge handle divs. AcZoneStrip's handles use
+ * `role="separator"` (which the WCAG drag-affordance pattern calls
+ * for) — those handle-shape assertions are retired in favor of
+ * structural assertions on the AcZoneStrip primitive (it owns its
+ * own a11y tests in editor-core). What this test asserts is the
+ * KeyRangeEditor wrapper's contract:
+ *   - the range display + numeric inputs reflect the LONOTE/HINOTE
+ *     props,
+ *   - numeric input edits fire onChange with the right field name,
+ *   - clamp behavior survives the migration,
+ *   - the bar carries a single AcZoneStripZone with two per-edge
+ *     handles.
+ */
+
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
@@ -115,7 +140,39 @@ describe('KeyRangeEditor', () => {
     expect(onChange).toHaveBeenCalledWith('HINOTE', 127);
   });
 
-  it('renders slider handles with correct aria attributes', () => {
+  it('renders a single AcZoneStrip zone with two per-edge handles', () => {
+    const onChange = vi.fn();
+
+    render(
+      <KeyRangeEditor lowNote={36} highNote={72} onChange={onChange} noteRange={FULL_RANGE} />,
+    );
+
+    // Single zone (segment-body-0); per-edge mode → start + end
+    // handles on that zone; no split handle.
+    expect(screen.getByTestId('ac-zone-segment-body-0')).toBeInTheDocument();
+    expect(screen.getByTestId('ac-zone-handle-start-0')).toBeInTheDocument();
+    expect(screen.getByTestId('ac-zone-handle-end-0')).toBeInTheDocument();
+    expect(screen.queryByTestId('ac-zone-handle-split-0')).not.toBeInTheDocument();
+  });
+
+  it('the strip zone reflects the lowNote / highNote props', () => {
+    const onChange = vi.fn();
+
+    const { container } = render(
+      <KeyRangeEditor lowNote={36} highNote={72} onChange={onChange} noteRange={FULL_RANGE} />,
+    );
+
+    const segment = container.querySelector('.ac-zone-segment') as HTMLElement;
+    expect(segment).toBeInTheDocument();
+    // Title carries the formatted MIDI note range.
+    expect(segment.getAttribute('title')).toBe('C2 – C5');
+  });
+
+  it('per-edge handles carry role="slider" + Low note / High note aria-labels + aria-valuenow', () => {
+    // The handle a11y override is what preserves the wrapper's
+    // contract for UI specs that target "Low note" / "High note"
+    // sliders (the zone-overview.spec.ts UI specs that exercise the
+    // KeyRangeEditor handle drag).
     const onChange = vi.fn();
 
     render(

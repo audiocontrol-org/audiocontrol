@@ -378,6 +378,71 @@ describe('AcZoneStrip', () => {
     });
   });
 
+  describe('handle a11y override (role=slider)', () => {
+    it('startHandle / endHandle override promotes per-edge handles to role="slider"', () => {
+      // Default (no override): role="separator" + "Drag to set..." label.
+      // With override: role="slider" + custom aria-label + aria-valuenow/min/max.
+      const zones: AcZoneStripZone[] = [
+        {
+          startValue: 36,
+          endValue: 72,
+          startHandle: {
+            ariaLabel: 'Low note',
+            ariaValueNow: 36,
+            ariaValueMin: 0,
+            ariaValueMax: 127,
+          },
+          endHandle: {
+            ariaLabel: 'High note',
+            ariaValueNow: 72,
+          },
+        },
+      ];
+      render(
+        <AcZoneStrip zones={zones} range={{ min: 0, max: 127 }} ariaLabel="kg" />,
+      );
+      const low = screen.getByRole('slider', { name: 'Low note' });
+      const high = screen.getByRole('slider', { name: 'High note' });
+      expect(low).toHaveAttribute('aria-valuenow', '36');
+      expect(low).toHaveAttribute('aria-valuemin', '0');
+      expect(low).toHaveAttribute('aria-valuemax', '127');
+      // High uses the zone's range.max as the aria-valuemax default
+      // (the dispatch-fall-through behavior).
+      expect(high).toHaveAttribute('aria-valuenow', '72');
+      expect(high).toHaveAttribute('aria-valuemax', '127');
+    });
+
+    it('without override, handles render as role="separator" with generic labels', () => {
+      const zones: AcZoneStripZone[] = [{ startValue: 0, endValue: 127 }];
+      render(
+        <AcZoneStrip zones={zones} range={{ min: 0, max: 127 }} ariaLabel="strip" />,
+      );
+      // No slider role present.
+      expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+      // Default separator labels are emitted.
+      const startHandle = screen.getByTestId('ac-zone-handle-start-0');
+      expect(startHandle.getAttribute('role')).toBe('separator');
+      expect(startHandle.getAttribute('aria-label')).toBe('Drag to set zone 1 start');
+    });
+
+    it('override only one side: only that handle is a slider', () => {
+      const zones: AcZoneStripZone[] = [
+        {
+          startValue: 0,
+          endValue: 127,
+          startHandle: { ariaLabel: 'Lower bound', ariaValueNow: 0 },
+          // endHandle omitted intentionally
+        },
+      ];
+      render(
+        <AcZoneStrip zones={zones} range={{ min: 0, max: 127 }} ariaLabel="strip" />,
+      );
+      expect(screen.getByRole('slider', { name: 'Lower bound' })).toBeInTheDocument();
+      const endHandle = screen.getByTestId('ac-zone-handle-end-0');
+      expect(endHandle.getAttribute('role')).toBe('separator');
+    });
+  });
+
   describe('off state', () => {
     it('isOff flag applies .ac-zone-segment--off', () => {
       const zones: AcZoneStripZone[] = [

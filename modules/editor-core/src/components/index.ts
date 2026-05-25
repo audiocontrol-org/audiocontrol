@@ -32,6 +32,7 @@ export {
   type AcZoneStripProps,
   type AcZoneStripZone,
   type AcZoneStripHandle,
+  type HandleA11yOverride,
 } from './AcZoneStrip';
 export {
   AcNumberInput,

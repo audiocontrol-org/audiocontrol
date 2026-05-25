@@ -76,11 +76,33 @@ export interface AcZoneStripZone {
   readonly isSelected?: boolean;
   /** Zone is currently being dragged — swaps cursor + suppresses click. */
   readonly isDragging?: boolean;
-  /** Optional accessible label override. Defaults to a generic
-   *  "Zone N: startValue-endValue" string. */
+  /** Optional accessible label override for the SEGMENT (role="group").
+   *  Defaults to a generic "Zone N: startValue-endValue" string. */
   readonly ariaLabel?: string;
   /** Optional title attribute (hover tooltip). */
   readonly title?: string;
+  /** Per-edge mode only: optional handle a11y overrides. When present,
+   *  the corresponding handle uses role="slider" + aria-valuenow +
+   *  the supplied aria-label (canonical for interactive edge editors
+   *  like akai's KeyRangeEditor). When absent, the handle stays as
+   *  role="separator" with the default "Drag to set zone N start/end"
+   *  label. The slider role is mutually exclusive with the separator
+   *  default per the WAI-ARIA pattern: an interactive drag-edge IS a
+   *  slider; a passive split-divider IS a separator. */
+  readonly startHandle?: HandleA11yOverride;
+  readonly endHandle?: HandleA11yOverride;
+}
+
+export interface HandleA11yOverride {
+  /** Replaces the handle's default aria-label. */
+  readonly ariaLabel: string;
+  /** Current value carried via aria-valuenow when role=slider is set
+   *  (defaults to the zone's startValue/endValue if omitted). */
+  readonly ariaValueNow?: number;
+  /** Min for aria-valuemin (defaults to the strip's range.min). */
+  readonly ariaValueMin?: number;
+  /** Max for aria-valuemax (defaults to the strip's range.max). */
+  readonly ariaValueMax?: number;
 }
 
 export type AcZoneStripHandle = 'start' | 'end' | 'split';
@@ -229,8 +251,24 @@ export function AcZoneStrip({
                     : 'ac-zone-handle ac-zone-handle--start'
                 }
                 onPointerDown={(event) => onStartDrag?.(index, 'start', event)}
-                aria-label={`Drag to set zone ${index + 1} start`}
-                role="separator"
+                aria-label={zone.startHandle?.ariaLabel ?? `Drag to set zone ${index + 1} start`}
+                role={zone.startHandle ? 'slider' : 'separator'}
+                tabIndex={zone.startHandle ? 0 : undefined}
+                aria-valuenow={
+                  zone.startHandle
+                    ? zone.startHandle.ariaValueNow ?? zone.startValue
+                    : undefined
+                }
+                aria-valuemin={
+                  zone.startHandle
+                    ? zone.startHandle.ariaValueMin ?? range.min
+                    : undefined
+                }
+                aria-valuemax={
+                  zone.startHandle
+                    ? zone.startHandle.ariaValueMax ?? range.max
+                    : undefined
+                }
                 data-testid={`ac-zone-handle-start-${index}`}
               />
             )}
@@ -250,8 +288,24 @@ export function AcZoneStrip({
                     : 'ac-zone-handle ac-zone-handle--end'
                 }
                 onPointerDown={(event) => onStartDrag?.(index, 'end', event)}
-                aria-label={`Drag to set zone ${index + 1} end`}
-                role="separator"
+                aria-label={zone.endHandle?.ariaLabel ?? `Drag to set zone ${index + 1} end`}
+                role={zone.endHandle ? 'slider' : 'separator'}
+                tabIndex={zone.endHandle ? 0 : undefined}
+                aria-valuenow={
+                  zone.endHandle
+                    ? zone.endHandle.ariaValueNow ?? zone.endValue
+                    : undefined
+                }
+                aria-valuemin={
+                  zone.endHandle
+                    ? zone.endHandle.ariaValueMin ?? range.min
+                    : undefined
+                }
+                aria-valuemax={
+                  zone.endHandle
+                    ? zone.endHandle.ariaValueMax ?? range.max
+                    : undefined
+                }
                 data-testid={`ac-zone-handle-end-${index}`}
               />
             )}

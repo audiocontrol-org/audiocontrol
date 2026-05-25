@@ -1,4 +1,32 @@
+/**
+ * KeyRangeEditor — single-zone key-range editor with low/high handles.
+ *
+ * Promoted to <AcZoneStrip> (per-edge handles, default mode) on
+ * 2026-05-24 during akai-harmonization Phase 2 task 2.2 (Commit 3 of
+ * the AcZoneStrip extraction sequence). The pre-migration
+ * implementation was 173 lines of inline tailwind bar + drag-state
+ * tracking; the canonical primitive owns the chrome, so this wrapper
+ * carries only the akai-specific bits:
+ *
+ *   1. Single-zone mapping (low/high note → AcZoneStripZone with
+ *      handle='start' → LONOTE, handle='end' → HINOTE).
+ *   2. Pointer-driven drag tracking — AcZoneStrip signals drag-start;
+ *      this wrapper binds window pointer-move / pointer-up and
+ *      translates client X → note via percentToNote / bar bounding
+ *      rect. The drafts (dragLow / dragHigh) live in local state so
+ *      the range-display text updates live during the drag without
+ *      streaming partial commits to the device.
+ *   3. The range-display text above the bar + the octave markers
+ *      below + the numeric inputs at the bottom (axis labels and
+ *      paired numeric editors — not part of the strip primitive).
+ *
+ * Single-zone with two per-edge handles maps onto AcZoneStrip's
+ * default (per-edge) mode naturally: zoneIndex is always 0; handle
+ * is 'start' (LONOTE) or 'end' (HINOTE).
+ */
+
 import { useCallback, useRef, useState } from 'react';
+import { AcZoneStrip, type AcZoneStripZone } from '@audiocontrol/editor-core';
 import { formatMidiNote } from '@/lib/midi-note-parser';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 import {
@@ -16,6 +44,16 @@ interface KeyRangeEditorProps {
 }
 
 type DragTarget = 'low' | 'high' | null;
+
+/**
+ * akai-blue hue (200deg degree input → +200deg base in HSL math =
+ * 400 mod 360 = 40 — but the .ac-zone-segment rule uses `+ 200deg`
+ * as additive base, so input 200 lands at 400deg = 40deg yellow).
+ * We want a blue identity matching the pre-migration `.bg-blue-700`
+ * fill, so input 0 (anchored by the base 200deg → blue) is the
+ * correct single-zone hue identity for this surface.
+ */
+const KEY_RANGE_ZONE_HUE = 0;
 
 export function KeyRangeEditor({
   lowNote,
@@ -42,14 +80,13 @@ export function KeyRangeEditor({
     [noteRange],
   );
 
-  const handleMouseDown = useCallback(
-    (edge: 'low' | 'high') => (e: React.MouseEvent) => {
-      e.preventDefault();
+  const startDrag = useCallback(
+    (edge: 'low' | 'high', initialClientX: number) => {
       setDragTarget(edge);
       setDragLow(lowNote);
       setDragHigh(highNote);
 
-      const handleMouseMove = (moveEvent: MouseEvent) => {
+      const handlePointerMove = (moveEvent: PointerEvent) => {
         const note = getNoteFromClientX(moveEvent.clientX);
         if (edge === 'low') {
           setDragLow(note);
@@ -58,7 +95,7 @@ export function KeyRangeEditor({
         }
       };
 
-      const handleMouseUp = (upEvent: MouseEvent) => {
+      const handlePointerUp = (upEvent: PointerEvent) => {
         const note = getNoteFromClientX(upEvent.clientX);
         if (edge === 'low') {
           onChange('LONOTE', Math.min(note, highNote));
@@ -66,21 +103,74 @@ export function KeyRangeEditor({
           onChange('HINOTE', Math.max(note, lowNote));
         }
         setDragTarget(null);
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        window.removeEventListener('pointermove', handlePointerMove);
+        window.removeEventListener('pointerup', handlePointerUp);
+        window.removeEventListener('pointercancel', handlePointerUp);
       };
 
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      // Apply the initial position synchronously so the drag visually
+      // tracks the pointer's starting X even before the first move.
+      const note = getNoteFromClientX(initialClientX);
+      if (edge === 'low') {
+        setDragLow(note);
+      } else {
+        setDragHigh(note);
+      }
+
+      window.addEventListener('pointermove', handlePointerMove);
+      window.addEventListener('pointerup', handlePointerUp);
+      window.addEventListener('pointercancel', handlePointerUp);
     },
     [lowNote, highNote, onChange, getNoteFromClientX],
   );
 
-  const leftPercent = noteToPercent(displayLow, noteRange);
-  const rightPercent = noteToPercent(displayHigh, noteRange);
-  const widthPercent = rightPercent - leftPercent;
+  const handleStartDrag = useCallback(
+    (
+      _zoneIndex: number,
+      handle: 'start' | 'end' | 'split',
+      event: React.PointerEvent<HTMLElement>,
+    ) => {
+      // Single zone, per-edge mode → 'start' = LONOTE, 'end' = HINOTE.
+      // 'split' is impossible (splitHandles is false), but the union
+      // type forces the defensive guard.
+      if (handle === 'split') return;
+      event.preventDefault();
+      event.stopPropagation();
+      startDrag(handle === 'start' ? 'low' : 'high', event.clientX);
+    },
+    [startDrag],
+  );
 
   const visibleMarkers = getVisibleOctaveMarkers(noteRange);
+
+  const stripZones: AcZoneStripZone[] = [
+    {
+      startValue: displayLow,
+      endValue: displayHigh,
+      hue: KEY_RANGE_ZONE_HUE,
+      ariaLabel: `Key range ${formatMidiNote(displayLow)} to ${formatMidiNote(displayHigh)}`,
+      title: `${formatMidiNote(displayLow)} – ${formatMidiNote(displayHigh)}`,
+      // KeyRangeEditor's per-edge handles ARE interactive sliders (the
+      // operator drags them to set LONOTE/HINOTE live). The handle
+      // a11y override promotes them from role="separator" (the
+      // canonical default for split bars) to role="slider" with the
+      // current note value carried via aria-valuenow. The "Low note"
+      // / "High note" labels match the labels used by Playwright UI
+      // specs that drive the keygroup editor (zone-overview.spec.ts).
+      startHandle: {
+        ariaLabel: 'Low note',
+        ariaValueNow: displayLow,
+        ariaValueMin: 0,
+        ariaValueMax: 127,
+      },
+      endHandle: {
+        ariaLabel: 'High note',
+        ariaValueNow: displayHigh,
+        ariaValueMin: 0,
+        ariaValueMax: 127,
+      },
+    },
+  ];
 
   return (
     <div className="px-3 py-2">
@@ -89,46 +179,13 @@ export function KeyRangeEditor({
         {formatMidiNote(displayLow)} -- {formatMidiNote(displayHigh)}
       </div>
 
-      {/* Visual bar */}
-      <div
-        ref={barRef}
-        className="relative h-8 bg-gray-900 rounded border border-gray-600 select-none"
-      >
-        {/* Selected range fill */}
-        <div
-          className="absolute top-0 bottom-0 bg-blue-700 opacity-60 rounded-sm"
-          style={{
-            left: `${leftPercent}%`,
-            width: `${Math.max(widthPercent, 0.5)}%`,
-          }}
-        />
-
-        {/* Low edge handle */}
-        <div
-          className="absolute top-0 bottom-0 w-2 cursor-ew-resize z-10 hover:bg-blue-400 transition-colors rounded-l"
-          style={{ left: `calc(${leftPercent}% - 4px)` }}
-          onMouseDown={handleMouseDown('low')}
-          role="slider"
-          aria-label="Low note"
-          aria-valuemin={0}
-          aria-valuemax={127}
-          aria-valuenow={displayLow}
-          tabIndex={0}
-        />
-
-        {/* High edge handle */}
-        <div
-          className="absolute top-0 bottom-0 w-2 cursor-ew-resize z-10 hover:bg-blue-400 transition-colors rounded-r"
-          style={{ left: `calc(${rightPercent}% - 4px)` }}
-          onMouseDown={handleMouseDown('high')}
-          role="slider"
-          aria-label="High note"
-          aria-valuemin={0}
-          aria-valuemax={127}
-          aria-valuenow={displayHigh}
-          tabIndex={0}
-        />
-      </div>
+      <AcZoneStrip
+        barRef={barRef}
+        zones={stripZones}
+        range={{ min: noteRange.min, max: noteRange.max }}
+        onStartDrag={handleStartDrag}
+        ariaLabel="Key range"
+      />
 
       {/* Octave labels */}
       <div className="relative h-4 mt-1">
