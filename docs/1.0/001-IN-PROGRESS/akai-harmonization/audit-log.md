@@ -11,6 +11,131 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-25 Feature review — latest anti-pattern backfill + editor-core keyboard-navigation gate work
+
+Surfaced while reviewing the implementation commits through `84f44f17`, `128ab75c`, and the editor-core keyboard-navigation/gate work now present at branch head `9e8d99c0` on 2026-05-25. Targeted verification run:
+
+- `make check-adopters` — passed (`0` holdouts across `14` manifests; `9` tracked holdouts reported separately)
+
+### The new TreeView keyboard-navigation spec counts hidden mounted descendants as tab stops, so it can pass without modeling the real visible tab order it claims to protect
+
+Finding-ID: AUDIT-20260525-21
+Status:     open
+Severity:   medium
+Surface:    `modules/editor-core/test/ui/a11y-helpers.ts`, `modules/editor-core/test/ui/keyboard-navigation.spec.tsx`, `modules/editor-core/src/components/library/TreeView.tsx`
+
+The new helper `getTabStops()` is purely selector-based: it returns every `button`, `input`, `select`, `textarea`, `a[href]`, and `[tabindex="0"]` descendant except explicit `tabindex="-1"` nodes (`a11y-helpers.ts:17-48`). It does not filter out hidden or collapsed descendants.
+
+That matters because `TreeView` explicitly keeps child rows mounted even when collapsed so `.ac-collapse` can animate them (`TreeView.tsx:355-360`). The new AUDIT-01 closure tests then set `expectedStops = treeItems.length` and document that “the DOM contains all rows regardless of expandedIds” (`keyboard-navigation.spec.tsx:98-115`, `118-131`).
+
+So the test is not measuring the visible keyboard tab order a user encounters. It is measuring “number of mounted focusable descendants in jsdom,” including rows inside collapsed branches. If a regression made collapsed descendants stay tabbable, this spec would still pass because it already expects all mounted treeitems to count. That weakens the claimed closure of AUDIT-20260524-01.
+
+**Evidence:**
+
+- Helper counts focusables by selector only, with no hidden/collapsed filtering:
+  - `modules/editor-core/test/ui/a11y-helpers.ts:17-48`
+- TreeView keeps descendants mounted while collapsed:
+  - `modules/editor-core/src/components/library/TreeView.tsx:355-360`
+- Spec explicitly sets expected tab stops to *all* mounted treeitems:
+  - `modules/editor-core/test/ui/keyboard-navigation.spec.tsx:98-115`
+  - `modules/editor-core/test/ui/keyboard-navigation.spec.tsx:118-131`
+
+**Expected:** the keyboard-navigation harness should assert the *reachable visible tab order* or explicit `userEvent.tab()` traversal behavior, not the raw count of mounted focusable descendants in collapsed subtrees.
+
+**Actual:** the TreeView test passes by counting all mounted treeitems, including collapsed descendants.
+
+**Fix guidance:** either make `getTabStops()` visibility-aware for this harness, or stop using mounted-node counts as the contract for TreeView and instead drive real tab traversal with `userEvent.tab()` against collapsed and expanded states. Closure should require a regression test that would fail if collapsed descendants remain tabbable.
+
+### The new editor-core keyboard-navigation harness is still a manual target, so the “caught at commit time” claim is not true yet
+
+Finding-ID: AUDIT-20260525-22
+Status:     open
+Severity:   medium
+Surface:    `modules/editor-core/package.json`, `package.json`, `.githooks/pre-commit`, `Makefile`
+
+The new UI harness exists and is runnable via `pnpm test:ui` in editor-core (`modules/editor-core/package.json:49`) and `make test-ui-editor-core` (`Makefile:263-264`), but it is not part of the default module test path or the pre-commit gate path:
+
+- root `pnpm test` is still `pnpm -r test`, which only runs each package’s `test` script (`package.json:8`)
+- editor-core’s `test` script is still plain `vitest run`, not `vitest run && vitest run --config vitest.ui.config.ts` (`modules/editor-core/package.json:47-50`)
+- the pre-commit hook’s TS gate list runs clone/anti-pattern/adopter/editor-symmetry checks only; it does not run `test-ui-editor-core` (`.githooks/pre-commit:95-119`, `170-188`)
+
+That means the branch has not yet achieved the workplan’s intended property that future primitive keyboard regressions fail “at commit time, not at the next audit pass.” Right now the new harness is valuable but opt-in.
+
+**Evidence:**
+
+- Editor-core UI harness is a separate manual script:
+  - `modules/editor-core/package.json:47-50`
+  - `Makefile:263-264`
+- Root test path does not include it:
+  - `package.json:8`
+- Pre-commit TS gate list does not include it:
+  - `.githooks/pre-commit:95-119`
+  - `.githooks/pre-commit:170-188`
+
+**Expected:** if this work is supposed to close the “audit catches it days later” gap, the new harness needs to be integrated into a routine enforcement path for relevant editor-core changes.
+
+**Actual:** the harness is manual-only unless an operator remembers to run `make test-ui-editor-core`.
+
+**Fix guidance:** wire the editor-core UI harness into at least one routine gate path for relevant changes: either the editor-core `test` script, a root test aggregate used by normal verification, or the pre-commit/commit-time TS gate path when `modules/editor-core/src/components/**` changes. This fix is not complete without verifying the chosen path actually invokes the UI harness automatically.
+
+## 2026-05-25 Feature review — latest adopter-manifest backfill + TF-016 countermeasure work
+
+Surfaced while reviewing the new implementation commits `48d711af` and `90a771ef` on 2026-05-25. Verification run:
+
+- `make check-adopters` — passed: `0` holdouts across `14` manifests, `9` tracked holdouts reported separately
+
+### The TF-016 “controller-side countermeasure” is only encoded in `.claude/rules`, so Codex does not actually inherit the new dispatch discipline
+
+Finding-ID: AUDIT-20260525-19
+Status:     open
+Severity:   medium
+Surface:    `.claude/rules/primitive-extraction-checklist.md`, `AGENTS.md`
+
+The new TF-016 countermeasure claims it is the controller-side contract that “the controller MUST work through ... before dispatching any primitive-extraction or primitive-promotion sub-agent” (`.claude/rules/primitive-extraction-checklist.md:1-20`). But in this repo, Codex’s canonical instruction surface is `AGENTS.md`, which explicitly says it is “the Codex equivalent” of Claude’s workspace guidance and that shared repo guidance must stay aligned between `AGENTS.md` and `.claude/CLAUDE.md` (`AGENTS.md:1-12`).
+
+This new dispatch discipline was added only under `.claude/rules/`. There is no Codex-visible counterpart in `AGENTS.md`, and no repo-local Codex skill was updated to require the checklist before primitive-extraction work. In practice that means the branch’s “defensive countermeasure” only protects Claude-style flows that consult `.claude/rules`; Codex sessions in this repo can continue to miss the same pre-dispatch checks TF-016 is trying to institutionalize.
+
+**Evidence:**
+
+- New rule declares itself the mandatory controller-side contract:
+  - `.claude/rules/primitive-extraction-checklist.md:1-20`
+- Codex’s canonical repo guidance surface is `AGENTS.md`, with explicit sync expectations:
+  - `AGENTS.md:1-12`
+
+**Expected:** if this checklist is supposed to be the repo’s active defensive countermeasure, the same substantive instruction needs to be visible to Codex through `AGENTS.md` or a repo-local Codex skill/workflow that is actually consulted during primitive-extraction dispatches.
+
+**Actual:** the countermeasure is only documented in Claude-only rule space, so the claimed controller discipline is not repo-wide.
+
+**Fix guidance:** mirror the substantive TF-016 dispatch-hygiene contract into a Codex-visible surface. Minimum acceptable closure: either (a) add the checklist or a concise mandatory equivalent to `AGENTS.md`, or (b) update the relevant repo-local Codex workflow skill(s) so primitive-extraction dispatches explicitly load and apply it. Closure should also include a short verification note naming the exact Codex-visible entry point, not just the Claude rule path.
+
+### The new `tracked_holdouts` use symbolic placeholder refs instead of actionable tracking issues, so the registry now reports deferred work without a real follow-up target
+
+Finding-ID: AUDIT-20260525-20
+Status:     open
+Severity:   medium
+Surface:    `docs/scope-discovery/adopter-manifests.yaml`
+
+The adopter-manifest registry says tracked holdouts are for work the operator “has explicitly deferred via a tracking issue” and that the `issue:` field exists to prevent the registry from becoming a “fix-it-later dumping ground without operator-tracked follow-up” (`adopter-manifests.yaml:72-83`). The new backfill entries, however, use symbolic placeholders such as `#cross-editor-akai-export-dialog-lifecycle`, `#cross-editor-akai-slot-info`, `#cross-editor-akai-library-device-memory-panel`, and `#cross-editor-akai-library-preview-panel` (`adopter-manifests.yaml:174-195`, `242-257`, `340-372`).
+
+Those strings satisfy the parser’s `#`-prefixed shape, and `make check-adopters` therefore stays green, but they are not actionable tracker links inside the repo. They do not identify a concrete GitHub issue number or URL, so an operator reading the registry or the gate output cannot actually navigate from the deferred holdout to the promised follow-up work item.
+
+**Evidence:**
+
+- Registry contract for tracked holdouts:
+  - `docs/scope-discovery/adopter-manifests.yaml:72-83`
+- New placeholder refs:
+  - `docs/scope-discovery/adopter-manifests.yaml:174-195`
+  - `docs/scope-discovery/adopter-manifests.yaml:242-257`
+  - `docs/scope-discovery/adopter-manifests.yaml:340-372`
+- Gate output still reports them as tracked, not blocking:
+  - `make check-adopters` on this review pass: `adopter-manifests: 0 holdouts across 14 manifest(s). 9 tracked holdout(s) reported separately.`
+
+**Expected:** each tracked holdout should point to a concrete issue ref or URL that an operator can open and use to track the deferred migration.
+
+**Actual:** the registry now carries placeholder tags that look issue-like but do not provide an actionable follow-up target.
+
+**Fix guidance:** replace the symbolic placeholder refs with real GitHub issue numbers or URLs, or create the missing issues before claiming the backfill is complete. This fix is not complete without verifying that every new tracked holdout points at a concrete, operator-accessible tracker artifact.
+
 ## 2026-05-25 Feature review — latest AcLiveStatusFooter primitive + adoption work
 
 Surfaced while reviewing the `AcLiveStatusFooter` extraction/adoption commits `1e6e40ad`, `a7b1773f`, and `16f97e34` on 2026-05-25. Targeted local verification runs:
