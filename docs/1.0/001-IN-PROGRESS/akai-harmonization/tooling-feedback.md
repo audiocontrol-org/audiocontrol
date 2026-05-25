@@ -18,7 +18,7 @@ Severity: **high** (blocks work or hides bugs) · **medium** (slows work meaning
 
 This log tracks **scope-discovery + duplication tooling** friction only. Entries that turned out to be implementation work in other modules were re-scoped into [`workplan.md`](./workplan.md) on 2026-05-24 (see "Re-scoped out of this log" below).
 
-**7 of 9 logged scope-discovery TF entries are now closed** — 6 by PR #462 (2026-05-24) and TF-013 by PR #463 (2026-05-24 evening). 2 new entries (TF-014 + TF-015) filed 2026-05-24 evening from the AcZoneStrip extraction dispatch; both low-severity but real authoring-discipline gaps in the clone-detector + anti-pattern workflows.
+**7 of 10 logged scope-discovery TF entries are now closed** — 6 by PR #462 (2026-05-24) and TF-013 by PR #463 (2026-05-24 evening). 3 new entries filed during continued Phase 2 work: TF-014 + TF-015 (AcZoneStrip dispatch, low-severity authoring-discipline gaps in the clone-detector + anti-pattern workflows); TF-016 (medium, dispatch-hygiene gap surfaced by 3 audit cycles of integration-layer regressions after primitive extractions).
 
 | TF | Status | Closing commit |
 |---|---|---|
@@ -31,6 +31,7 @@ This log tracks **scope-discovery + duplication tooling** friction only. Entries
 | TF-013 | Addressed | `6a1f8365` (PR #463) — disposition-survivor gate + strict-parse fix |
 | TF-014 | Open (low) | — — `batch-dispose.ts` workflow gap (refresh-baseline is a separate prereq step) |
 | TF-015 | Open (low) | — — anti-pattern regex prefix-matching trap (sibling classes false-positive without explicit negative-test scenarios) |
+| TF-016 | Open (medium) | — — primitive-extraction dispatches recurrently land integration-layer regressions (3 audit cycles 2026-05-24); dispatch hygiene is the upstream issue |
 
 A parallel improvement landed in `676dd164` on this branch — the `imports:` field on adopter-manifests entries lets the gate distinguish "imports the canonical primitive" from "imports some other symbol from the same package," and recognizes transitive adoption via wrapping primitives (e.g., SteppedProgressDrawer wraps SlideDrawer; importing the wrapper now counts). Not a TF entry of its own — it surfaced as a finding during the SlideDrawer adoption work and was fixed in the same commit pair.
 
@@ -200,6 +201,35 @@ The author has to remember to write negative-test scenarios for prefix collision
 The Medium option fits the existing scope-discovery design (registries are the source of truth; validators enforce shape). Pairs well with TF-002's primitive-relocation awareness, where the registry already carries `excludes_paths:` for the canonical-file case — extending to `negative_match_classes:` is a natural shape-fit.
 
 **Note on overlap with the validator-paired-changes rule:** the agent-discipline.md "Validator-paired changes" section says new gate-semantic changes ship with adversarial scenarios that would have FAILED against the prior behavior. That rule is upstream of THIS friction — it requires SOMEONE to write the negative scenarios, but doesn't enforce the "sibling-class prefix collision" specific case. TF-015's fix would close that subgap.
+
+---
+
+## TF-016 · MISC · medium · Primitive-extraction dispatches recurrently land integration-layer regressions the audit catches
+
+**Repro:** Three audit cycles in one session (2026-05-24) caught integration-layer regressions after primitive-extraction dispatches:
+
+| Cycle | Primitive | Audit findings | Pattern |
+|---|---|---|---|
+| 1 | AcRadioTabs (commits a444acd5..1ae3420f) | AUDIT-10 (HIGH): CSS class-name conflict with existing `.ac-tabs`/`.ac-tab` button-tab consumers (LibraryPanel + BuildInfo) — global override broke their layout. AUDIT-11 (medium): invalid ARIA (`role="tablist"` + `role="tab"` + `tabIndex={0}` without keyboard handler implementation). | Sub-agent moved CSS class names verbatim without grepping for existing consumers; carried-forward fake-ARIA semantics from the legacy roland-local source. |
+| 2 | AcZoneStrip (commits 03f36ce3..edab3add) | AUDIT-12 (medium): VelocityRangeBar callback-index drift after `.filter(Boolean)` compaction. AUDIT-13 (medium): invalid ARIA (`aria-pressed` on `role="group"` — wrong role/state pairing). | Sub-agent's wrapper introduced compaction without preserving source-array indices for callbacks; copied an invalid ARIA pattern from the legacy source. |
+| 3 | AcFrequencyResponse + AcEnvelope (commits d524da07..6c1bb4fe) | AUDIT-14 (medium): wire-format regression — primitive emits float `resonance`; akai adapter forwarded straight into integer `FILQ` device field. AUDIT-15 (low): `activeSegment={0}` passed to AcEnvelope's 1-based API → silent clamp to 1 → permanent fake "segment 1 active" highlight on a surface that has no selection-state model. | Sub-agent matched primitive's continuous-value API but didn't add the rounding+clamping the legacy adapter performed; used 0 as a "no value" sentinel against a 1-based contract that silently coerces it. |
+
+Common shape across all three: the primitive's API surface changes (different value type, different ARIA role, different state contract) and the consumer adapter simply passes through what the legacy primitive accepted. The dispatch brief focuses on primitive shape + migration mechanics; integration-layer details (rounding, clamping, valid index ranges, ARIA contract correctness, class-name conflicts) get missed because the sub-agent reads existing adapter code as "still works" (it compiles + types pass) — but semantic correctness was lost in the contract delta.
+
+Each fix has been small and contained (a single follow-up commit closes both findings per cycle, with validator-paired-changes hard tests confirming teeth). But the recurring shape suggests dispatch hygiene is the upstream issue, not implementation skill.
+
+**Workaround used:** auditor catches each cycle's regressions after the primitive lands; controller files findings; ui-engineer closes them in a follow-up dispatch with paired adversarial scenarios.
+
+**Suggested fix:**
+- **(Light) Dispatch-brief template addition.** Every primitive-extraction dispatch brief gains a mandatory "Consumer-side adapter contract delta" section that explicitly enumerates: (a) what changed in the primitive's API surface vs the legacy implementation (value types, range, integer-vs-float, ARIA roles, class-name semantics, index base 0 vs 1, state contract — selection / active / disabled / etc.); (b) what EACH consumer adapter MUST do to preserve the legacy wire-format / UI-state contract (round-then-clamp at the boundary, pass-null-instead-of-0, translate-rendered-index-to-source-index, etc.); (c) regression-test scaffolding the sub-agent must add at the adapter layer (NOT just at the primitive layer). Lives in `.claude/agents/ui-engineer.md` or in a documented dispatch-brief template the controller pastes into every primitive-extraction dispatch.
+
+- **(Medium) Controller-side pre-dispatch checklist.** Before sending any primitive-extraction dispatch, the controller runs a checklist: (a) grep for class-name conflicts across all modules (`grep -r '\.ac-<primitive-name>' modules/`); (b) grep for the legacy primitive's value-type / range constants (`grep -r 'MAX_VAL\|0..127\|0..15' <legacy-file>`); (c) ARIA roles audit on the legacy source — check every role + state attribute against the WAI-ARIA spec for valid pairings; (d) consumer-side adapter survey — read every consumer file's `onChange` handler to identify rounding/clamping/index-translation that the new primitive may break. Lives in `.claude/rules/primitive-extraction-checklist.md` (new). The checklist's output becomes input to the dispatch brief.
+
+- **(Heavy) Sub-agent template self-checks before DONE.** The ui-engineer sub-agent's prompt (or a new specialized `primitive-extraction-engineer` agent) carries an "integration-layer audit" subroutine that runs before signaling DONE: (a) re-read every consumer file's adapter code post-migration; (b) verify each value forwarded to the primitive AND each value received from the primitive matches the legacy wire-format contract (rounding, clamping, range); (c) verify the primitive's ARIA contract is correct per WAI-ARIA spec (cross-check role + state attribute pairings); (d) verify class-name namespaces don't conflict with existing consumers. Subroutine output appears in the sub-agent's final report as an "Integration-layer audit" section the controller can spot-check before accepting DONE.
+
+The Medium option is operator-actionable now: drafting `.claude/rules/primitive-extraction-checklist.md` requires no agent-template changes and produces immediate value for the next primitive extraction (virtual front panel, AcEnvelope's `kind: 'adsr'` consumer adapter on roland if needed, etc.). The Light option is also incremental but requires the controller to remember to paste the section into every brief. The Heavy option closes the loop structurally but requires sub-agent prompt updates the operator may want to vet separately.
+
+**Note on validator-paired-changes interaction:** the `.claude/rules/agent-discipline.md` "Validator-paired changes" section requires adversarial scenarios for new gate-semantic behavior. Each of the 3 audit-cycle fixes added such scenarios (with teeth, confirmed by stash-and-rerun). TF-016 is upstream of that rule — it asks "did the DISPATCH itself surface the integration-layer concerns that need adversarial scenarios?" The current discipline is reactive (audit catches, fix scenarios get written); TF-016 makes it proactive (dispatch identifies concerns up-front, scenarios land with the primary commit).
 
 ---
 
