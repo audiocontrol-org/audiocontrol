@@ -1,0 +1,172 @@
+/**
+ * Detail-pane chrome — `.ac-detail-*` family, the shared list-detail
+ * editor-page shell used by Tones, Patches, and the Library dialogs.
+ *
+ * Three sub-sections bundled here because they share the recipe
+ * (eyebrow → title → body) and ship together to every consumer:
+ *   - `.ac-detail-eyebrow-row` + `-sep` + `-accent` — the small
+ *     "OBJECT · EDITING · SOURCE · DEVICE" eyebrow above the
+ *     selected-object title.
+ *   - `.ac-detail-empty` — the centered "Select an X to edit" prompt
+ *     shown when nothing is selected.
+ *   - `.ac-detail-pane` + `-head` + `-title` + `-slot` + `-name-input`
+ *     + `-body` — the bordered shell, lean-header gradient, slot+name
+ *     title row, always-live name input affordance, and the body
+ *     surface with `min-width: 0` overflow discipline.
+ *
+ * The live-edit footer (`.ac-detail-live*`) ships in
+ * `parameter-panel-primitives.css` alongside `.ac-compact-grid`
+ * because both are panel-internal chrome that live INSIDE the
+ * `.ac-detail-body`; keeping them out of this file lets the body's
+ * scroll container stay independent from the footer's pulse rule.
+ *
+ * Extracted from `_shared.css` 2026-05-25 per akai-harmonization
+ * Phase 2 task 2.8 (decompose `_shared.css` toward the 500-line cap).
+ *
+ * Stays roland-internal for now: akai's editor pages are scheduled to
+ * adopt the same `.ac-detail-*` chrome in a follow-up promotion (see
+ * the harmonization-spec list-detail page recipe entry). Once akai
+ * adopts, this file lifts to editor-core under
+ * `editor-core/src/design/detail-pane-primitives.css`.
+ */
+
+/* ============================================================
+   DETAIL PANE EYEBROW — small uppercase row above the selected
+   object's title ("PATCH · EDITING · SOURCE · DEVICE" or
+   "TONE · EDITING · SOURCE · DEVICE"). Lives in detail headers.
+   ============================================================ */
+.ac-detail-eyebrow-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  margin-bottom: var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-detail-eyebrow-sep {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+}
+
+.ac-detail-eyebrow-accent {
+  color: var(--ac-color-accent);
+}
+
+/* ============================================================
+   DETAIL EMPTY — centered prompt rendered when no object is
+   selected ("Select a patch to edit" / "Select a tone to edit").
+   ============================================================ */
+.ac-detail-empty {
+  padding: var(--ac-space-8) var(--ac-space-6);
+  text-align: center;
+  color: var(--ac-color-text-muted);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+}
+
+/* ============================================================
+   DETAIL PANE — shared chrome for list-detail editor pages.
+   Promoted 2026-05-19 from `tones__detail*` / `patches__detail*`
+   duplicates. Each page-specific decoration (action cluster on
+   tones, mapping head on patches) stays in the page's own file;
+   the shell + head + body + title + slot live here.
+   ============================================================ */
+
+.ac-detail-pane {
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: var(--ac-color-surface-panel);
+  border-radius: var(--ac-radius-sm);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ac-detail-head {
+  padding: var(--ac-space-3) var(--ac-space-4) var(--ac-space-2);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: linear-gradient(
+    180deg,
+    var(--ac-color-surface-panel) 0%,
+    color-mix(in srgb, var(--ac-color-surface-canvas) 40%, transparent) 100%
+  );
+}
+
+.ac-detail-title {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-3);
+  flex-wrap: wrap;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.25rem;
+  line-height: 1.18;
+  letter-spacing: var(--ac-tracking-display);
+}
+
+.ac-detail-slot {
+  font-family: var(--ac-font-mono);
+  color: var(--ac-color-accent);
+  letter-spacing: 0.02em;
+}
+
+/* The slot+name title's editable name affordance — always-live (no
+   click-to-edit toggle); commits on blur. Styled to read as a title
+   continuation: hairline underline beneath the value, brightening on
+   focus to the accent color. Resets are aggressive because the
+   underlying .ac-input primitive adds a rounded all-sides border plus
+   a 3px shadow-ring on focus; without these resets the underline would
+   render as a curved arc and the focus state as a framed rounded-rect.
+   Width is a CSS variable so each editor can size to its device's
+   name-length cap (S-330/S-550 patches: 12; tones: 8). */
+.ac-detail-name-input {
+  display: block;
+  background: transparent;
+  border: 0;
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0 var(--ac-space-1) var(--ac-space-1);
+  font: inherit;
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-mono);
+  letter-spacing: 0.02em;
+  width: var(--ac-detail-name-width, 12ch);
+  outline: none;
+  transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-detail-name-input:hover:not(:focus) {
+  border-bottom-color: color-mix(in srgb, var(--ac-color-text-muted) 80%, transparent);
+}
+
+.ac-detail-name-input:focus,
+.ac-detail-name-input:focus-visible {
+  border-bottom-width: 2px;
+  border-bottom-color: var(--ac-color-accent);
+  box-shadow: none;
+  background: transparent;
+}
+
+.ac-detail-name-input::placeholder {
+  color: var(--ac-color-text-muted);
+  font-style: italic;
+}
+
+.ac-detail-body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  padding: var(--ac-space-4);
+  overflow-y: auto;
+  /* Horizontal overflow inside the detail body is always a
+     missing `min-width: 0` somewhere in its ancestry — clip
+     it loudly rather than expose a silent horizontal
+     scrollbar. */
+  overflow-x: hidden;
+}
