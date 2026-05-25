@@ -20,9 +20,11 @@ Surfaced while reviewing the implementation commits through `84f44f17`, `128ab75
 ### The new TreeView keyboard-navigation spec counts hidden mounted descendants as tab stops, so it can pass without modeling the real visible tab order it claims to protect
 
 Finding-ID: AUDIT-20260525-21
-Status:     open
+Status:     verified-82c1a401
 Severity:   medium
 Surface:    `modules/editor-core/test/ui/a11y-helpers.ts`, `modules/editor-core/test/ui/keyboard-navigation.spec.tsx`, `modules/editor-core/src/components/library/TreeView.tsx`
+
+**Closure (verified-82c1a401):** `getTabStops()` is now visibility-aware — it walks the ancestor chain for each focusable candidate and rejects any candidate enclosed by a contract a real browser would honor for keyboard tab traversal (`aria-hidden="true"`, the `hidden` HTML attribute, inline `display:none` / `visibility:hidden` / `visibility:collapse`, or `.ac-collapse[data-expanded="false"]`). The TreeView describe block was rewritten to assert the visible tab order: a "collapsed state" spec proves only the 3 top-level treeitems are reachable (the 2 mounted leaf descendants live inside `.ac-collapse[data-expanded="false"]` wrappers and are filtered out); a "partially-expanded state" spec asserts the transitive contract (folder-1's leaf is reachable, folder-2's leaf is not, when only folder-1 is expanded); the "fully-expanded state" spec carries the original AUDIT-01 invariant forward. The mounted-treeitem sanity expectation (`allMountedTreeItems.length === 5`) is asserted alongside the visible-count expectation (3) so a future regression that flattens `.ac-collapse` is caught at both layers. Validator-paired-changes hard test: reverted the `isKeyboardUnreachable` filter in `getTabStops()`; both new AUDIT-21 specs went red with diagnostics naming the leaked treeitems (`data-testid="library-item-folder-1-leaf"`, `-folder-2-leaf`) and the count delta (`expected 5 to be 4`). Restored the helper; 30/30 specs pass. Test count delta: editor-core UI harness went 29 → 30.
 
 The new helper `getTabStops()` is purely selector-based: it returns every `button`, `input`, `select`, `textarea`, `a[href]`, and `[tabindex="0"]` descendant except explicit `tabindex="-1"` nodes (`a11y-helpers.ts:17-48`). It does not filter out hidden or collapsed descendants.
 
@@ -49,9 +51,11 @@ So the test is not measuring the visible keyboard tab order a user encounters. I
 ### The new editor-core keyboard-navigation harness is still a manual target, so the “caught at commit time” claim is not true yet
 
 Finding-ID: AUDIT-20260525-22
-Status:     open
+Status:     verified-d82e37a4
 Severity:   medium
 Surface:    `modules/editor-core/package.json`, `package.json`, `.githooks/pre-commit`, `Makefile`
+
+**Closure (verified-d82e37a4):** Picked option (a) — `modules/editor-core/package.json` `test` script changed from `vitest run` to `vitest run && vitest run --config vitest.ui.config.ts`. Smallest blast radius: the UI harness becomes load-bearing on every `pnpm -r test` (root) and `pnpm --filter @audiocontrol/editor-core test`, with no pre-commit overhead for unrelated edits. `pnpm test:ui` continues to work as a granular entry-point; a new `pnpm test:unit` script lets an operator run only the unit suite; `make test-ui-editor-core` continues to work as the granular Makefile entry-point. Verified: `pnpm --filter @audiocontrol/editor-core test` now runs 393 unit tests (was 391; +2 from the paired self-asserting tests below) + 30 UI harness tests in two sequential vitest invocations. Paired adversarial assertion: added `modules/editor-core/src/testing/package-test-script.test.ts` — a unit test (so it runs on the always-invoked unit config) that reads `package.json` from disk and asserts the `test` script contains both `vitest run` AND `--config vitest.ui.config.ts`. The assertion's teeth come from the unit-test-on-unit-script invariant: a revert that drops the UI invocation would fail on the very next `pnpm test`. Validator-paired-changes hard test: reverted `test` script to `vitest run`; one FAIL on `package-test-script.test.ts` with diagnostic `editor-core test script must invoke the UI harness via \`vitest run --config vitest.ui.config.ts\` so the keyboard-navigation harness runs on every default test run (AUDIT-20260525-22). Current script: vitest run: expected false to be true`. Restored the script; 393 unit + 30 UI green.
 
 The new UI harness exists and is runnable via `pnpm test:ui` in editor-core (`modules/editor-core/package.json:49`) and `make test-ui-editor-core` (`Makefile:263-264`), but it is not part of the default module test path or the pre-commit gate path:
 
@@ -87,9 +91,11 @@ Surfaced while reviewing the new implementation commits `48d711af` and `90a771ef
 ### The TF-016 “controller-side countermeasure” is only encoded in `.claude/rules`, so Codex does not actually inherit the new dispatch discipline
 
 Finding-ID: AUDIT-20260525-19
-Status:     open
+Status:     verified-8a93bac9
 Severity:   medium
 Surface:    `.claude/rules/primitive-extraction-checklist.md`, `AGENTS.md`
+
+**Closure (verified-8a93bac9):** `AGENTS.md` now carries a "Primitive-Extraction Dispatch Checklist (TF-016 countermeasure)" section (lines 203-258) that mirrors the substantive content of `.claude/rules/primitive-extraction-checklist.md`: when-the-rule-fires (5 dispatch shapes), the 6 pre-dispatch checks (CSS class-name conflict, ARIA validity, value-domain delta, consumer-side adapter survey, test-contract drift survey, ARIA + interaction-timing audit) with one-line summaries pointing at originating AUDIT IDs, the 4 mandatory brief sections (A/B/C/D), the 5 forbidden shortcuts, and the 7-step process discipline naming the canonical file. The canonical `.claude/rules/primitive-extraction-checklist.md` stays the source of truth with the worked "What surfaced X" lesson catalog (162 lines); the AGENTS.md mirror is ~55 lines, sufficient for a Codex session reading `AGENTS.md` at session-start to know to load + apply the full checklist. Cross-reference added to the canonical file's "Cross-references" section pointing back at the AGENTS.md mirror. Both files retire together when the deskwork canonical implementation lands. Verification note: the Codex-visible entry point is `AGENTS.md` section "Primitive-Extraction Dispatch Checklist (TF-016 countermeasure)"; the section is visible at session-start because `AGENTS.md` is the canonical Codex instruction surface (per the file's own "Canonical Sync Path" preamble). No validator scenario added — this is an instructional mirror with no parser, gate, or report-shape side; the "gate" is the operator/agent reading `AGENTS.md` at session-start, which is not a mechanical contract a unit test can assert.
 
 The new TF-016 countermeasure claims it is the controller-side contract that “the controller MUST work through ... before dispatching any primitive-extraction or primitive-promotion sub-agent” (`.claude/rules/primitive-extraction-checklist.md:1-20`). But in this repo, Codex’s canonical instruction surface is `AGENTS.md`, which explicitly says it is “the Codex equivalent” of Claude’s workspace guidance and that shared repo guidance must stay aligned between `AGENTS.md` and `.claude/CLAUDE.md` (`AGENTS.md:1-12`).
 
@@ -111,9 +117,18 @@ This new dispatch discipline was added only under `.claude/rules/`. There is no 
 ### The new `tracked_holdouts` use symbolic placeholder refs instead of actionable tracking issues, so the registry now reports deferred work without a real follow-up target
 
 Finding-ID: AUDIT-20260525-20
-Status:     open
+Status:     open (NEEDS DECISION; in-flight investigation 2026-05-25)
 Severity:   medium
 Surface:    `docs/scope-discovery/adopter-manifests.yaml`
+
+**In-flight (2026-05-25):** investigated as part of the AUDIT-19/-20/-21/-22 closure batch. The dispatch's recommended option (a) — "remove placeholder issue refs + flesh out the `reason:` text" — requires a schema amendment because the registry parser at `tools/scope-discovery/adopter-manifests-registry.ts:317` currently makes `issue:` REQUIRED for every `tracked_holdouts:` entry (the field must be non-empty AND either contain `://` or start with `#`). Per the dispatch's explicit escalation rule ("If `issue:` is mandatory, surface as NEEDS DECISION"), this finding remains open pending an operator decision between:
+
+- **(a-amend-schema)** — Amend the parser + schema docs to make `issue:` OPTIONAL when `reason:` carries an inline tracking note ("Tracked as akai-harmonization Phase 3+ work; no separate GH issue. Re-classify if the operator later files one."). Self-contained: no external GH state, single commit, paired adversarial scenarios prove the optional-issue + substantive-reason path passes and the missing-issue-AND-missing-reason path rejects.
+- **(b-create-real-issues)** — Create real GitHub issues for the 4 deferral themes (cross-editor-akai-export-dialog-lifecycle [4 holdouts], cross-editor-akai-slot-info [3 holdouts], cross-editor-akai-library-device-memory-panel [1 holdout], cross-editor-akai-library-preview-panel [1 holdout]). Replace each placeholder with `https://github.com/audiocontrol-org/audiocontrol/issues/NNN`. Bodies for the 4 issues are drafted at `.tmp-commitmsg/issue-19-{export-dialog-lifecycle,slot-info,library-device-memory-panel,library-preview-panel}.md` (cwd at `audiocontrol-akai-harmonization`).
+
+The dispatch's preference was option (a) for "smaller scope + no external GH state." The dispatch's classifier blocked option (b) when attempted unilaterally because option (a) was explicitly chosen by the dispatch — surfacing the decision back to the operator is the correct path. Each option resolves the finding cleanly; the choice is operator-side because it crosses an external-state vs internal-schema boundary the controller is not authorized to settle.
+
+Re-verify after operator decision.
 
 The adopter-manifest registry says tracked holdouts are for work the operator “has explicitly deferred via a tracking issue” and that the `issue:` field exists to prevent the registry from becoming a “fix-it-later dumping ground without operator-tracked follow-up” (`adopter-manifests.yaml:72-83`). The new backfill entries, however, use symbolic placeholders such as `#cross-editor-akai-export-dialog-lifecycle`, `#cross-editor-akai-slot-info`, `#cross-editor-akai-library-device-memory-panel`, and `#cross-editor-akai-library-preview-panel` (`adopter-manifests.yaml:174-195`, `242-257`, `340-372`).
 
