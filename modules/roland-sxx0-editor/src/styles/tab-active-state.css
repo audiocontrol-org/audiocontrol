@@ -4,6 +4,13 @@
  * pages) plus the akai mockup-staging ids reserved for the akai
  * editor's eventual adoption.
  *
+ * AUTO-GENERATED from `docs/scope-discovery/tab-groups.yaml` by
+ * `tools/codegen-tab-active-state.ts`. Do not edit by hand — your
+ * changes will be overwritten the next time the codegen runs. Edit
+ * the YAML registry instead and run `make codegen-tab-active-state`
+ * (or let the pre-commit gate `make check-tab-active-state` catch
+ * any drift).
+ *
  * The generic tab chrome (`.ac-radio-tabs`, `.ac-radio-tab-strip`,
  * `.ac-radio-tab`, `.ac-radio-panels`, `.ac-radio-panel`,
  * `.ac-panel-stack`, the `ac-tab-fade-in` keyframes) lives in
@@ -12,75 +19,17 @@
  * STAY HERE (and not in editor-core) because the radio-input ids are
  * consumer-owned: roland uses `tt-*` / `pt-*`; akai uses `ap-*` /
  * `ak-*` / `as-*`. Each new uncontrolled-mode adopter registers its
- * ids in the four selector lists (lit-tab fill, tab underline, panel
- * show, and reduced-motion).
+ * ids in the YAML registry; the four selector blocks below regenerate.
  *
  * Controlled-mode adopters (akai VelocityZoneEditor via the
  * `activeId` + `onActiveIdChange` props on AcRadioTabs) do NOT
  * register here — controlled mode renders only the active panel via
  * React state, bypassing the `:checked` selector chain.
  *
- * Extracted from `_shared.css` 2026-05-25 per akai-harmonization
- * Phase 2 task 2.8 (decompose `_shared.css` toward the 500-line cap).
  * Co-located in roland's styles directory rather than editor-core
  * because the consumer-owned ids are intentionally consumer-specific.
  */
 
-/* ============================================================
-   TAB SHELL — radio-driven, CSS-only activation chrome promoted
-   to `modules/editor-core/src/design/tab-primitives.css` on
-   2026-05-24 per akai-harmonization Phase 2 task 2.2. The
-   generic chrome (`.ac-radio-tabs`, `.ac-radio-tab-strip`,
-   `.ac-radio-tab`, `.ac-radio-panels`, `.ac-radio-panel`,
-   `.ac-panel-stack`, the `ac-tab-fade-in` keyframes) now lives
-   there so cross-editor consumers (akai's VelocityZoneEditor;
-   jv1080/d110 later) get it without duplication.
-
-   Renamed from `.ac-tabs` / `.ac-tab-strip` / `.ac-tab` /
-   `.ac-panels` / `.ac-panel` to the `.ac-radio-*` prefix on
-   2026-05-24 per AUDIT-20260524-10 (closed). The original bare
-   names collided with the pre-existing `.ac-tabs` / `.ac-tab` /
-   `.ac-tab--active` button-tab chrome consumed by LibraryPanel +
-   BuildInfo in editor-core; the radio-tab rules silently regressed
-   those button-tab surfaces (vertical stack + missing underline)
-   when they loaded after layout-primitives.css. The rename below
-   keeps both systems independent at the class-name layer.
-
-   The per-tab-ID active-state selector list BELOW stays here
-   because the radio-input ids are consumer-owned and roland-
-   specific (`tt-*`, `pt-*`) plus the cross-editor mockup-staging
-   ids (`ap-*`, `ak-*`, `as-*` for akai). Each new uncontrolled-
-   mode adopter registers its ids in this list.
-
-   Controlled-mode adopters (akai VelocityZoneEditor via the
-   `activeId` + `onActiveIdChange` props on AcRadioTabs) do NOT
-   register here — controlled mode renders only the active panel
-   via React state, bypassing the `:checked` selector chain.
-   ============================================================ */
-
-/* ------------------------------------------------------------
-   Tab active-state — radio-driven, CSS-only.
-
-   The chrome above is generic; the rules below are the single
-   source of truth for *which* tab IDs the editor recognizes.
-   Every new tab group adds its `id="<group>-<tab>"` to all four
-   selector lists (lit-tab fill, tab underline, panel show, and
-   reduced-motion). Co-locating them here is the DRY choice:
-   one list to keep in sync, not one per page.
-
-   Current consumers:
-     · roland tones page    — tt-wave, tt-pitch-lfo, tt-filter, tt-amp
-     · roland patches page  — pt-common, pt-mapping
-     · akai programs page   — ap-common, ap-midi, ap-effects, ap-output
-     · akai keygroups page  — ak-zones, ak-pitch, ak-filter, ak-amp, ak-lfo
-     · akai samples page    — as-wave, as-loop, as-trim, as-misc
-
-   The akai tab groups were hosted in mockups/akai-dialect.css during
-   Phase 1 of akai-harmonization while the canonical chrome was
-   exercised against the static mockups. Phase 2 task 2.2 lifts them
-   here so the live akai editor — when it adopts AcRadioTabs — gets
-   the canonical activation behavior the same way the roland pages do.
-   ------------------------------------------------------------ */
 
 #tt-wave:checked       ~ .ac-radio-tab-strip [for="tt-wave"],
 #tt-pitch-lfo:checked  ~ .ac-radio-tab-strip [for="tt-pitch-lfo"],

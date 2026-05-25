@@ -1,0 +1,132 @@
+# Tab-group registry — source of truth for AcRadioTabs uncontrolled-mode
+# tab-ID families. The build script
+# `tools/codegen-tab-active-state.ts` reads this file and generates
+# `modules/roland-sxx0-editor/src/styles/tab-active-state.css` via the
+# 4-block expansion pattern (lit-tab fill, tab underline, panel show,
+# reduced-motion).
+#
+# Closes Phase 2 task 2.10 of feature/akai-harmonization (originally
+# TF-012 in tooling-feedback.md). Replaces the manual 4-copies-per-
+# tab-id discipline that produced the silent-drop bug commit d5d99516
+# named — when a tab id was added to 3 of the 4 selector lists, the
+# panel showed but no underline drew (or vice versa), and the
+# specificity accident hid the bug from screenshot review.
+#
+# ──────────────────────────────────────────────────────────────────────────
+# Adding a new tab family
+# ──────────────────────────────────────────────────────────────────────────
+#
+# 1. Append a new entry under `tab_groups:` below.
+# 2. Run `make codegen-tab-active-state` (writes the regenerated CSS).
+# 3. Commit the YAML + the regenerated CSS in the same commit.
+#
+# The pre-commit gate (`make check-tab-active-state`) fires when either
+# the registry OR the generated CSS is staged. It re-runs the codegen
+# in `--check` mode and rejects the commit if the on-disk CSS differs
+# from what the registry implies. The companion gate `check-anti-
+# patterns` covers structural drift in the CSS body shape; this gate
+# covers ID-list drift.
+#
+# ──────────────────────────────────────────────────────────────────────────
+# Schema
+# ──────────────────────────────────────────────────────────────────────────
+#
+#   version: 1                  # registry schema version (integer)
+#
+#   tab_groups:
+#     - id: <kebab-case-id; e.g. "tt"; unique across the registry>
+#       owner_editor: <module slug; e.g., "roland-sxx0-editor">
+#       consumer: <CWD-relative POSIX path to the .tsx/.html file
+#                  whose AcRadioTabs instance owns this ID family;
+#                  informational — not enforced by the gate>
+#       mode: uncontrolled | reserved
+#                  # uncontrolled  = a production AcRadioTabs adopter
+#                  #                 in uncontrolled mode depends on
+#                  #                 the per-ID `:checked` selectors
+#                  #                 this entry emits.
+#                  # reserved      = the ID family is reserved for a
+#                  #                 not-yet-shipped consumer (mockups
+#                  #                 stage the design; live editor not
+#                  #                 yet wired). The codegen still
+#                  #                 emits the selectors — harmless dead
+#                  #                 CSS that lights up the moment the
+#                  #                 consumer adopts AcRadioTabs in
+#                  #                 uncontrolled mode.
+#                  #
+#                  # Controlled-mode adopters (`activeId` + `onActiveIdChange`
+#                  # on AcRadioTabs) do NOT register here — controlled
+#                  # mode renders only the active panel via React state,
+#                  # bypassing the `:checked` selector chain. Example:
+#                  # akai VelocityZoneEditor's `vz-zone-*` IDs.
+#       tab_ids: [list of strings, each `<family-id>-<tab-name>`]
+#                  # Conventionally the family id is the prefix of every
+#                  # tab id (e.g., family `tt` → tab ids `tt-wave`,
+#                  # `tt-pitch-lfo`, etc.). The gate enforces this
+#                  # prefix invariant so a typo in tab_ids is caught.
+#
+# ──────────────────────────────────────────────────────────────────────────
+# Family roster (current state at task 2.10 landing)
+# ──────────────────────────────────────────────────────────────────────────
+#
+# The akai-reserved families (`ap`, `ak`, `as`) are kept in the
+# registry rather than removed because the akai-harmonization
+# mockups (`docs/1.0/001-IN-PROGRESS/akai-harmonization/mockups/*.html`)
+# stage them as the future live-editor design, and the akai editor's
+# in-progress AcRadioTabs adoption is part of this feature's later
+# phases. Removing them now means re-adding them shortly — the
+# convention-canon trap that .claude/rules/agent-discipline.md
+# names. When the akai editor lands its AcRadioTabs adoption,
+# flip `mode: reserved` → `mode: uncontrolled` (or `controlled`
+# with subsequent registry removal if controlled mode is chosen).
+
+version: 1
+
+tab_groups:
+  - id: tt
+    owner_editor: roland-sxx0-editor
+    consumer: modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx
+    mode: uncontrolled
+    tab_ids:
+      - tt-wave
+      - tt-pitch-lfo
+      - tt-filter
+      - tt-amp
+
+  - id: pt
+    owner_editor: roland-sxx0-editor
+    consumer: modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx
+    mode: uncontrolled
+    tab_ids:
+      - pt-common
+      - pt-mapping
+
+  - id: ap
+    owner_editor: akai-s3k-editor
+    consumer: docs/1.0/001-IN-PROGRESS/akai-harmonization/mockups/programs.html
+    mode: reserved
+    tab_ids:
+      - ap-common
+      - ap-midi
+      - ap-effects
+      - ap-output
+
+  - id: ak
+    owner_editor: akai-s3k-editor
+    consumer: docs/1.0/001-IN-PROGRESS/akai-harmonization/mockups/keygroups.html
+    mode: reserved
+    tab_ids:
+      - ak-zones
+      - ak-pitch
+      - ak-filter
+      - ak-amp
+      - ak-lfo
+
+  - id: as
+    owner_editor: akai-s3k-editor
+    consumer: docs/1.0/001-IN-PROGRESS/akai-harmonization/mockups/samples.html
+    mode: reserved
+    tab_ids:
+      - as-wave
+      - as-loop
+      - as-trim
+      - as-misc
