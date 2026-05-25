@@ -1,4 +1,4 @@
-generated_at: 2026-05-24T11:42:31.309Z
+generated_at: 2026-05-24T23:55:52.507Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -98,19 +98,19 @@ clones:
       - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:363:373
     disposition: pending
     reason: null
-  - id: b8dfd6196fc8
+  - id: 937766af507a
     lines: 7
     members:
-      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:106:112
-      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:132:138
-      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:156:162
+      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:107:113
+      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:133:139
+      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:157:163
     disposition: pending
     reason: null
   - id: 41255eb6a8a0
     lines: 9
     members:
-      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:50:58
-      - modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:62:68
+      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:51:59
+      - modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:65:71
     disposition: pending
     reason: null
   - id: 5f51abbeaf50
@@ -387,13 +387,13 @@ clones:
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:159:176
     disposition: pending
     reason: null
-  - id: 9e2bdb863521
+  - id: 5a74b915439b
     lines: 29
     members:
       - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:178:206
       - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:184:212
-    disposition: pending
-    reason: null
+    disposition: keep-with-reason
+    reason: Cross-row canonical chrome — both akai list components render the same row shape (`<div className="ac-list-row ac-akai-list-row" role="button" tabIndex aria-current onClick onDoubleClick onKeyDown>` plus the inline-rename branch + the per-row action cluster). Programs + Samples have the most overlapping shape because they're both flat slot-indexed lists with rename/clone/delete affordances. KeygroupList uses a similar shape but with bank-loading state that makes its grid template slightly different (slot-width override) so it doesn't clone with this pair. Same disposition principle as the roland pair at 310995005263. Flip to refactor only if a third akai list with the exact same wiring lands AND a meaningful extraction emerges (e.g., a useAkaiListRowState hook that abstracts the editing + onSelect + onDelete + onClone + onRefresh prop bundle).
   - id: fa5b7859d98a
     lines: 19
     members:
@@ -520,11 +520,25 @@ clones:
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:659:669
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
-  - id: 7df4383b5cc3
+  - id: 45b560994b13
+    lines: 12
+    members:
+      - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:100:111
+      - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:71:82
+    disposition: pending
+    reason: null
+  - id: dffe86242d93
+    lines: 16
+    members:
+      - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:191:206
+      - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:90:106
+    disposition: pending
+    reason: null
+  - id: 790e82a56886
     lines: 11
     members:
-      - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:101:111
       - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:90:100
+      - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:72:82
     disposition: pending
     reason: null
   - id: 995ff9b62525
@@ -2427,13 +2441,13 @@ clones:
       - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:90:106
     disposition: keep-with-reason
     reason: 'PatchList/ToneList residual structural similarity AFTER the BankHeader (c88d8d06), SlotInfo (30e7346e), and bank-list-helpers (ae0b5192) extractions. The remaining overlap is the per-list JSX wrapper around BankHeader (the `<div data-bank-index>` + bank-header + `<div className="ac-collapse">` shell) plus per-row signatures that legitimately differ between patches (PatchLabel + isPatchEmpty + patch-name testid) and tones (formatToneSlot + isToneEmpty + tone-name testid). Further wrapping would push the per-list specialization down one level without removing it, creating churn for marginal LOC savings. Disposition: kept; the residual is the legitimate per-list signature, not a duplication that wants extraction. Batch-dispositioned 2026-05-22.'
-  - id: 2262910df441
+  - id: "310995005263"
     lines: 11
     members:
       - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:179:189
       - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:175:185
     disposition: keep-with-reason
-    reason: 'PatchList/ToneList residual structural similarity AFTER the BankHeader (c88d8d06), SlotInfo (30e7346e), and bank-list-helpers (ae0b5192) extractions. The remaining overlap is the per-list JSX wrapper around BankHeader (the `<div data-bank-index>` + bank-header + `<div className="ac-collapse">` shell) plus per-row signatures that legitimately differ between patches (PatchLabel + isPatchEmpty + patch-name testid) and tones (formatToneSlot + isToneEmpty + tone-name testid). Further wrapping would push the per-list specialization down one level without removing it, creating churn for marginal LOC savings. Disposition: kept; the residual is the legitimate per-list signature, not a duplication that wants extraction. Batch-dispositioned 2026-05-22.'
+    reason: Cross-row canonical chrome — both roland list components render the same `<div className="ac-list-row" role="button" tabIndex aria-disabled aria-current onClick onKeyDown>` shape that the canonical .ac-list-row in editor-core/list-primitives.css expects. Same shape as the akai trio dispositioned at 5a74b915439b. Extracting a `<CanonicalListRow>` React wrapper would just hide that they're invoking the canonical correctly. Flip to refactor only if a third roland list with the exact same wiring lands AND a meaningful extraction emerges (e.g., a hook that abstracts the bank-loading-state wiring). Both rows acquired this shape via akai-harmonization Phase 2 task 2.2 (PatchList + ToneList already used .ac-list-row; the aria-selected → aria-current change in AUDIT-20260524-04 fix tightened the line range so the clone detector noticed).
   - id: dfe2f58d3ccc
     lines: 7
     members:
@@ -3199,17 +3213,3 @@ clones:
       - modules/synth-core/src/hooks/use-slice-player.ts:49:63
     disposition: pending
     reason: null
-  - id: 310995005263
-    lines: 11
-    members:
-      - modules/roland-sxx0-editor/src/components/patches/PatchList.tsx:179:189
-      - modules/roland-sxx0-editor/src/components/tones/ToneList.tsx:175:185
-    disposition: keep-with-reason
-    reason: Cross-row canonical chrome — both roland list components render the same `<div className="ac-list-row" role="button" tabIndex aria-disabled aria-current onClick onKeyDown>` shape that the canonical .ac-list-row in editor-core/list-primitives.css expects. Same shape as the akai trio dispositioned at 5a74b915439b. Extracting a `<CanonicalListRow>` React wrapper would just hide that they're invoking the canonical correctly. Flip to refactor only if a third roland list with the exact same wiring lands AND a meaningful extraction emerges (e.g., a hook that abstracts the bank-loading-state wiring). Both rows acquired this shape via akai-harmonization Phase 2 task 2.2 (PatchList + ToneList already used .ac-list-row; the aria-selected → aria-current change in AUDIT-20260524-04 fix tightened the line range so the clone detector noticed).
-  - id: 5a74b915439b
-    lines: 29
-    members:
-      - modules/akai-s3k-editor/src/components/programs/ProgramList.tsx:178:206
-      - modules/akai-s3k-editor/src/components/samples/SampleList.tsx:184:212
-    disposition: keep-with-reason
-    reason: Cross-row canonical chrome — both akai list components render the same row shape (`<div className="ac-list-row ac-akai-list-row" role="button" tabIndex aria-current onClick onDoubleClick onKeyDown>` plus the inline-rename branch + the per-row action cluster). Programs + Samples have the most overlapping shape because they're both flat slot-indexed lists with rename/clone/delete affordances. KeygroupList uses a similar shape but with bank-loading state that makes its grid template slightly different (slot-width override) so it doesn't clone with this pair. Same disposition principle as the roland pair at 310995005263. Flip to refactor only if a third akai list with the exact same wiring lands AND a meaningful extraction emerges (e.g., a useAkaiListRowState hook that abstracts the editing + onSelect + onDelete + onClone + onRefresh prop bundle).

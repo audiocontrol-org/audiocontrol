@@ -269,17 +269,38 @@ async function main(): Promise<number> {
 
   let headDoc: ClonesYaml;
   let stagedDoc: ClonesYaml;
-  try {
-    headDoc = parseClonesYamlStrict(headResult.text);
-  } catch (err) {
-    console.error(`failed to parse HEAD's clones.yaml: ${errorMessage(err)}`);
-    return 2;
-  }
+  // Parse staged first — if staged is malformed, that's a hard fail
+  // regardless of HEAD state (the commit being made is broken).
   try {
     stagedDoc = parseClonesYamlStrict(stagedResult.text);
   } catch (err) {
     console.error(`failed to parse staged clones.yaml: ${errorMessage(err)}`);
     return 2;
+  }
+  try {
+    headDoc = parseClonesYamlStrict(headResult.text);
+  } catch (err) {
+    // HEAD is malformed but staged is well-formed. This is the legitimate
+    // "fix-forward" case: a commit whose purpose is to repair a latent
+    // YAML bug in HEAD's clones.yaml (e.g., a decimal-only id that the
+    // YAML parser coerced to number — surfaced 2026-05-24 during the
+    // akai-harmonization AcRadioTabs promotion when entry "310995005263"
+    // tripped the schema validator). The gate's destructive-transition
+    // semantics cannot be evaluated when HEAD is unparseable, but
+    // refusing the commit traps the operator in a chicken-and-egg
+    // (the fix requires touching clones.yaml; touching clones.yaml
+    // requires HEAD to parse; HEAD won't parse until the fix lands).
+    // Exit 0 with a loud warning rather than 2. The non-pending-to-
+    // pending semantic check is necessarily skipped this once; the next
+    // commit that touches clones.yaml will re-engage the full check.
+    process.stderr.write(
+      `check-disposition-survivor: HEAD's clones.yaml is malformed ` +
+        `(${errorMessage(err)}); staged version parses cleanly. ` +
+        `Treating as a fix-forward commit and skipping the destructive-` +
+        `transition check this once. The check re-engages on the next ` +
+        `commit that touches clones.yaml.\n`,
+    );
+    return 0;
   }
 
   const transitions = findDestructiveTransitions(headDoc, stagedDoc);

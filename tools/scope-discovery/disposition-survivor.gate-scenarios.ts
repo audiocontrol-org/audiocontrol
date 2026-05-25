@@ -240,6 +240,121 @@ export async function scenarioGateForceOverride(survivorEntry: string): Promise<
   }
 }
 
+// HEAD that fails the strict schema (id "310995005263" is decimal-only;
+// YAML coerces unquoted decimal-only strings to number; parseClonesYamlStrict
+// rejects the value). Mirrors the real-world bug surfaced 2026-05-24 during
+// akai-harmonization AcRadioTabs promotion.
+const HEAD_YAML_MALFORMED_DECIMAL_ID = `generated_at: 2026-05-24T00:00:00Z
+clones:
+  - id: aaaaaaaaaaaa
+    lines: 7
+    members:
+      - modules/foo/a.ts:1:7
+      - modules/foo/b.ts:1:7
+    disposition: keep-with-reason
+    reason: |
+      Kept-with-reason entry preceding the malformed one.
+  - id: 310995005263
+    lines: 11
+    members:
+      - modules/bar/a.ts:1:11
+      - modules/bar/b.ts:1:11
+    disposition: keep-with-reason
+    reason: |
+      Operator-curated reason; survives across the malformed-HEAD transition.
+`;
+
+// Staged fix: quote the decimal-only id so the YAML parser keeps it as
+// a string. Disposition unchanged; reason text unchanged.
+const STAGED_YAML_FIXES_DECIMAL_ID = `generated_at: 2026-05-24T01:00:00Z
+clones:
+  - id: aaaaaaaaaaaa
+    lines: 7
+    members:
+      - modules/foo/a.ts:1:7
+      - modules/foo/b.ts:1:7
+    disposition: keep-with-reason
+    reason: |
+      Kept-with-reason entry preceding the malformed one.
+  - id: '310995005263'
+    lines: 11
+    members:
+      - modules/bar/a.ts:1:11
+      - modules/bar/b.ts:1:11
+    disposition: keep-with-reason
+    reason: |
+      Operator-curated reason; survives across the malformed-HEAD transition.
+`;
+
+export async function scenarioGateAllowsFixForwardWhenHeadMalformed(survivorEntry: string): Promise<ScenarioResult> {
+  const name = 'disposition-survivor gate exits 0 with warning when HEAD is malformed AND staged parses cleanly';
+  const fix = makeGitFixture('fix-forward');
+  try {
+    setupHeadAndStaged(fix, HEAD_YAML_MALFORMED_DECIMAL_ID, STAGED_YAML_FIXES_DECIMAL_ID);
+    const r = runSurvivorGate(survivorEntry, fix.dir);
+    if (r.code !== 0) {
+      return fail(
+        name,
+        `expected exit 0 (fix-forward path); got ${r.code}\nstdout:\n${r.stdout}\nstderr:\n${r.stderr}`,
+      );
+    }
+    // The warning must explicitly say it's skipping the destructive-
+    // transition check so future agents reading the commit log can see
+    // the gate was deliberately permissive (not silently bypassed).
+    if (!r.stderr.includes("HEAD's clones.yaml is malformed")) {
+      return fail(
+        name,
+        `expected stderr to name the malformed-HEAD condition; got:\n${r.stderr}`,
+      );
+    }
+    if (!r.stderr.includes('fix-forward')) {
+      return fail(
+        name,
+        `expected stderr to name "fix-forward" intent; got:\n${r.stderr}`,
+      );
+    }
+    return pass(
+      name,
+      'gate exited 0 with the fix-forward warning naming both the malformed-HEAD condition and the skip rationale',
+    );
+  } finally {
+    rmSync(fix.dir, { recursive: true, force: true });
+  }
+}
+
+// A second still-malformed staged version that DIFFERS from HEAD by a
+// one-byte timestamp tweak — required for the gate to consider the
+// staged blob "modified" (otherwise `isBaselineStaged` short-circuits
+// before either parse runs).
+const STAGED_YAML_STILL_MALFORMED = HEAD_YAML_MALFORMED_DECIMAL_ID.replace(
+  '2026-05-24T00:00:00Z',
+  '2026-05-24T02:00:00Z',
+);
+
+export async function scenarioGateStillFailsLoudWhenBothMalformed(survivorEntry: string): Promise<ScenarioResult> {
+  const name = 'disposition-survivor gate exits 2 when BOTH HEAD and staged are malformed (staged-side fail is hard)';
+  const fix = makeGitFixture('both-malformed');
+  try {
+    setupHeadAndStaged(fix, HEAD_YAML_MALFORMED_DECIMAL_ID, STAGED_YAML_STILL_MALFORMED);
+    const r = runSurvivorGate(survivorEntry, fix.dir);
+    if (r.code !== 2) {
+      return fail(
+        name,
+        `expected exit 2 (staged-side fail is the hard error); got ${r.code}\nstdout:\n${r.stdout}\nstderr:\n${r.stderr}`,
+      );
+    }
+    if (!r.stderr.includes('staged clones.yaml')) {
+      return fail(
+        name,
+        `expected stderr to name the staged-side parse failure; got:\n${r.stderr}`,
+      );
+    }
+    return pass(name, 'gate exited 2 — staged-side parse failure is the load-bearing block');
+  } finally {
+    rmSync(fix.dir, { recursive: true, force: true });
+  }
+}
+
 /**
  * Adversarial self-check: stub the gate with a no-op `exit 0` shell
  * script and re-run scenario 4's assertions against it. If the

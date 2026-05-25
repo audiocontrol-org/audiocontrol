@@ -42,10 +42,12 @@ import { fileURLToPath } from 'node:url';
 import { parseClonesYaml, serializeClonesYaml } from './clones-yaml.js';
 import {
   type ScenarioResult,
+  scenarioGateAllowsFixForwardWhenHeadMalformed,
   scenarioGateAllowsLegitimateAdditions,
   scenarioGateAllowsProtectedChanges,
   scenarioGateBlocksLossDiff,
   scenarioGateForceOverride,
+  scenarioGateStillFailsLoudWhenBothMalformed,
   scenarioGuttedStubSelfCheck,
 } from './disposition-survivor.gate-scenarios.js';
 import { errorMessage } from './util/typeguards.js';
@@ -284,6 +286,12 @@ async function main(): Promise<number> {
     scenarioGateAllowsLegitimateAdditions,
     scenarioGateAllowsProtectedChanges,
     scenarioGateForceOverride,
+    // AUDIT-20260524-XX (this commit) — fix-forward path for malformed
+    // HEAD + well-formed staged. Mirrors the real-world bug where a
+    // pre-existing decimal-only clone id ("310995005263") was coerced
+    // to number by YAML, blocking the very commit that fixes it.
+    scenarioGateAllowsFixForwardWhenHeadMalformed,
+    scenarioGateStillFailsLoudWhenBothMalformed,
     scenarioGuttedStubSelfCheck,
   ];
   const results: ScenarioResult[] = [];
