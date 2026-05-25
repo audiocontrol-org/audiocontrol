@@ -117,18 +117,41 @@ This new dispatch discipline was added only under `.claude/rules/`. There is no 
 ### The new `tracked_holdouts` use symbolic placeholder refs instead of actionable tracking issues, so the registry now reports deferred work without a real follow-up target
 
 Finding-ID: AUDIT-20260525-20
-Status:     open (NEEDS DECISION; in-flight investigation 2026-05-25)
+Status:     verified-f90c989d
 Severity:   medium
 Surface:    `docs/scope-discovery/adopter-manifests.yaml`
 
-**In-flight (2026-05-25):** investigated as part of the AUDIT-19/-20/-21/-22 closure batch. The dispatch's recommended option (a) — "remove placeholder issue refs + flesh out the `reason:` text" — requires a schema amendment because the registry parser at `tools/scope-discovery/adopter-manifests-registry.ts:317` currently makes `issue:` REQUIRED for every `tracked_holdouts:` entry (the field must be non-empty AND either contain `://` or start with `#`). Per the dispatch's explicit escalation rule ("If `issue:` is mandatory, surface as NEEDS DECISION"), this finding remains open pending an operator decision between:
+**Closure (verified-f90c989d):** operator picked option (a) — amend the parser to make `issue:` optional when `reason:` carries substantive inline tracking content. Closure landed across two commits:
 
-- **(a-amend-schema)** — Amend the parser + schema docs to make `issue:` OPTIONAL when `reason:` carries an inline tracking note ("Tracked as akai-harmonization Phase 3+ work; no separate GH issue. Re-classify if the operator later files one."). Self-contained: no external GH state, single commit, paired adversarial scenarios prove the optional-issue + substantive-reason path passes and the missing-issue-AND-missing-reason path rejects.
-- **(b-create-real-issues)** — Create real GitHub issues for the 4 deferral themes (cross-editor-akai-export-dialog-lifecycle [4 holdouts], cross-editor-akai-slot-info [3 holdouts], cross-editor-akai-library-device-memory-panel [1 holdout], cross-editor-akai-library-preview-panel [1 holdout]). Replace each placeholder with `https://github.com/audiocontrol-org/audiocontrol/issues/NNN`. Bodies for the 4 issues are drafted at `.tmp-commitmsg/issue-19-{export-dialog-lifecycle,slot-info,library-device-memory-panel,library-preview-panel}.md` (cwd at `audiocontrol-akai-harmonization`).
+- `f2e49c0e` (feat) — `tools/scope-discovery/util/substantive-reason.ts` (new) owns the `SUBSTANTIVE_REASON_MIN_CHARS = 80` constant + `REASON_GAMING_PHRASES` wordlist + `checkSubstantiveReason(reason)` predicate. `TrackedHoldout.issue` is now optional; `parseTrackedHoldouts` calls `parseOptionalIssue` (returns undefined when absent; rejects malformed shapes when present) and enforces `checkSubstantiveReason(reason)` when issue is absent. The placeholder-phrase check runs BEFORE the length check so a short placeholder reason (e.g., "deferred") produces the more informative "placeholder phrase" diagnostic rather than the bare "8 chars too few" length error. `adopter-manifests-report.ts` text + JSON renderers handle absent `issue:` honestly (text report omits the " — issue: ..." clause; JSON renderer conditionally spreads the `issue` key). `adopter-manifests.yaml` header documents the new contract (each tracked-holdout must carry follow-up signal under one of two shapes: well-formed `issue:` OR substantive `reason:`).
+- `f90c989d` (docs) — applies the new schema to the 9 existing tracked-holdout entries: drops the placeholder `issue:` fields (`#cross-editor-akai-export-dialog-lifecycle` ×4, `#cross-editor-akai-slot-info` ×3, `#cross-editor-akai-library-device-memory-panel` ×1, `#cross-editor-akai-library-preview-panel` ×1) and expands each `reason:` into a WHAT / WHY / UNLOCKS-WHEN block that names the migration target file + canonical primitive, the technical blocker (state-contract delta, missing primitive, multi-item progress shape, semantic slot-label variation), and the conditional that would make adoption feasible. Also rewrote the matching placeholder refs in `anti-patterns.yaml`'s `tailwind-button-chrome-inline` `excludes_paths:` documentation comments (the field itself is a `path: string[]`; only the comments above + alongside referenced the placeholder shape).
 
-The dispatch's preference was option (a) for "smaller scope + no external GH state." The dispatch's classifier blocked option (b) when attempted unilaterally because option (a) was explicitly chosen by the dispatch — surfacing the decision back to the operator is the correct path. Each option resolves the finding cleanly; the choice is operator-side because it crosses an external-state vs internal-schema boundary the controller is not authorized to settle.
+Paired adversarial scenarios (validator-paired-changes rule, all in `adopter-manifests.tracked-holdouts-scenarios.ts`):
 
-Re-verify after operator decision.
+- `scenarioTrackedHoldoutNoIssueSubstantiveReason` (happy path B) — issue-less entry + >= 80-char substantive reason → gate exit 0; deferred file appears in the tracked-holdouts report section AND the report omits the misleading "issue:" clause.
+- `scenarioTrackedHoldoutNoIssueEmptyReason` (reject) — issue-less + empty reason → exit 2 (`requireString` fires first; the entry is uncovered either way).
+- `scenarioTrackedHoldoutNoIssueGamedReason` (reject) — issue-less + reason = "deferred" → exit 2; stderr names "placeholder phrase" + quotes the offending phrase.
+- `scenarioTrackedHoldoutNoIssueShortReason` (reject) — issue-less + reason < 80 chars non-placeholder → exit 2; stderr names "substantive" rule + "80 chars" threshold.
+- `scenarioTrackedHoldoutBackwardCompatHashIssue` (accept) — `#`-prefix issue + short reason → exit 0; backward-compat preserved.
+
+Validator-paired-changes hard test: stashed the schema-amendment diff (`adopter-manifests-registry.ts` + `adopter-manifests-report.ts`) leaving scenarios in place; re-ran the validator suite. Pre-amendment behavior:
+
+- Scenario 2 (no-issue-substantive-reason-accepted): FAILED — `expected exit 0 ... got 2; stderr=adopter-manifests: ... entry #0 tracked_holdouts[0] requires non-empty string 'issue'`.
+- Scenario 3 (no-issue-empty-reason-rejected): FAILED — `stderr should name the offending 'reason' field; got: ... requires non-empty string 'issue'` (the assertion fired on the wrong field name; the entry still rejected, but the diagnostic carried the pre-amendment shape).
+- Scenario 4 (no-issue-gamed-reason-rejected): FAILED — `stderr should name the 'placeholder phrase' rejection; got: ... requires non-empty string 'issue'` (pre-amendment parser unconditionally rejects missing-`issue`, never reaches the substantive-reason check).
+- Scenario 5 (no-issue-short-reason-rejected): FAILED — `stderr should name the 'substantive' rule; got: ... requires non-empty string 'issue'` (same as scenario 4).
+- Scenario 6 (backward-compat-hash-issue-accepted): PASSED both pre- and post-amendment — `#`-prefix shape still accepted, backward-compat preserved.
+
+Four of five new scenarios fail against the pre-amendment schema with distinct diagnostics; the backward-compat scenario passes in both states. Teeth proven. Restored the schema; 37/37 scenarios pass.
+
+Verification at HEAD (commit `f90c989d`):
+
+- `pnpm exec tsx tools/scope-discovery/adopter-manifests.validate.ts` → `Summary: 37/37 scenarios passed`.
+- `pnpm test:scope-discovery` → all suites green; 10/10 in tab-active-state, 9/9 in PRD relevance, etc.
+- `make check-adopters` → `adopter-manifests: 0 holdouts across 14 manifest(s). 9 tracked holdout(s) reported separately.` (unchanged total; report now omits the stale "issue:" clause for each of the 9 — `grep "issue:" make-check-adopters.txt | grep -v "no-issue-test"` returns 0 hits).
+- `make check-anti-patterns` → `anti-patterns: 18 entries scanned across 1376 files; 0 findings.`
+- `grep -rn 'cross-editor-akai\|cross-editor-tailwind' docs/scope-discovery/` → 0 hits (all placeholders gone).
+- `pnpm --filter @audiocontrol/editor-core test` → 393 unit + 30 UI green (no consumer-side breakage from the `TrackedHoldout` interface change).
 
 The adopter-manifest registry says tracked holdouts are for work the operator “has explicitly deferred via a tracking issue” and that the `issue:` field exists to prevent the registry from becoming a “fix-it-later dumping ground without operator-tracked follow-up” (`adopter-manifests.yaml:72-83`). The new backfill entries, however, use symbolic placeholders such as `#cross-editor-akai-export-dialog-lifecycle`, `#cross-editor-akai-slot-info`, `#cross-editor-akai-library-device-memory-panel`, and `#cross-editor-akai-library-preview-panel` (`adopter-manifests.yaml:174-195`, `242-257`, `340-372`).
 
