@@ -158,11 +158,19 @@ dispatch.
 
 ### 2.8 8-segment VFD-glow envelope
 
-Pattern (memory `feedback_envelope_pattern` + [`envelope-primitives.css`](../../../../modules/editor-core/src/design/envelope-primitives.css)): full-width VFD-glow graphic on top, per-segment numeric table below. The roland tone envelopes are 8-segment (NOT ADSR). The akai keygroup envelopes ARE ADSR (4-segment) — `s3k-envelope-display`, `s3k-adsr-*` in [`index.css`](../../../../modules/akai-s3k-editor/src/index.css):318-368.
+Pattern (memory `feedback_envelope_pattern` + [`envelope-primitives.css`](../../../../modules/editor-core/src/design/envelope-primitives.css)): full-width VFD-glow graphic on top, per-segment numeric table below. The roland tone envelopes are 8-segment (NOT ADSR). The akai keygroup envelopes split into two distinct semantic shapes:
 
-**Disposition: `genuinely-dialect`** — same VFD-glow graphic primitive (canvas, color stops, radial gradient, scanline overlay), parameterized by segment count. The roland mounts it with 8 segments; the akai mounts it with 4. The per-segment numeric table renders rows for however many segments exist.
+- **Amp envelope: classic 4-param ADSR.** Sustain is a HELD level, not a time. Layout has a fixed 75/25 horizontal split (attack + decay + sustain-hold left, release right).
+- **Filter envelope: uniform 4-segment multi-point.** Same `{time, level}` per segment as the roland tone envelopes, just with `totalSegments={4}`.
 
-The current akai ADSR display has the right CONTENT but the wrong CHROME — it's a flat inline SVG, no VFD glow, no per-segment table beneath. Migrate to `AcEnvelope` with `segmentCount={4}`.
+**Disposition (revised 2026-05-24):** `AcEnvelope` ships BOTH semantics via a discriminated-union `kind` prop:
+
+- `kind: 'multi-segment'` (default) — uniform N-segment envelope. Roland mounts at `totalSegments={8}`; akai filter envelope mounts at `totalSegments={4}` with `maxTime/maxLevel=99`. Backwards-compatible default — all pre-extension consumers render identically.
+- `kind: 'adsr'` — classic 4-parameter ADSR. Sustain is HELD level. Akai amp envelope mounts at `maxValue=99`.
+
+Filter frequency-response visualization (cutoff + Q on a log-frequency × dB graph) is a SEPARATE concern — extracted as `AcFrequencyResponse` (akai-driven editor-core extraction). The canonical primitive supports four classic filter topologies (lowpass / highpass / bandpass / notch) via a `filterType` prop and operates in physics units (Hz + dB), with per-device 0..99 wire-format mappings owned by the call-site adapter.
+
+The legacy akai `s3k-envelope-display` / `s3k-adsr-*` SVG-direct chrome was deleted in akai-harmonization Phase 2 task 2.2 Commit 6 (`6ff7ad44`); the `s3k-envelope-display-inline` anti-pattern (paired adversarial scenarios in `tools/scope-discovery/anti-patterns.s3k-envelope-display-scenarios.ts`) prevents re-introduction.
 
 ### 2.9 Rec-LED accent
 
@@ -374,7 +382,9 @@ The matrix below is the proof-of-design Phase 2 implementers cite for each `cano
 | AcCheckbox | ~~`.s3k-param-toggle`~~ → AcToggle via S3kParamToggleRow | DONE 2026-05-24 (`20e56322` + `74505449` + `f25b10a1`) | roland | 2.2 |
 | ~~AcRangeBar~~ ⟶ AcZoneStrip (segmented 1D zone bar) | VelocityRangeBar.tsx + KeyRangeEditor.tsx (inline tailwind + drag tracking) | `adopt-roland-pattern` (extract from `.ac-zone-*` family) | roland (promoted to editor-core) | 2.2 — DONE 2026-05-24 (Commits 03f36ce3 + 544d41f3 + e23de8b3) |
 | ZoneOverview 2D canvas | ZoneOverview.tsx + ZoneOverviewZone.tsx | `domain-component` (tokenize palette only) | n/a — akai-local | 2.2 — palette tokens DONE 2026-05-24 (Commit edab3add); structural canvas stays akai-local per § 2.7 amendment |
-| AcEnvelope | `.s3k-envelope-display` (ADSR-only) | `genuinely-dialect` (parameterize segment count) | extend roland's 8-segment primitive | 2.2 |
+| ~~AcEnvelope (segmentCount parameterization)~~ → AcEnvelope (kind: 'multi-segment') | `.s3k-envelope-display` MultiPointEnvelopeDisplay in AdsrDisplay.tsx | `adopt-roland-pattern` (consume primitive at totalSegments=4) | roland (existing primitive) | DONE 2026-05-24 (Commit 3 — `2f949329`) |
+| AcEnvelope (kind: 'adsr') | `.s3k-envelope-display` AdsrDisplay component (4-param classic ADSR) | `adopt-roland-pattern` (extend primitive with kind='adsr' variant) | new (akai-driven editor-core extension) | DONE 2026-05-24 (Commits 1+4 — `d524da07` + `1a47b60c`) |
+| AcFrequencyResponse | `.s3k-envelope-display` FilterDisplay (4-point freq-response curve) | `extract-primitive` | new (akai-driven editor-core extraction) | DONE 2026-05-24 (Commits 2+5 — `b83318d3` + `0ffe43f6`) |
 | AcChevron | absent | `adopt-roland-pattern` | roland | 2.2 |
 | AcButton | mix of `.s3k-*` and tailwind | `adopt-roland-pattern` | roland | 2.2 |
 
@@ -422,7 +432,7 @@ Phase 1 inventory surfaced these akai-specific patterns that should NOT propagat
 3. **Inline `<a href="/akai/s3000xl/editor/programs" className="text-blue-400 hover:underline">` for cross-page navigation prompts.** Register as anti-pattern; the canonical replacement is `.ac-link` (the design token `--ac-color-accent` carries through under the editor scope).
 4. **`.s3k-param-input` / `.s3k-param-select` / `.s3k-param-toggle` parallel primitive family.** Register as anti-pattern; the canonical replacement is `.ac-input` / `.ac-select` / a new `.ac-toggle` primitive promoted from akai if the shape doesn't already exist on roland.
 5. ~~**`s3k-zone-tabs` / `s3k-zone-tab` parallel primitive (instead of AcRadioTabs).** Register as anti-pattern; the canonical replacement is AcRadioTabs.~~ — DONE 2026-05-24 (`3b93fa91`) — `s3k-zone-tabs-inline` registered with paired adversarial scenarios in `tools/scope-discovery/anti-patterns.s3k-zone-tabs-scenarios.ts`. The `.s3k-zone-tab*` CSS family was deleted from `modules/akai-s3k-editor/src/index.css` in the same commit; VelocityZoneEditor migrated to AcRadioTabs controlled-mode (activeId + onActiveIdChange) so the VelocityRangeBar above the tabs can read the active zone index. Note: § 8 question 1 ("nested AcRadioTabs vs separate AcSecondaryTabs primitive") resolved as "reuse AcRadioTabs without a `variant=` prop" — the chrome unification was clean; no visual delta warranted a new variant.
-6. **`.s3k-envelope-display` SVG-direct envelope graphic (instead of AcEnvelope).** Register as anti-pattern; the canonical replacement is AcEnvelope with `segmentCount` prop.
+6. ~~**`.s3k-envelope-display` SVG-direct envelope graphic (instead of AcEnvelope).** Register as anti-pattern; the canonical replacement is AcEnvelope with `segmentCount` prop.~~ — DONE 2026-05-24 (Commits 1-6 of the AcEnvelope kind variants + AcFrequencyResponse extraction dispatch — `d524da07` + `b83318d3` + `2f949329` + `1a47b60c` + `0ffe43f6` + `6ff7ad44`). The dispatch grew AcEnvelope a discriminated-union `kind` prop (multi-segment + adsr variants), extracted AcFrequencyResponse as a separate primitive for filter-response visualization, migrated all three akai consumers (MultiPointEnvelopeDisplay → AcEnvelope kind='multi-segment' totalSegments=4; AdsrDisplay → AcEnvelope kind='adsr' maxValue=99; FilterDisplay → AcFrequencyResponse), deleted the `.s3k-envelope-display` / `.s3k-adsr-*` CSS family from `modules/akai-s3k-editor/src/index.css`, and registered the `s3k-envelope-display-inline` anti-pattern in `docs/scope-discovery/anti-patterns.yaml` with 8 paired adversarial scenarios (including a TF-015 sibling-class prefix-collision guard). Anti-pattern: 16 entries scanned (was 15), 0 findings.
 
 ## 7. Scope-discovery-protocol tooling gaps surfaced
 

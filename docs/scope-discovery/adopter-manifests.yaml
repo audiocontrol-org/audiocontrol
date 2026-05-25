@@ -420,3 +420,59 @@ adopter_manifests:
       SlideDrawer internally). The `imports:` field above narrows the
       adoption check so unrelated editor-core symbols don't accidentally
       satisfy the gate.
+
+  # akai-harmonization Phase 2 task 2.2 (2026-05-24) — AcEnvelope kind
+  # 'adsr' variant landing. The canonical primitive grew a discriminated-
+  # union `kind` prop in this dispatch's Commit 1:
+  #   - kind='multi-segment' (default): existing uniform N-segment shape
+  #   - kind='adsr' (new): classic 4-parameter ADSR with fixed 75/25 split
+  # Two akai consumers (filter env multi-segment + amp env adsr) +
+  # one roland consumer (tone env multi-segment) make up the
+  # cross-editor adopter set.
+  - id: ac-envelope
+    introduced_in: d524da07
+    from: '@audiocontrol/editor-core'
+    imports:
+      - AcEnvelope
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/components/ui/ToneEnvelopeEditor.tsx'
+      - 'modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx'
+    message: |
+      SVG-direct envelope chrome should use the shared AcEnvelope
+      primitive from @audiocontrol/editor-core. The primitive carries
+      a discriminated-union `kind` prop:
+        - kind='multi-segment' (default): uniform N-segment envelope
+          with `segments: { time, level }[]`. Used by roland tone
+          envelopes (8 segments) and akai filter envelopes (4
+          segments, maxTime/maxLevel=99).
+        - kind='adsr': classic 4-parameter ADSR (attack time / decay
+          time / sustain LEVEL held / release time) with fixed 75/25
+          horizontal layout. Used by the akai amp envelope
+          (maxValue=99 for the S3K parameter range).
+      Per harmonization-spec.md § 5.2 / § 6 item 6, re-introducing
+      inline .s3k-envelope-display / .s3k-adsr-* chrome is blocked by
+      the paired s3k-envelope-display-inline anti-pattern.
+
+  # akai-harmonization Phase 2 task 2.2 (2026-05-24) — AcFrequencyResponse
+  # primitive extraction. Filter-response visualization (cutoff + Q on a
+  # log-frequency × dB graph) was previously implemented inline in akai's
+  # FilterDisplay.tsx; the canonical primitive ships in editor-core.
+  - id: ac-frequency-response
+    introduced_in: b83318d3
+    from: '@audiocontrol/editor-core'
+    imports:
+      - AcFrequencyResponse
+    expected_adopters_glob:
+      - 'modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx'
+    message: |
+      Filter frequency-response curves (cutoff + Q on a log-frequency
+      × dB graph) should use the shared AcFrequencyResponse primitive
+      from @audiocontrol/editor-core. Supports four classic filter
+      topologies (lowpass / highpass / bandpass / notch) via the
+      `filterType` prop. Frequency is in Hz (the natural physics
+      domain); device-specific 0..99 parameter ranges should be
+      converted at the call site via per-device adapter helpers (the
+      akai consumer uses akaiFilterFreqToHz / akaiHzToFilterFreq).
+      Per harmonization-spec.md § 5.2 / § 6 item 6, re-introducing
+      inline .s3k-envelope-display chrome is blocked by the paired
+      s3k-envelope-display-inline anti-pattern.
