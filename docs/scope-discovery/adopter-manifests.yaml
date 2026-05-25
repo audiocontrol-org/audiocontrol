@@ -476,3 +476,36 @@ adopter_manifests:
       Per harmonization-spec.md § 5.2 / § 6 item 6, re-introducing
       inline .s3k-envelope-display chrome is blocked by the paired
       s3k-envelope-display-inline anti-pattern.
+
+  # akai-harmonization Phase 2 task 2.2 (2026-05-24) — AcLiveStatusFooter
+  # build-from-scratch primitive. No prior live-status footer chrome
+  # existed in either editor; the spec's `adopt-roland-pattern`
+  # disposition (harmonization-spec.md § 2.5) was forward-looking. The
+  # canonical primitive ships in editor-core and both editors adopted
+  # it atomically in this dispatch's commits 2 + 3.
+  - id: ac-live-status-footer
+    introduced_in: 1e6e40ad
+    from: '@audiocontrol/editor-core'
+    imports:
+      - AcLiveStatusFooter
+    expected_adopters_glob:
+      - 'modules/akai-s3k-editor/src/pages/{Keygroups,Samples,Programs}Page.tsx'
+      - 'modules/roland-sxx0-editor/src/pages/{Patches,Tones}Page.tsx'
+    message: |
+      Live-editing pages must surface the canonical AcLiveStatusFooter
+      (introduced commit 1e6e40ad) below the detail column. The wiring
+      pattern is documented in harmonization-spec.md § 2.5:
+        1. Track lastEditAt via `const [lastEditAt, setLastEditAt] =
+           useState<number | null>(null);`
+        2. Call `setLastEditAt(Date.now())` inside every parameter-
+           change handler AFTER the device-write promise resolves
+           (errors leave the timestamp alone — the footer reports the
+           LAST CONFIRMED edit).
+        3. Mount `<AcLiveStatusFooter deviceLabel="..." lastEditAt={lastEditAt}
+           state={isConnected ? 'live' : 'offline'} />` at the bottom of
+           the .ac-page-shell--fixed-viewport, after the .ac-app-shell
+           grid and before any dialog/drawer mounts.
+      Per `feedback_rec_led_accent` (rec-LED is the device-active
+      indicator, never danger) and `feedback_live_editing_no_save`
+      (parameter edits stream live; replace save/cancel/undo with a
+      live-status footer) operator memories.

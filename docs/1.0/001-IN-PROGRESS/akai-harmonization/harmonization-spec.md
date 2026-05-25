@@ -105,7 +105,20 @@ The akai panel must mirror the **S3000XL's actual front panel**: a wider LCD-cen
 
 Memory `feedback_live_editing_no_save`: "S-330/S-550 parameter edits stream live to device; replace save/cancel with a live-status footer."
 
-The akai editor's `handleParameterChange` already does this (writes to device on every change — [`KeygroupsPage.tsx`](../../../../modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx):109-124). It just doesn't surface the live-status footer. **Disposition: `adopt-roland-pattern`** — add the rec-LED-tinted footer ("LIVE · writing to S3000XL · last edit 0.4 s ago") below the detail column.
+The akai editor's `handleParameterChange` already does this (writes to device on every change — [`KeygroupsPage.tsx`](../../../../modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx):109-124). It just doesn't surface the live-status footer.
+
+**Amended 2026-05-24** (akai-harmonization Phase 2 task 2.2 AcLiveStatusFooter dispatch, commits `1e6e40ad`, `a7b1773f`, `16f97e34`):
+
+~~**Disposition: `adopt-roland-pattern`** — add the rec-LED-tinted footer ("LIVE · writing to S3000XL · last edit 0.4 s ago") below the detail column.~~
+
+The disposition above was forward-looking — roland had not actually built the live-status footer either. **Revised disposition: build the canonical `AcLiveStatusFooter` primitive in editor-core and adopt atomically in both editors.** Closed: commits 1-3 of the AcLiveStatusFooter dispatch. The canonical primitive carries:
+
+- `deviceLabel: string` (e.g., "S3000XL" / "S-330" / "S-550")
+- `lastEditAt: number | null` (ms-since-epoch of latest confirmed device write; `null` renders READY state)
+- `state: 'live' | 'offline' | 'error'` (default `'live'`; consumers wire to `isConnected`)
+- `errorMessage: string` (used when `state='error'`)
+
+5 expected adopters across 2 editors (3 akai pages: Programs / Keygroups / Samples; 2 roland pages: Patches / Tones); 0 holdouts. The primitive's 100ms internal tick drives the "X.Xs ago" elapsed-time readout without parent re-renders.
 
 ### 2.6 AcChevron — one component, one CSS rule
 
@@ -367,7 +380,7 @@ The matrix below is the proof-of-design Phase 2 implementers cite for each `cano
 | Fixed-viewport page shell | absent (`.ac-page-shell` without modifier) | `adopt-roland-pattern` | roland | 2.2 |
 | PageTitleRow | absent (hand-rolled `.ac-page-sticky-header`) | `adopt-roland-pattern` | roland | 2.2 |
 | AcRadioTabs detail pane | ~~absent (single-pane parameter grid)~~ → AcRadioTabs (controlled mode) from editor-core | DONE 2026-05-24 (`a444acd5` + `b5d30089` + `3b93fa91`) | roland (promoted to editor-core) | 2.2 |
-| Live-editing footer | absent | `adopt-roland-pattern` | roland | 2.2 |
+| ~~Live-editing footer~~ → AcLiveStatusFooter | ~~absent (akai had no live-status footer; spec said adopt-roland-pattern but roland hadn't built it either)~~ → AcLiveStatusFooter consumed in 3 akai pages + 2 roland pages | ~~`adopt-roland-pattern`~~ → revised: build new in editor-core; both editors adopt atomically | new in editor-core | 2.2 — DONE 2026-05-24 (Commits 1e6e40ad + a7b1773f + 16f97e34) |
 | Virtual front panel — chassis chrome | absent | `genuinely-dialect` (tokens differ) | roland (component shape) | 2.1 + 2.2 |
 | Virtual front panel — button grid layout | absent | structural divergence — needs factory | shared `FrontPanelButton`, per-device layout | 2.2 |
 | Theme/dialect tokens | partial (`[data-editor='s3000xl']` 8 tokens) | extend | new (deepen akai scope) | 2.1 |
