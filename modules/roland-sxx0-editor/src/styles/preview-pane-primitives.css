@@ -1,0 +1,427 @@
+/**
+ * Library-page preview-pane chrome — `.ac-preview-*` and `.ac-pane-action*`
+ * families.
+ *
+ * Consumed by `ItemPreviewPanel.tsx`, `CommonSamplePreviewPanel.tsx`, and
+ * `preview-chrome.tsx` (mounted in the right column of `LibraryPage.tsx`),
+ * plus the `DeviceMemoryPanel` for the drop-highlight selector.
+ *
+ * Two related families that ship together because pane-action stacks
+ * only appear inside `.ac-preview-pane-body` (per the original docstring
+ * in `_shared.css`):
+ *
+ *   - `.ac-preview-pane` shell + head + body, eyebrow row, item name,
+ *     field grids, tag chips, description, subsection eyebrow, form rows,
+ *     result banners, zone rows, dependent-tone list.
+ *   - `.ac-pane-actions` + `.ac-pane-action` (+ `--primary` / `--danger`
+ *     modifiers + `-spinner`) — the vertical action stack typically
+ *     bottom-anchored in the preview body.
+ *
+ * Extracted from `_shared.css` 2026-05-25 per akai-harmonization
+ * Phase 2 task 2.8 (decompose `_shared.css` toward the 500-line cap).
+ *
+ * Stays roland-internal: akai's library has a different preview shape
+ * (program → keygroup → sample drill-down vs roland's tone/patch
+ * top-level), so cross-editor promotion would be speculative until a
+ * second consumer adopts the same shape.
+ */
+
+/* ============================================================
+   PREVIEW PANE — column-pane chrome used by the Library page's
+   third column (ItemPreviewPanel) and any future per-page preview
+   surface that needs the same lean head + body shape.
+
+   Structure:
+     .ac-preview-pane               flex column, fills the grid track
+       .ac-preview-pane-head        small bordered head (eyebrow + sub)
+         .ac-preview-pane-head-title  display font, h-tag heading
+         .ac-preview-pane-head-sub    muted subtitle ("from <set>")
+       .ac-preview-pane-body        scrollable body, stacks children
+         .ac-preview-eyebrow-row    item identity eyebrow
+         .ac-preview-name           item display name
+         .ac-preview-fields         2-col param grid (label/value)
+         .ac-pane-actions           bottom-anchored action stack
+   ============================================================ */
+.ac-preview-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.ac-preview-pane-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+  padding: var(--ac-space-3) var(--ac-space-4);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-preview-pane-head-title {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: var(--ac-text-md);
+  letter-spacing: var(--ac-tracking-display);
+  line-height: 1.2;
+  color: var(--ac-color-text-primary);
+}
+
+.ac-preview-pane-head-sub {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-preview-pane-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--ac-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+}
+
+/* Eyebrow above the preview item name — single uppercase eyebrow
+   line ("LIBRARY TONE · T01 MNI BS"). Lives at the top of the
+   preview body, before .ac-preview-name. */
+.ac-preview-eyebrow-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-preview-eyebrow-sep {
+  color: color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
+}
+
+.ac-preview-eyebrow-slot {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ac-color-accent);
+}
+
+.ac-preview-name {
+  margin: 0;
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  font-size: 1.1rem;
+  letter-spacing: var(--ac-tracking-display);
+  line-height: 1.25;
+  color: var(--ac-color-text-primary);
+}
+
+/* Two-column field grid for parameter readouts. No enclosing card —
+   the grid itself is bracketed by hairline rules so multiple field
+   blocks can stack with shared separators. */
+.ac-preview-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--ac-space-3) var(--ac-space-4);
+  padding-block: var(--ac-space-3);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+/* Stacked grids share their adjacent rule rather than doubling it. */
+.ac-preview-fields + .ac-preview-fields {
+  margin-top: calc(-1 * var(--ac-rule-hairline));
+}
+
+.ac-preview-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ac-preview-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-preview-field-value {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Inline tag chips (e.g., sample-bundle tags). Hairline-bordered
+   uppercase eyebrow pills, consistent with .ac-page-title-tag. */
+.ac-preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-1);
+}
+
+.ac-preview-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem var(--ac-space-2);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  line-height: 1.4;
+  border-radius: var(--ac-radius-sm);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  color: var(--ac-color-text-muted);
+}
+
+/* Optional description paragraph rendered below the .ac-preview-name. */
+.ac-preview-description {
+  margin: 0;
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  line-height: var(--ac-leading-normal);
+}
+
+/* Subsection eyebrow inside the body (e.g. "Promote to Tone",
+   "Zones"). Single uppercase line; pairs naturally with field grids
+   or row lists rendered immediately after it. */
+.ac-preview-subsection-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-1);
+}
+
+/* Inline form rendered inside a preview body — a labeled control row
+   that pairs an .ac-input with a unit/hint label to its right. */
+.ac-preview-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-1);
+}
+
+.ac-preview-form-row-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+.ac-preview-form-row-controls .ac-input {
+  max-width: 5rem;
+  padding-block: var(--ac-space-1);
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-preview-form-row-hint {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Result banner inside the preview body — success or error. */
+.ac-preview-result {
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-xs);
+}
+
+.ac-preview-result--ok {
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-status-connected) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-status-connected) 12%, transparent);
+  color: color-mix(in srgb, var(--ac-status-connected) 90%, var(--ac-color-text-primary));
+}
+
+.ac-preview-result--err {
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-rec) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-rec) 12%, transparent);
+  color: color-mix(in srgb, var(--ac-color-rec) 90%, var(--ac-color-text-primary));
+}
+
+/* Zones list inside a program preview — single row per zone. */
+.ac-preview-zone-row {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: var(--ac-space-2);
+  padding-block: var(--ac-space-1);
+  border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-border-subtle) 40%, transparent);
+}
+
+.ac-preview-zone-row:last-of-type {
+  border-bottom: none;
+}
+
+.ac-preview-zone-row-index {
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  text-align: right;
+}
+
+.ac-preview-zone-row-name {
+  font-family: var(--ac-font-body);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ac-preview-zone-row-meta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+/* Dependent-tone list inside a patch preview — single-column variant
+   of the field grid that lays out paired slot/name rows. */
+.ac-preview-tone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-block: var(--ac-space-3);
+  border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+}
+
+.ac-preview-tone-list-eyebrow {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  margin-bottom: var(--ac-space-1);
+}
+
+.ac-preview-tone-list-row {
+  display: grid;
+  grid-template-columns: 3rem minmax(0, 1fr);
+  gap: var(--ac-space-2);
+  font-family: var(--ac-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-preview-tone-list-slot {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-preview-tone-list-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ============================================================
+   PANE ACTION BUTTONS — vertical stack of lean uppercase action
+   buttons typically rendered at the bottom of a preview pane
+   (.ac-preview-pane-body uses gap to separate the stack from the
+   field grids above it). Each button is hairline-bordered; the
+   --primary variant uses an accent-tinted fill, --danger uses the
+   rec red.
+
+   Naming: .ac-pane-action* (not .ac-preview-action*) so the same
+   primitive can host header-level action chrome in the future.
+   ============================================================ */
+.ac-pane-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  margin-top: auto;
+}
+
+.ac-pane-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  background: transparent;
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-pane-action:hover:not(:disabled) {
+  color: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+}
+
+.ac-pane-action:focus-visible {
+  outline: var(--ac-rule-medium) solid color-mix(in srgb, var(--ac-color-accent) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.ac-pane-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-pane-action--primary {
+  color: var(--ac-color-text-primary);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 70%, transparent);
+  background: color-mix(in srgb, var(--ac-color-accent) 22%, transparent);
+}
+
+.ac-pane-action--primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--ac-color-accent) 32%, transparent);
+}
+
+.ac-pane-action--danger {
+  color: color-mix(in srgb, var(--ac-color-rec) 90%, var(--ac-color-text-primary));
+  border-color: color-mix(in srgb, var(--ac-color-rec) 50%, transparent);
+}
+
+.ac-pane-action--danger:hover:not(:disabled) {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-rec) 16%, transparent);
+  border-color: color-mix(in srgb, var(--ac-color-rec) 70%, transparent);
+}
+
+.ac-pane-action-spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: ac-icon-spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-pane-action-spinner { animation: none; }
+}

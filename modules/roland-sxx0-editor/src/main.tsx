@@ -13,6 +13,7 @@ import '@/styles/connect-page-primitives.css';
 import '@/styles/device-memory-primitives.css';
 import '@/styles/export-dialog-primitives.css';
 import '@/styles/play-page-primitives.css';
+import '@/styles/preview-pane-primitives.css';
 import '@/styles/patches.css';
 import '@/styles/tones.css';
 
