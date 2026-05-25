@@ -220,8 +220,13 @@ test.describe('Phase 9 Task 6 — visual screenshots', () => {
       // Wave is the default tab; capture before any tab switching.
       await capture(page, device, 'tones-wave');
 
-      // Click each non-default tab and capture. The tab labels carry
-      // role="tab" (see ToneEditorTabs.tsx:71).
+      // Click each non-default tab and capture. The tabs render as
+      // radios in an AcRadioTabs radiogroup; the visible click target
+      // is the <label class="ac-radio-tab"> wrapper that forwards to
+      // the sr-only radio via htmlFor. Updated 2026-05-24 per
+      // AUDIT-20260524-11 (closed) — was getByRole('tab'), which
+      // depended on the faux role="tab" attribute the component never
+      // honored.
       const tabs: readonly ['Pitch' | 'Filter' | 'Amp' | 'LFO', string][] = [
         ['Pitch', 'tones-pitch'],
         ['Filter', 'tones-filter'],
@@ -229,7 +234,7 @@ test.describe('Phase 9 Task 6 — visual screenshots', () => {
         ['LFO', 'tones-lfo'],
       ];
       for (const [tabName, fileName] of tabs) {
-        await page.getByRole('tab', { name: tabName }).click();
+        await page.locator('label.ac-radio-tab', { hasText: tabName }).click();
         // Brief settle for the CSS-only radio-driven tab transition.
         await page.waitForTimeout(150);
         await capture(page, device, fileName);

@@ -179,12 +179,23 @@ anti_patterns:
     # (2026-05-24). `canonical_implementation_file:` names the post-
     # promotion path so the scanner auto-excludes it (the file's body
     # IS the legacy shape, by construction).
+    #
+    # Updated 2026-05-24 per AUDIT-20260524-10 (closed): the class
+    # namespace renamed from `.ac-tabs` / `.ac-tab-strip` / `.ac-panels`
+    # to `.ac-radio-tabs` / `.ac-radio-tab-strip` / `.ac-radio-panels`
+    # (to disambiguate from the bare `.ac-tabs` button-tab chrome
+    # consumed by LibraryPanel + BuildInfo). The shape_regex patterns
+    # below match BOTH the pre-rename and the post-rename inline
+    # clones — that way a copy-paste of the canonical component (which
+    # would emit `ac-radio-tabs`) is caught AND a copy-paste of any
+    # legacy adopter that still has the old class names (none should,
+    # but defense in depth) is also caught.
     from: '@audiocontrol/editor-core'
     canonical_implementation_file: 'modules/editor-core/src/components/AcRadioTabs.tsx'
     shape_regex:
-      - '<div className="ac-tabs">'
-      - '<nav className="ac-tab-strip" role="tablist"'
-      - '<div className="ac-panels">'
+      - '<div className="ac-radio-tabs" role="radiogroup"'
+      - '<div className="ac-radio-tab-strip">'
+      - '<div className="ac-radio-panels">'
     min_distance: 30
     message: |
       Inline radio-driven tab strip was promoted to the AcRadioTabs component

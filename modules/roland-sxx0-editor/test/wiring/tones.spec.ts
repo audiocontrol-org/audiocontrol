@@ -195,14 +195,23 @@ test.describe('Capabilities — Tones (C-TONE)', () => {
   test('D-TONE-EDITOR-TABS-01: ToneEditorTabs renders the four-tab radio-driven shell (clones.yaml 80f494ba63d3 + 5578c63410e2 AcRadioTabs refactor contract)', async ({ page }) => {
     // Sibling assertion to D-PATCH-EDITOR-TABS-01 (patches.spec.ts).
     // Contract: ToneEditorTabs renders the four TABS entries
-    // (Wave, Pitch & LFO, Filter, Amp) as role="tab" labels with
-    // matching [data-tab="tt-wave|tt-pitch-lfo|tt-filter|tt-amp"]
-    // role="tabpanel" sections. The Wave tab is default-active.
+    // (Wave, Pitch & LFO, Filter, Amp) as radio-group radios labeled
+    // by aria-label, with matching [data-tab="tt-wave|tt-pitch-lfo|
+    // tt-filter|tt-amp"] panel sections. The Wave tab is default-
+    // active.
+    //
+    // Updated 2026-05-24 per AUDIT-20260524-11 (closed): the prior
+    // assertion shape (role="tab" labels + role="tabpanel" sections)
+    // was the faux ARIA tab contract the component never honored.
+    // The fix replaced it with honest radio-group semantics — the
+    // container is role="radiogroup" with the radios named via
+    // aria-label, and the panels are plain <section> elements
+    // identified by data-tab. This test now pins that contract.
     //
     // The tone-writes.spec.ts wiring suite already exercises clicking
     // through tabs and writing into the wave panel, so it would catch
     // a botched refactor — but it doesn't EXPLICITLY pin the
-    // .ac-tabs / role="tabpanel" wiring shape. This test does.
+    // radiogroup / data-tab panel wiring shape. This test does.
     const list = page.locator('[data-capability="C-TONE-01"]');
     await expect(list).toBeVisible({ timeout: 5_000 });
     await list.getByRole('button', { name: /^T11\b/ }).click();
@@ -210,15 +219,22 @@ test.describe('Capabilities — Tones (C-TONE)', () => {
     const editor = page.locator('[data-capability="C-TONE-04"]');
     await expect(editor).toBeVisible({ timeout: 5_000 });
 
-    await expect(editor.getByRole('tab', { name: 'Wave' })).toBeVisible();
-    await expect(editor.getByRole('tab', { name: 'Pitch & LFO' })).toBeVisible();
-    await expect(editor.getByRole('tab', { name: 'Filter' })).toBeVisible();
-    await expect(editor.getByRole('tab', { name: 'Amp' })).toBeVisible();
+    // The four tabs render as radios in a radiogroup, each with an
+    // aria-label matching the visible label text.
+    const radiogroup = editor.getByRole('radiogroup', { name: 'Tone editor sections' });
+    await expect(radiogroup).toBeVisible();
+    await expect(radiogroup.getByRole('radio', { name: 'Wave' })).toBeAttached();
+    await expect(radiogroup.getByRole('radio', { name: 'Pitch & LFO' })).toBeAttached();
+    await expect(radiogroup.getByRole('radio', { name: 'Filter' })).toBeAttached();
+    await expect(radiogroup.getByRole('radio', { name: 'Amp' })).toBeAttached();
 
-    await expect(editor.locator('[data-tab="tt-wave"]')).toHaveAttribute('role', 'tabpanel');
-    await expect(editor.locator('[data-tab="tt-pitch-lfo"]')).toHaveAttribute('role', 'tabpanel');
-    await expect(editor.locator('[data-tab="tt-filter"]')).toHaveAttribute('role', 'tabpanel');
-    await expect(editor.locator('[data-tab="tt-amp"]')).toHaveAttribute('role', 'tabpanel');
+    // The four panels live under .ac-radio-panels keyed by data-tab.
+    // They no longer carry role="tabpanel" (the faux ARIA contract
+    // was removed); the data-tab identifier is the canonical hook.
+    await expect(editor.locator('[data-tab="tt-wave"]')).toBeAttached();
+    await expect(editor.locator('[data-tab="tt-pitch-lfo"]')).toBeAttached();
+    await expect(editor.locator('[data-tab="tt-filter"]')).toBeAttached();
+    await expect(editor.locator('[data-tab="tt-amp"]')).toBeAttached();
   });
 
   test('D-TONE-PAGE-TITLE-01: TonesPage renders the .ac-page-title-row chrome with heading + rule + LED-metric (clones.yaml c53786bfb969 + c3ee44db4131 PageTitleRow refactor contract)', async ({ page }) => {

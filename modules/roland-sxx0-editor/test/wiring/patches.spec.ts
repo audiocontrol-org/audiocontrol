@@ -298,18 +298,21 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     // Test-before-extract contract for promoting PatchEditorTabs +
     // ToneEditorTabs to a shared AcRadioTabs primitive. The contract
     // PatchEditorTabs preserves through the refactor:
-    //   - The .ac-tabs root wraps the entire tab strip + panel set
-    //   - The two TABS entries (Common, Mapping) each render one
-    //     role="tab" label with the visible name as accessible name
-    //     AND one [data-tab="pt-common|pt-mapping"] role="tabpanel"
+    //   - The .ac-radio-tabs root wraps the entire tab strip + panel set
+    //   - The two TABS entries (Common, Mapping) each render one radio
+    //     in a radiogroup, labeled by aria-label matching the visible
+    //     text, plus one [data-tab="pt-common|pt-mapping"] panel section
     //   - The radio inputs share a single name= (groupName) so only
     //     one tab can be active at a time
     //   - The Common tab is default-active
     //
-    // No prior test pins the .ac-tabs structure, the [data-tab] panel
-    // selectors, or the role="tabpanel" wiring. Added 2026-05-22
-    // BEFORE the AcRadioTabs extraction lands. Must pass against the
-    // pre-refactor code AND stay green after the refactor.
+    // Updated 2026-05-24 per AUDIT-20260524-11 (closed): the prior
+    // assertion shape (role="tab" labels + role="tabpanel" sections)
+    // was the faux ARIA tab contract the component never honored.
+    // The fix replaced it with honest radio-group semantics — the
+    // container is role="radiogroup" with the radios named via
+    // aria-label, and the panels are plain <section> elements
+    // identified by data-tab. This test now pins that contract.
     const list = page.locator('[data-capability="C-PATCH-01"]');
     await expect(list).toBeVisible({ timeout: 5_000 });
     await list.getByRole('button', { name: /^P11/ }).click();
@@ -317,11 +320,19 @@ test.describe('Capabilities — Patches (C-PATCH)', () => {
     const editor = page.locator('[data-capability="C-PATCH-04"]');
     await expect(editor).toBeVisible({ timeout: 5_000 });
 
-    await expect(editor.getByRole('tab', { name: 'Common' })).toBeVisible();
-    await expect(editor.getByRole('tab', { name: 'Mapping' })).toBeVisible();
+    // The two tabs render as radios in a radiogroup, each with an
+    // aria-label matching the visible label text.
+    const radiogroup = editor.getByRole('radiogroup', { name: 'Patch editor sections' });
+    await expect(radiogroup).toBeVisible();
+    await expect(radiogroup.getByRole('radio', { name: 'Common' })).toBeAttached();
+    await expect(radiogroup.getByRole('radio', { name: 'Mapping' })).toBeAttached();
 
-    await expect(editor.locator('[data-tab="pt-common"]')).toHaveAttribute('role', 'tabpanel');
-    await expect(editor.locator('[data-tab="pt-mapping"]')).toHaveAttribute('role', 'tabpanel');
+    // The panel sections still carry data-tab so the per-tab-ID CSS
+    // selectors in roland's _shared.css can flip visibility. They no
+    // longer carry role="tabpanel" (the faux ARIA contract was
+    // removed); the data-tab identifier is the canonical hook.
+    await expect(editor.locator('[data-tab="pt-common"]')).toBeAttached();
+    await expect(editor.locator('[data-tab="pt-mapping"]')).toBeAttached();
   });
 
   test('D-PATCH-PAGE-TITLE-01: PatchesPage renders the .ac-page-title-row chrome with heading + rule + LED-metric (clones.yaml c53786bfb969 + c3ee44db4131 PageTitleRow refactor contract)', async ({ page }) => {

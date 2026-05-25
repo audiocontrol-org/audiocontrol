@@ -84,7 +84,7 @@
  *   present for the wiring tier but the accessible-button shape is the
  *   contract this Tier 3 spec consumes.
  */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type Locator } from '@playwright/test';
 // Reuse the Tier 2 contract helper rather than duplicate it under
 // `test/ui/in-context/_credibility-url.ts`. Both tiers consume the
 // identical env-var → URL-param translation; a single helper is the right
@@ -119,7 +119,7 @@ const TONES_URL =
  * to 0 px, so this helper fails LOUDLY rather than silently clicking the
  * origin (0, 0) and false-passing.
  */
-async function clickByPointer(page: Page, label: string, locator: ReturnType<Page['getByRole']>): Promise<void> {
+async function clickByPointer(page: Page, label: string, locator: Locator): Promise<void> {
   const box = await locator.boundingBox();
   if (box === null) {
     throw new Error(
@@ -158,9 +158,17 @@ test.describe('TonesPage TVF envelope segment-1 Time — Tier 3 in-context (D-TO
     await clickByPointer(page, 'tone slot T11', toneSlot);
 
     // ── Switch to the Filter tab. ──────────────────────────────────────
-    // Tabs carry role="tab" with the visible name as accessible name.
-    // The Wave tab is the default; we click Filter to swap panels.
-    const filterTab = page.getByRole('tab', { name: 'Filter' });
+    // AcRadioTabs renders the tab strip as <label class="ac-radio-tab"
+    // for="<tab-id>"> wrappers around sr-only <input type="radio">
+    // controls. The visible click target is the label; clicking it
+    // toggles its associated radio via native htmlFor click-forwarding.
+    // We target the label by its visible text + its class so the real
+    // pointer hits the visible chrome (the radios themselves are 1px
+    // sr-only — they wouldn't pass clickByPointer's bounding-box
+    // sanity check). Updated 2026-05-24 per AUDIT-20260524-11 (closed)
+    // — was getByRole('tab', { name: 'Filter' }), which depended on
+    // the faux role="tab" attribute the component never honored.
+    const filterTab = page.locator('label.ac-radio-tab', { hasText: 'Filter' });
     await expect(filterTab).toBeVisible({ timeout: 5_000 });
     await clickByPointer(page, 'Filter tab', filterTab);
 

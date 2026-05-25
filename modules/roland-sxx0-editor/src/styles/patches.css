@@ -52,8 +52,9 @@
 
 /* ============================================================
    MAPPING PANEL — Tone Mapping section header + Layer 1/2 stack.
-   The tab chrome (.ac-tabs / .ac-tab-strip / .ac-tab / .ac-panels /
-   .ac-panel / .ac-panel-stack) is shared in `_shared.css`. What
+   The tab chrome (.ac-radio-tabs / .ac-radio-tab-strip /
+   .ac-radio-tab / .ac-radio-panels / .ac-radio-panel /
+   .ac-panel-stack) is shared in `_shared.css`. What
    stays here is the page-specific section heading + meta caption
    above the two ToneZoneEditor rows.
    ============================================================ */

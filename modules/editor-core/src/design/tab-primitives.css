@@ -1,5 +1,5 @@
 /**
- * Tab primitives — canonical radio-driven tab strip chrome.
+ * Radio-tab primitives — canonical radio-driven tab strip chrome.
  *
  * Promoted from `modules/roland-sxx0-editor/src/styles/_shared.css`
  * (lines 1403-1518 pre-move) on 2026-05-24 per akai-harmonization
@@ -12,22 +12,36 @@
  * `editor-core/src/components/AcRadioTabs.tsx`. Composes the `--ac-*`
  * design tokens (see `tokens.css`).
  *
+ * Class namespace (AUDIT-20260524-10): every class below uses the
+ * `.ac-radio-*` prefix so the radio-driven tab chrome does NOT
+ * collide with the pre-existing `.ac-tabs` / `.ac-tab` / `.ac-tab--active`
+ * button-tab chrome declared in `layout-primitives.css` (consumed by
+ * LibraryPanel and BuildInfo). The 2026-05-24 promotion initially
+ * re-used the bare `.ac-tabs` / `.ac-tab` names and silently regressed
+ * those two button-tab surfaces (the radio-tab rules forced
+ * `display: block` + `border-bottom: 0`, stacking the tabs and
+ * dropping the active underline). The rename below closes that
+ * conflict structurally — the two systems cannot fight again because
+ * they no longer share a class name.
+ *
  * Scope split (CRITICAL — read before editing):
- *   - The chrome below (`.ac-tabs`, `.ac-tab-strip`, `.ac-tab`,
- *     `.ac-panels`, `.ac-panel`, `.ac-panel-stack`, the
- *     `ac-tab-fade-in` keyframes) is GENERIC — it knows nothing about
- *     any specific tab id.
+ *   - The chrome below (`.ac-radio-tabs`, `.ac-radio-tab-strip`,
+ *     `.ac-radio-tab`, `.ac-radio-panels`, `.ac-radio-panel`,
+ *     `.ac-panel-stack`, the `ac-tab-fade-in` keyframes) is GENERIC —
+ *     it knows nothing about any specific tab id.
  *   - The per-tab-ID active-state selector list (`#tt-wave:checked ~
- *     .ac-tab-strip [for="tt-wave"]`, ...) lives in the CONSUMER's
- *     stylesheet (e.g., `roland-sxx0-editor/src/styles/_shared.css`)
- *     because the radio-input ids are consumer-owned. Each new
- *     uncontrolled-mode adopter registers its ids there.
+ *     .ac-radio-tab-strip [for="tt-wave"]`, ...) lives in the
+ *     CONSUMER's stylesheet (e.g.,
+ *     `roland-sxx0-editor/src/styles/_shared.css`) because the
+ *     radio-input ids are consumer-owned. Each new uncontrolled-mode
+ *     adopter registers its ids there.
  *   - When `AcRadioTabs` is used in CONTROLLED mode (via the
  *     `activeId` + `onActiveIdChange` props), only the active panel
  *     renders — no per-tab-ID CSS registration is needed.
  *
- * Naming: classes live under the `.ac-*` namespace because they are
- * cross-page, cross-editor primitives.
+ * Naming: classes live under the `.ac-radio-*` namespace because they
+ * are cross-page, cross-editor primitives AND must not collide with
+ * the bare `.ac-tabs` / `.ac-tab` button-tab system.
  */
 
 /* ============================================================
@@ -35,37 +49,42 @@
    editor detail pane with tabbed content (roland tone editor:
    Wave / Pitch & LFO / Filter / Amp; roland patch editor: Common
    / Mapping; akai velocity-zone editor: Zone 1 / Zone 2 / Zone 3
-   / Zone 4 in controlled mode). The chrome (`.ac-tabs`,
-   `.ac-tab-strip`, `.ac-tab`, `.ac-panels`, `.ac-panel`,
-   `.ac-panel-stack`) lives here. The per-page active-state
-   selectors necessarily live in each page's CSS file (they
-   enumerate radio IDs the page owns).
+   / Zone 4 in controlled mode). The chrome (`.ac-radio-tabs`,
+   `.ac-radio-tab-strip`, `.ac-radio-tab`, `.ac-radio-panels`,
+   `.ac-radio-panel`, `.ac-panel-stack`) lives here. The per-page
+   active-state selectors necessarily live in each page's CSS file
+   (they enumerate radio IDs the page owns).
    ============================================================ */
 
-.ac-tabs {
+.ac-radio-tabs {
   position: relative;
-  /* Force block flow — editor-core's layout-primitives.css declares
-     `.ac-tabs { display: flex }` for a different tab pattern. Without
-     this override, the radio-driven shell stacks the tab strip and
-     panels side-by-side instead of strip-above-panels, clipping the
-     panel contents. */
   display: block;
-  /* Reset the editor-core border-bottom — the active-state ::after on
-     `.ac-tab` provides the lit underline for this pattern. */
   border-bottom: 0;
 }
 
-/* Visually hide the radio inputs — accessibility tooling can still
-   reach them via the label associations and tabindex. */
-.ac-tabs > input {
+/* Radio inputs render as sr-only (visually hidden but still
+   reachable by keyboard / assistive tech). Honest radio semantics:
+   the radios ARE the state carriers; users navigate them with
+   Tab + arrow keys (native browser behavior). Per AUDIT-20260524-11
+   (closed) the previous rules removed the radios from the tab order
+   entirely while the labels falsely advertised `role="tab"` +
+   `tabIndex={0}` — that combination declared a tab contract the
+   component did not honor. The sr-only pattern below keeps the radios
+   focusable so the radio-group semantics declared by the AcRadioTabs
+   container are actually usable. */
+.ac-radio-tabs > input {
   position: absolute;
-  opacity: 0;
-  pointer-events: none;
-  width: 0;
-  height: 0;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.ac-tab-strip {
+.ac-radio-tab-strip {
   display: grid;
   /* Auto-distribute tabs across the available width regardless of
      count. Consumers don't need to declare grid-template-columns
@@ -87,7 +106,7 @@
   border-bottom: var(--ac-rule-medium) solid var(--ac-color-border-subtle);
 }
 
-.ac-tab {
+.ac-radio-tab {
   position: relative;
   display: flex;
   align-items: center;
@@ -110,12 +129,12 @@
     background-color var(--ac-duration-fast) var(--ac-easing-default);
 }
 
-.ac-tab:hover {
+.ac-radio-tab:hover {
   color: var(--ac-color-text-primary);
   background: color-mix(in srgb, var(--ac-color-surface-panel) 40%, transparent);
 }
 
-.ac-tab::after {
+.ac-radio-tab::after {
   content: "";
   position: absolute;
   left: 0;
@@ -128,12 +147,17 @@
     box-shadow var(--ac-duration-fast) var(--ac-easing-default);
 }
 
-.ac-tab:focus-visible {
-  outline: none;
+/* Keyboard focus indicator — radios are sr-only but still focusable;
+   when one gains focus, paint a box-shadow ring on its associated
+   label so sighted keyboard users get the same focus affordance the
+   previous (faux-tab) implementation provided via `tabIndex={0}` on
+   the labels. The label uses for={radio.id} so the adjacent-sibling
+   chain `input + .strip > [for=...]` reaches the right label. */
+.ac-radio-tabs > input:focus-visible + .ac-radio-tab-strip > [for]:not(:hover) {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent) inset;
 }
 
-.ac-panel {
+.ac-radio-panel {
   display: none;
 }
 
@@ -144,13 +168,13 @@
    modifier-scoped rule forces the single rendered panel visible.
    Mirrors the canonical-state of an uncontrolled-mode `:checked` flip
    so the panel chrome looks identical in both modes. */
-.ac-tabs--controlled .ac-panel {
+.ac-radio-tabs--controlled .ac-radio-panel {
   display: block;
   animation: ac-tab-fade-in 180ms var(--ac-easing-default);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ac-tabs--controlled .ac-panel {
+  .ac-radio-tabs--controlled .ac-radio-panel {
     animation: none;
   }
 }

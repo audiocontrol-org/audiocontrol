@@ -85,7 +85,7 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
     // and remains disabled until the device-side transpose contract is
     // wired (the `disabled` prop on the row passes through to the
     // editable AcNumberInput).
-    await page.getByRole('tab', { name: 'Pitch & LFO' }).click();
+    await page.locator('label.ac-radio-tab', { hasText: 'Pitch & LFO' }).click();
 
     await expect(
       page.getByText('Transpose', { exact: true }),
@@ -105,7 +105,7 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
     // The previous display-only label/value was tagged "remediate to a
     // real control or remove"; this spec asserts the remediation. The
     // tab is now combined "Pitch & LFO".
-    await page.getByRole('tab', { name: 'Pitch & LFO' }).click();
+    await page.locator('label.ac-radio-tab', { hasText: 'Pitch & LFO' }).click();
 
     const panel = page.locator('[data-tab="tt-pitch-lfo"]');
     // Both option labels are reachable inside the panel.
@@ -131,7 +131,7 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
     // role="region" + aria-label like "TVF · 8-SEGMENT — N segments,
     // segment K active". The SVG-based VFD-glow path lives inside
     // that region.
-    await page.getByRole('tab', { name: 'Filter' }).click();
+    await page.locator('label.ac-radio-tab', { hasText: 'Filter' }).click();
 
     const filterPanel = page.locator('[data-tab="tt-filter"]');
     const tvfEnv = filterPanel
@@ -149,7 +149,7 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
     // envelope's table portion, role="table") plus the inline edit
     // grid for per-segment rate/level. The display affordance asserted
     // here is the segment table presence.
-    await page.getByRole('tab', { name: 'Filter' }).click();
+    await page.locator('label.ac-radio-tab', { hasText: 'Filter' }).click();
 
     const filterPanel = page.locator('[data-tab="tt-filter"]');
     const segmentTable = filterPanel
@@ -161,7 +161,7 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
   test('D-TONE-ENV-07: TVA envelope graphic renders inside the Amp tab', async ({ page }) => {
     // Same AcEnvelope composition reused for the TVA envelope inside
     // the Amp panel; label prefix is "TVA".
-    await page.getByRole('tab', { name: 'Amp' }).click();
+    await page.locator('label.ac-radio-tab', { hasText: 'Amp' }).click();
 
     const ampPanel = page.locator('[data-tab="tt-amp"]');
     const tvaEnv = ampPanel
@@ -172,7 +172,7 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
   });
 
   test('D-TONE-ENV-12: TVA envelope segment table is reachable inside the Amp tab', async ({ page }) => {
-    await page.getByRole('tab', { name: 'Amp' }).click();
+    await page.locator('label.ac-radio-tab', { hasText: 'Amp' }).click();
 
     const ampPanel = page.locator('[data-tab="tt-amp"]');
     const segmentTable = ampPanel

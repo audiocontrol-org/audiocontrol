@@ -136,7 +136,18 @@ export async function switchToToneTab(
   page: Page,
   name: ToneTabName,
 ): Promise<void> {
-  await page.getByRole('tab', { name }).click();
+  // ToneEditorTabs renders the four tabs as radios in a radiogroup
+  // (AcRadioTabs primitive). The visible click target is the
+  // <label class="ac-radio-tab"> wrapper; clicking it forwards to the
+  // sr-only radio via native htmlFor click-forwarding. We click the
+  // label (not the radio directly) because the radio is positioned
+  // sr-only (1px / clipped) — Playwright cannot reach it without the
+  // tab-strip intercepting the pointer event. Updated 2026-05-24
+  // per AUDIT-20260524-11 (closed): the prior assertion used
+  // getByRole('tab'), which depended on the faux role="tab" attribute
+  // the component never honored. Clicking the label fires the same
+  // :checked CSS sibling-selector chain that flips the panel visible.
+  await page.locator('label.ac-radio-tab', { hasText: name }).click();
   const tabId = TAB_ID_BY_NAME[name];
   await expect(page.locator(`[data-tab="${tabId}"]`)).toBeVisible({ timeout: 2_000 });
 }

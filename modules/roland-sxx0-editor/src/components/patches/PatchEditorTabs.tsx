@@ -6,9 +6,13 @@
  * common parameters visible without forcing the operator to scroll
  * past them to reach the tone-mapping zone editor.
  *
- * Chrome lives in `.ac-tabs*` / `.ac-tab-strip` / `.ac-tab` / `.ac-panels`
- * / `.ac-panel` in `editor-core/src/design/tab-primitives.css` (promoted
- * from `_shared.css` 2026-05-24 per akai-harmonization Phase 2 task 2.2).
+ * Chrome lives in `.ac-radio-tabs*` / `.ac-radio-tab-strip` /
+ * `.ac-radio-tab` / `.ac-radio-panels` / `.ac-radio-panel` in
+ * `editor-core/src/design/tab-primitives.css` (promoted from
+ * `_shared.css` 2026-05-24 per akai-harmonization Phase 2 task 2.2;
+ * renamed from `.ac-tabs*` to `.ac-radio-tabs*` on 2026-05-24 per
+ * AUDIT-20260524-10 to disambiguate from the bare `.ac-tabs` button-tab
+ * chrome consumed by LibraryPanel + BuildInfo).
  * Active-state rules (which radio IDs light up which tab + panel) stay
  * in roland's `_shared.css` since the radio-input ids are consumer-owned.
  *

@@ -87,7 +87,14 @@ async function selectTone(page: Page, toneIndex: number): Promise<void> {
 }
 
 async function switchToToneTab(page: Page, label: 'Filter' | 'Amp'): Promise<void> {
-  const tab = page.getByRole('tab', { name: label });
+  // Updated 2026-05-24 per AUDIT-20260524-11 (closed): the tab strip
+  // now exposes radio-group semantics. The visible label is
+  // <label class="ac-radio-tab" for="<tab-id>">; clicking it
+  // toggles the associated sr-only radio via native htmlFor
+  // click-forwarding. Was getByRole('tab', { name: label }), which
+  // depended on the faux role="tab" attribute the component never
+  // honored.
+  const tab = page.locator('label.ac-radio-tab', { hasText: label });
   await expect(tab).toBeVisible({ timeout: UI_TIMEOUT_MS });
   await tab.click();
 }

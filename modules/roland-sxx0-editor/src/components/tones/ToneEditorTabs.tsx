@@ -18,8 +18,16 @@
  * akai-harmonization Phase 2 task 2.2):
  *   tt-wave / tt-pitch-lfo / tt-filter / tt-amp
  *
- * The radio inputs are visually hidden but keyboard-reachable.
- * Labels carry `role="tab"` for accessibility tooling.
+ * The radio inputs are visually hidden (sr-only via CSS clip) but
+ * stay in the keyboard tab order. The container exposes
+ * `role="radiogroup"` and each radio carries `aria-label={tab.label}`
+ * so assistive tech announces the group + its members. The visible
+ * `<label>` elements are presentation-only (no `role="tab"`, no
+ * `tabIndex={0}`) — they click-forward via `htmlFor`. Updated
+ * 2026-05-24 per AUDIT-20260524-11 (closed); the prior shape advertised
+ * `role="tablist"` / `role="tab"` / `role="tabpanel"` but did not
+ * honor the ARIA tabs contract (no aria-selected, no aria-controls,
+ * no Left/Right/Home/End keyboard handler).
  */
 
 import type { ReactNode } from 'react';

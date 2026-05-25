@@ -280,16 +280,19 @@ test.describe('TonesPage tone-list row activation — Tier 3 in-context (D-TONE-
     // canonical pointer path; zero-arg `.click()` is forbidden by
     // the test-discipline ESLint rule). After the click, wait for an
     // editor-specific accessible affordance to mount. The ToneEditor
-    // exposes a tab strip with role="tab"; the "Filter" tab is one
-    // of the canonical landmarks and is the same tab the sibling
-    // envelope spec consumes. If the click landed on the header
-    // instead of the row (the broken-fix surface), the editor never
-    // mounts and the wait below times out.
+    // exposes a radio-group tab strip (AcRadioTabs); the "Filter"
+    // label.ac-radio-tab is one of the canonical landmarks and is the
+    // same tab the sibling envelope spec consumes. If the click landed
+    // on the header instead of the row (the broken-fix surface), the
+    // editor never mounts and the wait below times out. Updated
+    // 2026-05-24 per AUDIT-20260524-11 (closed) — was getByRole('tab',
+    // { name: 'Filter' }), which depended on the faux role="tab"
+    // attribute the component never honored.
     await page.mouse.move(rowCenterX, rowCenterY);
     await page.mouse.down();
     await page.mouse.up();
 
-    const filterTab = page.getByRole('tab', { name: 'Filter' });
+    const filterTab = page.locator('label.ac-radio-tab', { hasText: 'Filter' });
     await expect(filterTab).toBeVisible({ timeout: 5_000 });
   });
 });
