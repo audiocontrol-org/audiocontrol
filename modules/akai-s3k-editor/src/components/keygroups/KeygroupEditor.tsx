@@ -5,7 +5,6 @@ import { S3kParamToggleRow } from '@/components/ui/S3kParamToggleRow';
 import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
-import { AdsrDisplay } from '@/components/keygroups/AdsrDisplay';
 import { FilterDisplay } from '@/components/keygroups/FilterDisplay';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 
@@ -34,11 +33,11 @@ const AKAI_FILTER_ENV_LEVEL_FIELDS = ['ENV2L1', 'ENV2L2', 'ENV2L3', 'ENV2L4'] as
 
 /**
  * Build the `onChange({ FIELD: value, ... })` dispatcher shape used by
- * the legacy AdsrDisplay + FilterDisplay components. Drag-mode prefers
+ * the remaining legacy FilterDisplay component. Drag-mode prefers
  * `onDragChange` (optimistic UI only); fall back to `onParameterChange`
- * (commits each change). Used by the two consumers below; will be
- * removed when AdsrDisplay + FilterDisplay are migrated to the
- * canonical primitives in Commits 4 + 5 of this dispatch.
+ * (commits each change). Used by the FilterDisplay call site below;
+ * will be removed when FilterDisplay is migrated to AcFrequencyResponse
+ * in Commit 5 of this dispatch.
  */
 function makeFieldDispatcher(
   onParameterChange: (field: string, value: number | string) => void,
@@ -210,12 +209,21 @@ export function KeygroupEditor({
         <Section
           title="Amp Envelope"
           headerContent={
-            <AdsrDisplay
+            <AcEnvelope
+              kind="adsr"
+              label="AMP · ADSR"
               attack={header.ATTAK1}
               decay={header.DECAY1}
               sustain={header.SUSTN1}
               release={header.RELSE1}
-              onChange={makeFieldDispatcher(onParameterChange, onDragChange)}
+              maxValue={99}
+              onChange={(changes) => {
+                const dispatch = onDragChange ?? ((f: string, v: number) => onParameterChange(f, v));
+                if (changes.attack !== undefined) dispatch('ATTAK1', changes.attack);
+                if (changes.decay !== undefined) dispatch('DECAY1', changes.decay);
+                if (changes.sustain !== undefined) dispatch('SUSTN1', changes.sustain);
+                if (changes.release !== undefined) dispatch('RELSE1', changes.release);
+              }}
               onCommit={onCommitHeader}
             />
           }
