@@ -1,11 +1,14 @@
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
-import { AcEnvelope, type AcEnvelopeSegment } from '@audiocontrol/editor-core';
+import {
+  AcEnvelope,
+  AcFrequencyResponse,
+  type AcEnvelopeSegment,
+} from '@audiocontrol/editor-core';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
 import { S3kParamToggleRow } from '@/components/ui/S3kParamToggleRow';
 import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
-import { FilterDisplay } from '@/components/keygroups/FilterDisplay';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 
 /**
@@ -32,24 +35,44 @@ const AKAI_FILTER_ENV_RATE_FIELDS = ['ENV2R1', 'ENV2R2', 'ENV2R3', 'ENV2R4'] as 
 const AKAI_FILTER_ENV_LEVEL_FIELDS = ['ENV2L1', 'ENV2L2', 'ENV2L3', 'ENV2L4'] as const;
 
 /**
- * Build the `onChange({ FIELD: value, ... })` dispatcher shape used by
- * the remaining legacy FilterDisplay component. Drag-mode prefers
- * `onDragChange` (optimistic UI only); fall back to `onParameterChange`
- * (commits each change). Used by the FilterDisplay call site below;
- * will be removed when FilterDisplay is migrated to AcFrequencyResponse
- * in Commit 5 of this dispatch.
+ * Akai S3K FILFRQ parameter range (0..99) mapped to the canonical
+ * frequency-response Hz range AcFrequencyResponse consumes. The
+ * mapping is exponential — same curve the legacy FilterDisplay used:
+ * 0 → 20 Hz, 99 → ~18 kHz, with logarithmic spacing in between.
+ *
+ * AcFrequencyResponse is the cross-editor primitive (consumed by any
+ * future filter-response visualizer); it works in physics units (Hz +
+ * dB) because that's the natural domain for filter math. The
+ * device-specific 0..99 wire format only exists inside the akai
+ * adapter at the call site.
  */
-function makeFieldDispatcher(
-  onParameterChange: (field: string, value: number | string) => void,
-  onDragChange?: (field: string, value: number) => void,
-): (changes: Record<string, number>) => void {
-  return (changes) => {
-    for (const [f, v] of Object.entries(changes)) {
-      if (onDragChange) onDragChange(f, v);
-      else onParameterChange(f, v);
-    }
-  };
+const AKAI_FILTER_FREQ_MIN_HZ = 20;
+const AKAI_FILTER_FREQ_MAX_HZ = 20_000;
+const AKAI_FILTER_FREQ_RANGE_MAX = 99;
+const AKAI_FILTER_FREQ_HZ_RANGE = {
+  min: AKAI_FILTER_FREQ_MIN_HZ,
+  max: AKAI_FILTER_FREQ_MAX_HZ,
+};
+
+function akaiFilterFreqToHz(filfrq: number): number {
+  return (
+    AKAI_FILTER_FREQ_MIN_HZ *
+    Math.pow(
+      AKAI_FILTER_FREQ_MAX_HZ / AKAI_FILTER_FREQ_MIN_HZ,
+      filfrq / AKAI_FILTER_FREQ_RANGE_MAX,
+    )
+  );
 }
+
+function akaiHzToFilterFreq(hz: number): number {
+  const ratio = Math.log(hz / AKAI_FILTER_FREQ_MIN_HZ) /
+    Math.log(AKAI_FILTER_FREQ_MAX_HZ / AKAI_FILTER_FREQ_MIN_HZ);
+  return Math.max(
+    0,
+    Math.min(AKAI_FILTER_FREQ_RANGE_MAX, Math.round(ratio * AKAI_FILTER_FREQ_RANGE_MAX)),
+  );
+}
+
 
 interface KeygroupEditorProps {
   header: KeygroupHeader;
@@ -187,10 +210,22 @@ export function KeygroupEditor({
         <Section
           title="Filter"
           headerContent={
-            <FilterDisplay
-              frequency={header.FILFRQ}
+            <AcFrequencyResponse
+              label="FILTER · LPF"
+              frequency={akaiFilterFreqToHz(header.FILFRQ)}
               resonance={header.FILQ}
-              onChange={makeFieldDispatcher(onParameterChange, onDragChange)}
+              filterType="lowpass"
+              freqRange={AKAI_FILTER_FREQ_HZ_RANGE}
+              resonanceRange={{ min: 0, max: 15 }}
+              onChange={(changes) => {
+                const dispatch = onDragChange ?? ((f: string, v: number) => onParameterChange(f, v));
+                if (changes.frequency !== undefined) {
+                  dispatch('FILFRQ', akaiHzToFilterFreq(changes.frequency));
+                }
+                if (changes.resonance !== undefined) {
+                  dispatch('FILQ', changes.resonance);
+                }
+              }}
               onCommit={onCommitHeader}
             />
           }

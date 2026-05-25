@@ -208,11 +208,17 @@ test.describe('Bug #280: E_FREQ reset on filter change', () => {
     const originalFreq = await readParamKnobValue(page, 'Freq');
     const originalQ = await readParamKnobValue(page, 'Resonance');
 
-    // Find the FilterDisplay SVG draggable node
-    const filterSvg = page.locator('svg[aria-label^="Filter:"]').first();
-    await expect(filterSvg).toBeVisible({ timeout: 5_000 });
+    // Find the canonical AcFrequencyResponse drag node. The legacy
+    // FilterDisplay SVG was migrated to <AcFrequencyResponse> in
+    // akai-harmonization Phase 2 task 2.2 Commit 5 — the new chrome
+    // exposes the cutoff+Q point as a <button> inside a
+    // .ac-frequency-response root with aria-label starting "Cutoff".
+    const filterContainer = page.locator('.ac-frequency-response').first();
+    await expect(filterContainer).toBeVisible({ timeout: 5_000 });
 
-    const dragNode = filterSvg.locator('.s3k-adsr-dot--draggable').first();
+    const dragNode = filterContainer
+      .locator('button[aria-label^="Cutoff"]')
+      .first();
     await expect(dragNode).toBeVisible();
 
     const box = await dragNode.boundingBox();
