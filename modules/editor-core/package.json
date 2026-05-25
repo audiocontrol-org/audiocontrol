@@ -44,7 +44,8 @@
   "scripts": {
     "build": "tsc && tsc-alias",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run && vitest run --config vitest.ui.config.ts",
+    "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest run --config vitest.ui.config.ts",
     "clean": "rm -rf dist"
