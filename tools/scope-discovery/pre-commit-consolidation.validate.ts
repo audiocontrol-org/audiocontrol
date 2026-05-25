@@ -241,6 +241,11 @@ const FAILING_OUTCOMES: readonly GateOutcome[] = [
   { target: 'check-anti-patterns', exitCode: 1, stdout: 'ANTI-PATTERN-FAIL-MARKER: holdout x.ts' },
   { target: 'check-adopters', exitCode: 0, stdout: 'adopters-ok-marker' },
   { target: 'check-editor-symmetry', exitCode: 0, stdout: 'symmetry-ok-marker' },
+  // akai-harmonization workplan task 2.10. The Gate B (source-side)
+  // scan fires whenever HAS_TS=1, so the standard "stage .css + .ts"
+  // fixture exercises it. Stubbed-pass here to keep the scenarios
+  // focused on the consolidation behavior under test.
+  { target: 'check-tab-active-state-sources', exitCode: 0, stdout: 'tab-active-state-sources-ok-marker' },
 ];
 
 const ALL_PASSING_OUTCOMES: readonly GateOutcome[] = FAILING_OUTCOMES.map(
@@ -267,7 +272,7 @@ async function scenarioMultipleGateFailuresConsolidated(): Promise<ScenarioResul
     // calls don't redirect to stderr).
     const out = run.stdout;
     const checks: Array<[string, boolean]> = [
-      ['header names "2 of 6 gate(s) failed"', /2 of 6 gate\(s\) failed/.test(out)],
+      ['header names "2 of 7 gate(s) failed"', /2 of 7 gate\(s\) failed/.test(out)],
       ['FAIL block for check-clone-duplication', /\[FAIL\] check-clone-duplication/.test(out)],
       ['FAIL block for check-anti-patterns', /\[FAIL\] check-anti-patterns/.test(out)],
       ['captured clone-detector marker indented', /^ {4}CLONE-FAIL-MARKER/m.test(out)],
@@ -371,6 +376,9 @@ async function scenarioGateSkipNoCssFilesStaged(): Promise<ScenarioResult> {
         { target: 'check-anti-patterns', exitCode: 0, stdout: 'anti-ok-marker' },
         { target: 'check-adopters', exitCode: 0, stdout: 'adopters-ok-marker' },
         { target: 'check-editor-symmetry', exitCode: 0, stdout: 'symmetry-ok-marker' },
+        // Gate B (source-side tab-id registration) also fires on
+        // HAS_TS=1; pass-stub it so the count remains stable.
+        { target: 'check-tab-active-state-sources', exitCode: 0, stdout: 'tab-active-state-sources-ok-marker' },
       ],
     });
     try {
@@ -388,10 +396,10 @@ async function scenarioGateSkipNoCssFilesStaged(): Promise<ScenarioResult> {
       if (!/\[FAIL\] check-clone-duplication/.test(out)) {
         return fail(name, `TS-gate failure not surfaced. stdout:\n${out}`);
       }
-      if (!/1 of 4 gate\(s\) failed/.test(out)) {
-        return fail(name, `expected "1 of 4 gate(s) failed" (CSS gates skipped); got. stdout:\n${out}`);
+      if (!/1 of 5 gate\(s\) failed/.test(out)) {
+        return fail(name, `expected "1 of 5 gate(s) failed" (CSS gates skipped); got. stdout:\n${out}`);
       }
-      return pass(name, `exit ${run2.code}; CSS gates absent from report, TS-only report tallies 1/4`);
+      return pass(name, `exit ${run2.code}; CSS gates absent from report, TS-only report tallies 1/5`);
     } finally {
       fixture2.cleanup();
     }
