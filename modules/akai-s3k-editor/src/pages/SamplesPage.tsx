@@ -271,19 +271,19 @@ export function SamplesPage(): JSX.Element {
             <>
               <div className="flex items-center gap-2 mb-3">
                 <button
-                  className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  className="ac-btn ac-btn-sm"
                   onClick={() => handleOpenInLoopEditor(selectedSampleIndex)}
                 >
                   Loop Editor
                 </button>
                 <button
-                  className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  className="ac-btn ac-btn-sm"
                   onClick={() => handleOpenInSampleEditor(selectedSampleIndex)}
                 >
                   Sample Editor
                 </button>
                 <button
-                  className="text-xs px-2 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+                  className="ac-btn ac-btn-sm"
                   onClick={() => handleOpenInChopper(selectedSampleIndex)}
                 >
                   Chopper

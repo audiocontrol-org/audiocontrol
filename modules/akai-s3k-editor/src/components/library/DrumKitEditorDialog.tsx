@@ -263,14 +263,14 @@ export function DrumKitEditorDialog({
     <>
       <button
         onClick={onClose}
-        className="px-4 py-2 text-sm text-gray-300 hover:text-gray-100 transition-colors"
+        className="ac-btn"
       >
         Cancel
       </button>
       <button
         onClick={() => void handleSave()}
         disabled={saving}
-        className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded transition-colors"
+        className="ac-btn ac-btn-primary"
       >
         {saving ? 'Saving...' : 'Save'}
       </button>

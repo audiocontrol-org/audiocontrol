@@ -37,6 +37,7 @@ import { AC_PAGE_HEADER_SCENARIOS } from './anti-patterns.ac-page-header-scenari
 import { INLINE_ZONE_SEGMENT_BAR_SCENARIOS } from './anti-patterns.inline-zone-segment-bar-scenarios.js';
 import { S3K_ENVELOPE_DISPLAY_SCENARIOS } from './anti-patterns.s3k-envelope-display-scenarios.js';
 import { TAILWIND_LINK_CHROME_SCENARIOS } from './anti-patterns.tailwind-link-chrome-scenarios.js';
+import { TAILWIND_BUTTON_CHROME_SCENARIOS } from './anti-patterns.tailwind-button-chrome-scenarios.js';
 
 const SCANNER_ENTRY = 'tools/scope-discovery/check-anti-patterns.ts';
 
@@ -390,6 +391,16 @@ async function runAll(): Promise<readonly ScenarioResult[]> {
     // negative scenario (`<span text-blue-*>` informational tint MUST
     // NOT match — only `<a/button>` with both `text-blue + hover:underline`).
     ...TAILWIND_LINK_CHROME_SCENARIOS,
+    // akai-harmonization Phase 2 task 2.5 (harmonization-spec § 6 item 2
+    // closure) — paired scenarios for the tailwind-button-chrome-inline
+    // entry registered alongside the migration of 8 akai button-chrome
+    // sites (SamplesPage 3 launch-editor + SaveTargetDialog 2 +
+    // LibraryToDiskDialog 4 + S3kItemPreviewPanel 3 sub-components +
+    // DrumKitEditorDialog 2) to the canonical .ac-btn family. Includes
+    // TF-015 sibling-class negative scenarios for the parent-<div>-with-
+    // chrome-wrapping-minimal-button case + layout-utilities-on-ac-btn
+    // composition + non-button elements.
+    ...TAILWIND_BUTTON_CHROME_SCENARIOS,
     scenarioGuttedStub,
   ];
   const results: ScenarioResult[] = [];

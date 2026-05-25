@@ -484,6 +484,88 @@ anti_patterns:
   # "non-link informational blue text" (the akai codebase has spans +
   # divs carrying `text-blue-200` / `text-blue-400` for selection
   # tinting + drop-target callouts that must NOT flag).
+  # akai-harmonization Phase 2 task 2.5 (2026-05-25) — harmonization-spec
+  # § 6 item 2 closure. Catches inline tailwind chrome on <button>
+  # elements (bg-(gray|blue|amber|red)-N + (px-N|py-N|rounded)); the
+  # canonical replacement is the .ac-btn family (.ac-btn, .ac-btn-sm,
+  # .ac-btn-primary, .ac-btn-secondary, .ac-btn-danger, .ac-btn-success)
+  # from @audiocontrol/editor-core's primitives.css. Paired adversarial
+  # scenarios live in
+  # tools/scope-discovery/anti-patterns.tailwind-button-chrome-scenarios.ts
+  # (positive basic + positive primary + positive rounded-first
+  # ordering + negative canonical + TF-015 sibling-class negatives:
+  # parent-div-with-chrome-wrapping-minimal-button + layout-utilities-
+  # on-ac-btn + non-button-elements + gutted-stub self-check).
+  #
+  # Single-regex anchored on `<button\b` + bounded lazy gap of
+  # [^<]{0,400} chars + className attribute carrying bg-color AND
+  # (px-N|py-N|rounded) tokens in EITHER order. The `[^<]` constraint
+  # in the gap prevents the regex from crossing element boundaries
+  # (a `<` character ends the `<button>` opening tag's region), which
+  # is critical for avoiding false positives on adjacent sibling
+  # elements carrying tailwind chrome (e.g., the DrumKitEditorDialog
+  # error <div bg-red-900 rounded> sitting near the migrated <button
+  # className="ac-btn ac-btn-primary"> — pre-fix the regex matched
+  # the sibling div's className across 18 lines). The bg+px
+  # alternation handles both `bg-X px-Y rounded` and
+  # `px-Y rounded bg-X` orderings present in the pre-migration
+  # codebase. This shape is preferable to a multi-pattern fingerprint
+  # because the latter would false-positive when a parent
+  # `<div bg-X rounded>` wraps a `<button>` with minimal styling
+  # (e.g., DiskBrowserPanel.tsx:312 dismiss-error button +
+  # KeygroupSummary.tsx:69 +Add button); the anchored single-regex
+  # form correctly skips those.
+  #
+  # `excludes_paths:` documents the out-of-scope sub-shapes the
+  # operator deferred for this dispatch (per task 2.5 NEEDS DECISION
+  # answers):
+  #   - ZoneOverviewToolbar.tsx: 4 zoom mini-buttons; no canonical
+  #     mini-button primitive exists yet
+  #     (#cross-editor-akai-mini-btn-primitive).
+  #   - DiskBrowserPanel.tsx + DeviceMemoryPanel.tsx: tree-disclosure
+  #     + selection-row list-button chrome; substantial separate work
+  #     to adopt a canonical selection-row primitive
+  #     (#cross-editor-akai-disk-tree-adoption).
+  #   - PluginLibraryBrowser.tsx (editor-core) + TriggerMethodContent.tsx
+  #     (sample-chopper): cross-editor holdouts surfaced by the repo-
+  #     wide scan. These live outside the akai-harmonization Phase 2
+  #     scope and should be migrated in a follow-up that touches their
+  #     respective modules (#cross-editor-tailwind-button-chrome-holdouts).
+  - id: tailwind-button-chrome-inline
+    added_in: '0000ffff'
+    primitive: ac-btn
+    from: '@audiocontrol/editor-core'
+    shape_regex: '<button\b[^<]{0,400}?className=["''`](?:[^"''`]*\bbg-(?:gray|blue|amber|red)-\d+\b[^"''`]*\b(?:px-\d+|py-\d+|rounded)\b|[^"''`]*\b(?:px-\d+|py-\d+|rounded)\b[^"''`]*\bbg-(?:gray|blue|amber|red)-\d+\b)'
+    excludes_paths:
+      - 'tools/scope-discovery/anti-patterns.tailwind-button-chrome-scenarios.ts'
+      # Sub-shape C — out-of-scope for task 2.5
+      # (#cross-editor-akai-mini-btn-primitive). 4 zoom mini-buttons
+      # awaiting a canonical .ac-mini-btn / .ac-icon-btn-sm primitive.
+      - 'modules/akai-s3k-editor/src/components/keygroups/ZoneOverviewToolbar.tsx'
+      # Sub-shape D — out-of-scope for task 2.5
+      # (#cross-editor-akai-disk-tree-adoption). Tree disclosure +
+      # selection-row chrome awaiting a canonical TreeView /
+      # selection-row primitive adoption.
+      - 'modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx'
+      - 'modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx'
+      # Cross-editor holdouts — same anti-pattern shape exists in
+      # editor-core + sample-chopper. Out-of-scope for the akai-
+      # harmonization dispatch; tracked as
+      # #cross-editor-tailwind-button-chrome-holdouts for a follow-up
+      # that touches those modules.
+      - 'modules/editor-core/src/components/library/PluginLibraryBrowser.tsx'
+      - 'modules/sample-chopper/src/ui/components/TriggerMethodContent.tsx'
+    message: |
+      Tailwind utility chrome on `<button>` elements is an anti-pattern
+      (harmonization-spec.md § 6 item 2). The canonical replacement is
+      `<button className="ac-btn">` (or `.ac-btn-sm` for compact /
+      `.ac-btn-primary` for primary / `.ac-btn-danger` for destructive
+      variants) from `@audiocontrol/editor-core`'s `primitives.css`.
+      The .ac-btn vocabulary uses Departure-Mono uppercase + eyebrow
+      tracking matching the v3 design language. Re-registering would
+      re-introduce the design-system bypass this akai-harmonization
+      Phase 2 task 2.5 commit closed.
+
   - id: tailwind-link-chrome-inline
     added_in: '0000eeee'
     primitive: ac-link

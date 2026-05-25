@@ -222,7 +222,7 @@ export function LibraryToDiskDialog({
         <button
           type="button"
           onClick={handleClose}
-          className="px-4 py-1.5 text-sm text-gray-400 hover:text-gray-200"
+          className="ac-btn"
         >
           Cancel
         </button>
@@ -230,7 +230,7 @@ export function LibraryToDiskDialog({
           type="button"
           onClick={handleWrite}
           disabled={programFormat !== 's3000xl-disk-program' || volumes.length === 0}
-          className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded disabled:opacity-50"
+          className="ac-btn ac-btn-primary"
         >
           Write to Disk
         </button>
@@ -241,7 +241,7 @@ export function LibraryToDiskDialog({
       <button
         type="button"
         onClick={handleClose}
-        className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded"
+        className="ac-btn ac-btn-primary"
       >
         Done
       </button>
@@ -251,7 +251,7 @@ export function LibraryToDiskDialog({
       <button
         type="button"
         onClick={handleClose}
-        className="px-4 py-1.5 text-sm text-gray-400 hover:text-gray-200"
+        className="ac-btn"
       >
         Close
       </button>

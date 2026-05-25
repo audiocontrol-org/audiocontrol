@@ -99,13 +99,13 @@ export function SaveTargetDialog({
         <div className="flex justify-end gap-2">
           <button
             onClick={onCancel}
-            className="px-3 py-1.5 text-sm rounded bg-gray-700 hover:bg-gray-600 text-gray-300"
+            className="ac-btn"
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirm(selected)}
-            className="px-3 py-1.5 text-sm rounded bg-amber-600 hover:bg-amber-500 text-white font-medium"
+            className="ac-btn ac-btn-primary"
           >
             Save
           </button>

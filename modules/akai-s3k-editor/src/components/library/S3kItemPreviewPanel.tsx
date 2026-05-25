@@ -122,7 +122,7 @@ function ActionGroup({ label, children }: { label: string; children: React.React
 function PrimaryAction({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }): JSX.Element {
   return (
     <button
-      className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+      className="ac-btn ac-btn-primary"
       onClick={onClick}
       data-testid={testId}
     >
@@ -140,11 +140,7 @@ function SecondaryAction({ label, onClick, testId, disabled }: {
 }): JSX.Element {
   return (
     <button
-      className={`px-3 py-1.5 text-sm rounded transition-colors inline-flex items-center gap-1.5 ${
-        disabled
-          ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
-          : 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-      }`}
+      className="ac-btn"
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       data-testid={testId}
@@ -159,7 +155,7 @@ function SecondaryAction({ label, onClick, testId, disabled }: {
 function DangerAction({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }): JSX.Element {
   return (
     <button
-      className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-gray-700/50 rounded transition-colors"
+      className="ac-btn ac-btn-danger"
       onClick={onClick}
       data-testid={testId}
     >
