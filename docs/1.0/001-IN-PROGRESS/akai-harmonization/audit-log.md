@@ -11,6 +11,72 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-24 Feature review — latest AcZoneStrip extraction/migration work
+
+Surfaced while reviewing the `AcZoneStrip` extraction and Akai migration commits through `03f36ce3`, `544d41f3`, `e23de8b3`, `edab3add`, and the follow-up docs/tooling commits at `HEAD` (`1876bc67`) on 2026-05-24. Targeted local verification run:
+
+- `pnpm --filter @audiocontrol/editor-core test -- AcZoneStrip.test.tsx`
+
+The focused primitive suite passed, but it does not cover the issues below.
+
+### VelocityRangeBar now compacts away malformed zones before wiring callbacks, so selection and split-drag indices no longer match the source zone array
+
+Finding-ID: AUDIT-20260524-12
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/src/components/keygroups/VelocityRangeBar.tsx`
+
+The post-`AcZoneStrip` `VelocityRangeBar` wrapper first maps `zones` to `AcZoneStripZone | null`, skips malformed entries where `highVel < lowVel`, and then calls `.filter(...)` to compact the list before rendering (`VelocityRangeBar.tsx:147-166`). It then passes the original `onSelectZone` callback straight through as `onSelect={onSelectZone}` and uses the compacted zone index for split-drag dispatch via `handleStartDrag` (`VelocityRangeBar.tsx:170-176`).
+
+That changes the callback contract when any malformed zone exists before a valid one. The old implementation also visually skipped malformed zones, but its click and drag closures were created inside `zones.map(...)`, so the callback index always matched the original source array index, even when some entries returned `null`. The new compacted render list loses that mapping. Example:
+
+- input zones: `[valid zone 0, malformed zone 1, valid zone 2]`
+- rendered strip zones after filter: `[zone 0, zone 2]`
+- clicking the second rendered zone now calls `onSelectZone(1)` instead of `onSelectZone(2)`
+- the split handle between the two rendered zones now reports split index `0`, even though the source-array boundary is between original zones `0` and `2`
+
+That is a real behavior regression for any editor state that preserves a four-slot velocity-zone array with an invalid/deleted middle slot, because the selected-zone index and drag callbacks now point at the wrong header fields.
+
+**Evidence:**
+
+- New compacting behavior:
+  - `modules/akai-s3k-editor/src/components/keygroups/VelocityRangeBar.tsx:147-166`
+  - `modules/akai-s3k-editor/src/components/keygroups/VelocityRangeBar.tsx:170-176`
+- Pre-migration implementation preserved original indices in closures even when returning `null` for malformed zones:
+  - `git show 544d41f3^:modules/akai-s3k-editor/src/components/keygroups/VelocityRangeBar.tsx` reviewed in this audit pass
+
+**Expected:** visual skipping of malformed zones must not rewrite the callback/index contract; rendered zone interactions should still report the original source-array index.
+
+**Actual:** filtering compacts the rendered list, so callback indices drift when any earlier zone is malformed.
+
+**Fix guidance:** preserve the original index alongside each rendered zone instead of filtering down to bare `AcZoneStripZone` values. For example, render an array of `{ sourceIndex, zone }` pairs and adapt `onSelect` / `onStartDrag` to translate the rendered index back to the original source index before invoking callbacks.
+
+### AcZoneStrip marks selected segments with `aria-pressed` on `role="group"` containers, which is not a valid ARIA state/role pairing
+
+Finding-ID: AUDIT-20260524-13
+Status:     open
+Severity:   medium
+Surface:    `modules/editor-core/src/components/AcZoneStrip.tsx`, `modules/editor-core/src/components/AcZoneStrip.test.tsx`
+
+Each rendered zone segment in `AcZoneStrip` is a `<div role="group">` carrying `aria-pressed={zone.isSelected ? true : undefined}` (`AcZoneStrip.tsx:237-243`). The tests explicitly lock this in by asserting that the selected segment has `aria-pressed="true"` (`AcZoneStrip.test.tsx:144-158`).
+
+That ARIA pairing is invalid: `aria-pressed` is a toggle-button state, not a state for generic `group` containers. Browsers will leave the attribute in the DOM, and CSS can style against it, but assistive tech does not get a coherent semantic contract from “group + pressed”. This is now shared across every `AcZoneStrip` adopter, including the Roland tone-zone editor and the Akai range bars.
+
+**Evidence:**
+
+- Segment markup:
+  - `modules/editor-core/src/components/AcZoneStrip.tsx:237-243`
+- Tests currently bless the invalid state:
+  - `modules/editor-core/src/components/AcZoneStrip.test.tsx:144-158`
+
+**Expected:** selected-state semantics should use either a role that legitimately carries a selected/pressed state, or no ARIA state at all if the segment container is purely structural and the real interactive control is the inner button/handle.
+
+**Actual:** selected state is exposed as `aria-pressed` on a `role="group"` container.
+
+**Fix guidance:** do not deepen the current contract in more tests. Either:
+1. move the selected-state exposure onto the actual interactive element (`.ac-zone-segment-body` button) using a supported state, or
+2. keep the outer segment as a structural group and remove the ARIA state entirely, using only a CSS modifier class for styling.
+
 ## 2026-05-24 Feature review — latest AcRadioTabs closure verification
 
 Reviewed the implementation work through `8545e839` / `e18987cb` on 2026-05-24, covering the `AcRadioTabs` class-namespace + a11y fix that closed `AUDIT-20260524-10` and `AUDIT-20260524-11`.
