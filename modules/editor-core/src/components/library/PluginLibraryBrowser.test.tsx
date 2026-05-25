@@ -144,10 +144,19 @@ describe('PluginLibraryBrowser', () => {
   });
 
   it('renders loading state', () => {
-    render(
+    const { container } = render(
       <PluginLibraryBrowser {...defaultProps} loading={true} />,
     );
-    expect(screen.getByText('Loading library...')).toBeInTheDocument();
+    // The loading UI is a skeleton band (no user-visible "Loading..."
+    // text). The presence of the dedicated `.ac-plugin-library-browser-skeleton`
+    // wrapper is the load-bearing assertion — every skeleton-section block
+    // inside it is one row of the three-up category placeholder.
+    expect(
+      container.querySelector('.ac-plugin-library-browser-skeleton'),
+    ).not.toBeNull();
+    expect(
+      container.querySelectorAll('.ac-plugin-library-browser-skeleton-section').length,
+    ).toBeGreaterThan(0);
   });
 
   it('renders error state', () => {
@@ -161,8 +170,10 @@ describe('PluginLibraryBrowser', () => {
     render(
       <PluginLibraryBrowser {...defaultProps} libraryHandle={null} />,
     );
+    // Empty-state copy is "Connect to a library folder to get started"
+    // (no trailing period — matches design-system terse-microcopy convention).
     expect(
-      screen.getByText('Connect to a library folder to get started.'),
+      screen.getByText('Connect to a library folder to get started'),
     ).toBeInTheDocument();
   });
 
