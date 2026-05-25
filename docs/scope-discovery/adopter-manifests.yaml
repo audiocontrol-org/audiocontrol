@@ -198,15 +198,32 @@ adopter_manifests:
 
   - id: ac-radio-tabs
     introduced_in: 1fa334f5
-    from: '@/components/common/AcRadioTabs'
+    # Promoted to editor-core in akai-harmonization Phase 2 task 2.2
+    # (2026-05-24) so akai's VelocityZoneEditor (and future jv1080 /
+    # d110 consumers) can adopt the canonical primitive without
+    # duplicating it per-module. Multi-path `from:` recognizes adoption
+    # via EITHER the post-promotion canonical path OR the pre-promotion
+    # roland-local path during the transition (PR #462 / AUDIT-08).
+    from:
+      - '@audiocontrol/editor-core'
+      - '@/components/common/AcRadioTabs'
+    # Narrow recognition to the canonical symbol name (PR #463-era
+    # `imports:` filter, commit 676dd164) so unrelated `@audiocontrol/
+    # editor-core` imports in the same file don't accidentally satisfy
+    # the gate.
+    imports:
+      - AcRadioTabs
     expected_adopters_glob:
       - 'modules/roland-sxx0-editor/src/components/patches/PatchEditorTabs.tsx'
       - 'modules/roland-sxx0-editor/src/components/tones/ToneEditorTabs.tsx'
     message: |
       Radio-driven tab strips should use the shared AcRadioTabs primitive
-      (introduced in commit 1fa334f5). Replace inline radio + nav +
-      panels markup with `<AcRadioTabs tabs={...} panels={...}
-      defaultTabId={...} groupName={...} ariaLabel={...} />`.
+      (introduced in commit 1fa334f5; promoted to @audiocontrol/editor-core
+      in akai-harmonization Phase 2 task 2.2 on 2026-05-24). Replace inline
+      radio + nav + panels markup with `<AcRadioTabs tabs={...} panels={...}
+      defaultTabId={...} groupName={...} ariaLabel={...} />`. For sibling-
+      dependent tab strips (parent or sibling component needs the active
+      tab id), use controlled mode: pass `activeId` + `onActiveIdChange`.
 
   - id: destination-eyebrow
     introduced_in: 81da20a9

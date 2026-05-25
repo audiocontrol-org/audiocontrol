@@ -7,8 +7,10 @@
  * past them to reach the tone-mapping zone editor.
  *
  * Chrome lives in `.ac-tabs*` / `.ac-tab-strip` / `.ac-tab` / `.ac-panels`
- * / `.ac-panel` in `_shared.css`. Active-state rules (which radio IDs
- * light up which tab + panel) are page-local in `patches.css`.
+ * / `.ac-panel` in `editor-core/src/design/tab-primitives.css` (promoted
+ * from `_shared.css` 2026-05-24 per akai-harmonization Phase 2 task 2.2).
+ * Active-state rules (which radio IDs light up which tab + panel) stay
+ * in roland's `_shared.css` since the radio-input ids are consumer-owned.
  *
  * Tab ids must match the `id` selectors in `patches.css`:
  *   pt-common / pt-mapping
@@ -16,7 +18,7 @@
 
 import type { ReactNode } from 'react';
 
-import { AcRadioTabs, type AcRadioTabDef } from '@/components/common/AcRadioTabs';
+import { AcRadioTabs, type AcRadioTabDef } from '@audiocontrol/editor-core';
 
 const TABS: readonly AcRadioTabDef[] = [
   { id: 'pt-common', label: 'Common' },

@@ -1,0 +1,150 @@
+/**
+ * Tab primitives — canonical radio-driven tab strip chrome.
+ *
+ * Promoted from `modules/roland-sxx0-editor/src/styles/_shared.css`
+ * (lines 1403-1518 pre-move) on 2026-05-24 per akai-harmonization
+ * Phase 2 task 2.2 (harmonization-spec § 5.1 disposition
+ * "adopt-roland-pattern") so the akai dialect can consume the same
+ * canonical primitive instead of hand-rolling `.s3k-zone-tab*`
+ * chrome for its zone-selector tabs.
+ *
+ * Mounted by the `AcRadioTabs` React component in
+ * `editor-core/src/components/AcRadioTabs.tsx`. Composes the `--ac-*`
+ * design tokens (see `tokens.css`).
+ *
+ * Scope split (CRITICAL — read before editing):
+ *   - The chrome below (`.ac-tabs`, `.ac-tab-strip`, `.ac-tab`,
+ *     `.ac-panels`, `.ac-panel`, `.ac-panel-stack`, the
+ *     `ac-tab-fade-in` keyframes) is GENERIC — it knows nothing about
+ *     any specific tab id.
+ *   - The per-tab-ID active-state selector list (`#tt-wave:checked ~
+ *     .ac-tab-strip [for="tt-wave"]`, ...) lives in the CONSUMER's
+ *     stylesheet (e.g., `roland-sxx0-editor/src/styles/_shared.css`)
+ *     because the radio-input ids are consumer-owned. Each new
+ *     uncontrolled-mode adopter registers its ids there.
+ *   - When `AcRadioTabs` is used in CONTROLLED mode (via the
+ *     `activeId` + `onActiveIdChange` props), only the active panel
+ *     renders — no per-tab-ID CSS registration is needed.
+ *
+ * Naming: classes live under the `.ac-*` namespace because they are
+ * cross-page, cross-editor primitives.
+ */
+
+/* ============================================================
+   TAB SHELL — radio-driven, CSS-only activation. Used by every
+   editor detail pane with tabbed content (roland tone editor:
+   Wave / Pitch & LFO / Filter / Amp; roland patch editor: Common
+   / Mapping; akai velocity-zone editor: Zone 1 / Zone 2 / Zone 3
+   / Zone 4 in controlled mode). The chrome (`.ac-tabs`,
+   `.ac-tab-strip`, `.ac-tab`, `.ac-panels`, `.ac-panel`,
+   `.ac-panel-stack`) lives here. The per-page active-state
+   selectors necessarily live in each page's CSS file (they
+   enumerate radio IDs the page owns).
+   ============================================================ */
+
+.ac-tabs {
+  position: relative;
+  /* Force block flow — editor-core's layout-primitives.css declares
+     `.ac-tabs { display: flex }` for a different tab pattern. Without
+     this override, the radio-driven shell stacks the tab strip and
+     panels side-by-side instead of strip-above-panels, clipping the
+     panel contents. */
+  display: block;
+  /* Reset the editor-core border-bottom — the active-state ::after on
+     `.ac-tab` provides the lit underline for this pattern. */
+  border-bottom: 0;
+}
+
+/* Visually hide the radio inputs — accessibility tooling can still
+   reach them via the label associations and tabindex. */
+.ac-tabs > input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.ac-tab-strip {
+  display: grid;
+  /* Auto-distribute tabs across the available width regardless of
+     count. Consumers don't need to declare grid-template-columns
+     per tab count. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0;
+  /* Sticky-pin to the top of the scrolling body. Negative margins
+     extend the background across the body's horizontal padding so
+     panel content can't peek past the strip's edge as it scrolls
+     under. Values match `.ac-detail-body`'s padding so the trick
+     stays consistent if the body padding scales later. */
+  position: sticky;
+  top: calc(-1 * var(--ac-space-4));
+  z-index: 5;
+  margin: calc(-1 * var(--ac-space-4)) calc(-1 * var(--ac-space-4)) var(--ac-space-3);
+  padding: var(--ac-space-4) var(--ac-space-4) 0;
+  background: var(--ac-color-surface-panel);
+  border-bottom: var(--ac-rule-medium) solid var(--ac-color-border-subtle);
+}
+
+.ac-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2rem;
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  border: var(--ac-rule-hairline) solid transparent;
+  border-bottom: 0;
+  margin-bottom: -2px;
+  padding: 0 var(--ac-space-2);
+  transition:
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tab:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 40%, transparent);
+}
+
+.ac-tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: transparent;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent) inset;
+}
+
+.ac-panel {
+  display: none;
+}
+
+.ac-panel-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+  min-width: 0;
+}
+
+@keyframes ac-tab-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: none; }
+}

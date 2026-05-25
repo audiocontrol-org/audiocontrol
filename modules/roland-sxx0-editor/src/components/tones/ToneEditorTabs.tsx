@@ -12,7 +12,10 @@
  * shell, and strongly-interacting controls (filter + filter-env;
  * amp + amp-env; pitch + LFO) are grouped in the SAME tab.
  *
- * Tab ids must match the `id` selectors in `tones.css`:
+ * Tab ids must match the `id` selectors in `_shared.css` (the per-
+ * tab-ID active-state selector list; the generic chrome moved to
+ * `editor-core/src/design/tab-primitives.css` on 2026-05-24 per
+ * akai-harmonization Phase 2 task 2.2):
  *   tt-wave / tt-pitch-lfo / tt-filter / tt-amp
  *
  * The radio inputs are visually hidden but keyboard-reachable.
@@ -21,7 +24,7 @@
 
 import type { ReactNode } from 'react';
 
-import { AcRadioTabs, type AcRadioTabDef } from '@/components/common/AcRadioTabs';
+import { AcRadioTabs, type AcRadioTabDef } from '@audiocontrol/editor-core';
 
 const TABS: readonly AcRadioTabDef[] = [
   { id: 'tt-wave', label: 'Wave' },

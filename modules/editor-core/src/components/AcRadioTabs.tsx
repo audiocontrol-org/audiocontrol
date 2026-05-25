@@ -1,24 +1,27 @@
 /**
  * AcRadioTabs
  *
- * Radio-driven tab strip primitive used by ToneEditorTabs and
- * PatchEditorTabs. CSS-only activation: hidden radio inputs gate
- * which panel shows via sibling-selector rules in each consumer's
- * page-local CSS (tones.css selects on tt-*, patches.css on pt-*).
+ * Radio-driven tab strip primitive used by editor pages with tabbed
+ * detail panes. CSS-only activation: hidden radio inputs gate which
+ * panel shows via sibling-selector rules in each consumer's page-local
+ * CSS (roland tones.css selects on `tt-*`; patches.css on `pt-*`;
+ * akai's keygroups.css will register `ak-*` similarly when adopted).
  *
- * Extracted 2026-05-22 from PatchEditorTabs.tsx + ToneEditorTabs.tsx
- * per clones.yaml groups 80f494ba63d3 (31 lines) + 5578c63410e2
- * (14 lines). Pre-extraction both files held byte-identical
- * radio-strip + label-strip + panel-section render shapes; the only
- * divergence was the TABS constant + aria-label. Contract pinned by
- * D-PATCH-EDITOR-TABS-01 + D-TONE-EDITOR-TABS-01 wiring assertions
- * added before this extraction.
+ * Originally extracted 2026-05-22 from PatchEditorTabs.tsx +
+ * ToneEditorTabs.tsx per clones.yaml groups 80f494ba63d3 (31 lines) +
+ * 5578c63410e2 (14 lines). Pre-extraction both files held byte-
+ * identical radio-strip + label-strip + panel-section render shapes;
+ * the only divergence was the TABS constant + aria-label. Contract
+ * pinned by D-PATCH-EDITOR-TABS-01 + D-TONE-EDITOR-TABS-01 wiring
+ * assertions added before that extraction.
  *
- * Lives in the per-editor `common/` directory (next to BankHeader,
- * SlotInfo, PatchLabel) rather than editor-core because no
- * non-roland editor consumes it yet. Promotion to editor-core is
- * appropriate the next time another editor adopts a tabbed-panel
- * shell — at that point a separate refactor moves this file out.
+ * Promoted to editor-core 2026-05-24 (Phase 2 task 2.2 of
+ * feature/akai-harmonization) so cross-editor consumers (akai's
+ * VelocityZoneEditor first; jv1080 / d110 later) can adopt the
+ * canonical primitive without duplicating it per-module. The chrome
+ * CSS (`.ac-tabs`, `.ac-tab-strip`, `.ac-tab`, `.ac-panels`,
+ * `.ac-panel`, `.ac-panel-stack`) moved to
+ * `editor-core/src/design/tab-primitives.css` in the same commit.
  */
 
 import type { ReactNode } from 'react';

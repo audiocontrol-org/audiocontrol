@@ -175,18 +175,24 @@ anti_patterns:
   - id: ac-radio-tabs-inline
     added_in: 1fa334f5
     primitive: AcRadioTabs
-    from: '@/components/common/AcRadioTabs'
+    # Promoted to editor-core in akai-harmonization Phase 2 task 2.2
+    # (2026-05-24). `canonical_implementation_file:` names the post-
+    # promotion path so the scanner auto-excludes it (the file's body
+    # IS the legacy shape, by construction).
+    from: '@audiocontrol/editor-core'
+    canonical_implementation_file: 'modules/editor-core/src/components/AcRadioTabs.tsx'
     shape_regex:
       - '<div className="ac-tabs">'
       - '<nav className="ac-tab-strip" role="tablist"'
       - '<div className="ac-panels">'
     min_distance: 30
-    excludes_paths:
-      - 'modules/roland-sxx0-editor/src/components/common/AcRadioTabs.tsx'
     message: |
       Inline radio-driven tab strip was promoted to the AcRadioTabs component
-      in commit 1fa334f5. Replace with `<AcRadioTabs tabs={...} panels={...}
-      defaultTabId={...} groupName={...} ariaLabel={...} />`.
+      in commit 1fa334f5 (and to @audiocontrol/editor-core in akai-
+      harmonization Phase 2 task 2.2 on 2026-05-24). Replace with
+      `<AcRadioTabs tabs={...} panels={...} defaultTabId={...}
+      groupName={...} ariaLabel={...} />`. For sibling-dependent tab strips,
+      use controlled mode: pass `activeId` + `onActiveIdChange`.
 
   - id: destination-eyebrow-inline
     added_in: 81da20a9

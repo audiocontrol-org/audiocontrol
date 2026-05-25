@@ -9,6 +9,11 @@ export {
 export { AcCheckbox, type AcCheckboxProps } from './AcCheckbox';
 export { AcChevron, type AcChevronProps } from './AcChevron';
 export {
+  AcRadioTabs,
+  type AcRadioTabsProps,
+  type AcRadioTabDef,
+} from './AcRadioTabs';
+export {
   AcRangeBar,
   type AcRangeBarProps,
   type AcRangeBarLinearProps,

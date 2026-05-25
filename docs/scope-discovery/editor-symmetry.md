@@ -8,9 +8,10 @@ Rows are adoption conventions declared in `docs/scope-discovery/adopter-manifest
 | use-export-dialog-lifecycle (`@/hooks/useExportDialogLifecycle`) | — | — | — | — | — | ✓ 3/3 | — |
 | bank-header (`@/components/common/BankHeader`) | — | — | — | — | — | ✓ 3/3 | — |
 | slot-info (`@/components/common/SlotInfo`) | — | — | — | — | — | ✓ 2/2 | — |
-| ac-radio-tabs (`@/components/common/AcRadioTabs`) | — | — | — | — | — | ✓ 2/2 | — |
+| ac-radio-tabs (`@audiocontrol/editor-core`) | — | — | — | — | — | ✓ 2/2 | — |
 | destination-eyebrow (`@/components/library/DestinationEyebrow`) | — | — | — | — | — | ✓ 3/3 | — |
 | library-device-memory-panel-adapter (`@/plugins/shared/LibraryDeviceMemoryPanel`) | — | — | — | — | — | ✓ 2/2 | — |
 | library-preview-panel-adapter (`@/plugins/shared/LibraryPreviewPanelAdapter`) | — | — | — | — | — | ✓ 2/2 | — |
+| ac-control-primitives-row (`@audiocontrol/editor-core`) | ✓ 2/2 | — | — | — | — | ✓ 1/1 | — |
 | slide-drawer-library-dialogs (`@audiocontrol/editor-core`) | ✓ 9/9 | — | — | — | — | ✓ 6/6 | — |
 

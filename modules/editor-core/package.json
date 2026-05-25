@@ -24,6 +24,7 @@
     "./control-primitives.css": "./src/design/control-primitives.css",
     "./envelope-primitives.css": "./src/design/envelope-primitives.css",
     "./library.css": "./src/design/library.css",
+    "./tab-primitives.css": "./src/design/tab-primitives.css",
     "./vite": "./src/vite/vite.ts",
     "./tailwind-preset": "./src/tailwind.preset.ts",
     "./dev/styles.css": "./src/dev/styles.css",
