@@ -191,3 +191,31 @@
 .ac-zone-segment--dragging .ac-zone-segment-body {
   cursor: ew-resize;
 }
+
+/* ============================================================
+   2D zone-overview rects (akai keygroups editor).
+   Tokenizes the per-zone palette that was previously inline
+   `keygroupColor(index, total, alpha)` HSL strings in
+   `modules/akai-s3k-editor/src/components/keygroups/ZoneOverviewZone.tsx`
+   so the saturation/lightness stops live alongside the canonical
+   .ac-zone-segment math (dialect-leak fix only — ZoneOverview's
+   structural 2D canvas stays in akai per the operator-approved
+   harmonization-spec § 2.7 amendment).
+
+   The rect's fill is derived from `--ac-zone-hue` (inline, from
+   the keygroup index / total via keygroupHue()) and `--ac-zone-alpha`
+   (inline; selected keygroups bump from 0.35→0.85 for visual
+   prominence). The border color is similarly derived from
+   `--ac-zone-hue` via the second rule; consumers compose the
+   selected-state blue border via a separate inline override.
+   ============================================================ */
+
+.ac-keygroup-zone-rect {
+  background: hsla(
+    calc(var(--ac-zone-hue, 0) * 1deg),
+    55%,
+    55%,
+    var(--ac-zone-alpha, 0.4)
+  );
+  border-color: hsl(calc(var(--ac-zone-hue, 0) * 1deg), 65%, 70%);
+}

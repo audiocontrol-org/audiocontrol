@@ -12,17 +12,23 @@ const HANDLE_SIZE = 6; // px
 const HANDLE_HOVER_BG = 'rgba(59, 130, 246, 0.3)';
 
 /**
- * Pastel hue palette for keygroups. Each keygroup gets a distinct hue
- * distributed evenly around the color wheel.
+ * Per-keygroup hue distribution around the color wheel. The hue
+ * derives ONLY from the index + count; the actual fill / border
+ * colors are emitted by the canonical .ac-zone-segment HSL math
+ * in editor-core/src/design/zone-strip-primitives.css (the same
+ * --ac-zone-hue token that AcZoneStrip consumes). Tokenized 2026-05-24
+ * during akai-harmonization Phase 2 task 2.2 Commit 4 — replaces the
+ * prior inline `hsla(...)` strings that hard-coded saturation /
+ * lightness stops dialect-agnostically.
+ *
+ * Per the operator-approved scope-amendment for this dispatch
+ * (harmonization-spec § 2.7 + § 5.2 amended in Commit 5):
+ * ZoneOverview is a `domain-component` (2D pinch-zoom canvas with
+ * zero non-akai consumers); only the per-zone color palette is
+ * tokenized via this hue helper, NOT the structural canvas.
  */
-export function keygroupColor(index: number, total: number, alpha: number): string {
-  const hue = (index * 360) / Math.max(total, 1);
-  return `hsla(${hue}, 55%, 55%, ${alpha})`;
-}
-
-export function keygroupBorderColor(index: number, total: number): string {
-  const hue = (index * 360) / Math.max(total, 1);
-  return `hsl(${hue}, 65%, 70%)`;
+export function keygroupHue(index: number, total: number): number {
+  return (index * 360) / Math.max(total, 1);
 }
 
 export interface VelocityZone {
@@ -163,9 +169,15 @@ export function ZoneRect({
 
   if (width <= 0) return null;
 
-  const borderColor = isSelected
-    ? '#93c5fd'
-    : keygroupBorderColor(keygroupIndex, keygroupCount);
+  // Hue is the only per-keygroup color input now — fill saturation/
+  // lightness + alpha live in the canonical `.ac-keygroup-zone-rect`
+  // rule in editor-core's zone-strip-primitives.css (tokenized in
+  // akai-harmonization Phase 2 task 2.2 Commit 4). The selected
+  // state's blue border + glow shadows stay inline because they're
+  // STATE chrome, not per-zone palette identity.
+  const hue = keygroupHue(keygroupIndex, keygroupCount);
+  const isSelectedBorder = isSelected;
+  const borderColor = isSelectedBorder ? '#93c5fd' : undefined;
   const borderWidth = isSelected ? '2px' : '1px';
   const boxShadow = isDraggingThis
     ? '0 0 12px rgba(59, 130, 246, 0.5)'
@@ -195,7 +207,7 @@ export function ZoneRect({
         key={`kg-${keygroupIndex}`}
         role="button"
         tabIndex={0}
-        className="absolute border transition-all"
+        className="absolute border transition-all ac-keygroup-zone-rect"
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onKeyDown={handleKeyDown}
@@ -206,8 +218,13 @@ export function ZoneRect({
           width: `${width}%`,
           top: 0,
           bottom: 0,
-          background: keygroupColor(keygroupIndex, keygroupCount, isSelected ? 0.85 : 0.35),
-          borderColor,
+          // Hue + alpha drive `.ac-keygroup-zone-rect`'s background +
+          // border (in editor-core/src/design/zone-strip-primitives.css).
+          ['--ac-zone-hue' as string]: hue,
+          ['--ac-zone-alpha' as string]: isSelected ? 0.85 : 0.35,
+          // borderColor stays inline ONLY for the selected-state blue
+          // override; otherwise the CSS rule's hue-derived border wins.
+          ...(borderColor ? { borderColor } : {}),
           borderWidth,
           boxShadow,
           zIndex,
@@ -255,7 +272,7 @@ export function ZoneRect({
             key={`kg-${keygroupIndex}-z${zone.zoneIndex}`}
             role="button"
             tabIndex={0}
-            className="absolute border transition-all overflow-hidden"
+            className="absolute border transition-all overflow-hidden ac-keygroup-zone-rect"
             onClick={handleClick}
             onMouseDown={handleMouseDown}
             onKeyDown={handleKeyDown}
@@ -266,8 +283,9 @@ export function ZoneRect({
               width: `${width}%`,
               top: `${yTop}%`,
               height: `${height}%`,
-              background: keygroupColor(keygroupIndex, keygroupCount, isSelected ? 0.85 : 0.4),
-              borderColor,
+              ['--ac-zone-hue' as string]: hue,
+              ['--ac-zone-alpha' as string]: isSelected ? 0.85 : 0.4,
+              ...(borderColor ? { borderColor } : {}),
               borderWidth,
               boxShadow,
               zIndex,
