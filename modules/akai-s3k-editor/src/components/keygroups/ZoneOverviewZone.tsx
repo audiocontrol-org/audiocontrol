@@ -14,7 +14,7 @@ const HANDLE_HOVER_BG = 'rgba(59, 130, 246, 0.3)';
 /**
  * Per-keygroup hue distribution around the color wheel. The hue
  * derives ONLY from the index + count; the actual fill / border
- * colors are emitted by the canonical .ac-zone-segment HSL math
+ * colors are emitted by the canonical AcZoneStrip HSL math
  * in editor-core/src/design/zone-strip-primitives.css (the same
  * --ac-zone-hue token that AcZoneStrip consumes). Tokenized 2026-05-24
  * during akai-harmonization Phase 2 task 2.2 Commit 4 — replaces the

@@ -34,6 +34,7 @@ import { CANONICAL_FILE_SCENARIOS } from './anti-patterns.canonical-file-scenari
 import { S3K_PARAM_SHAPE_SCENARIOS } from './anti-patterns.s3k-param-shape-scenarios.js';
 import { S3K_ZONE_TABS_SCENARIOS } from './anti-patterns.s3k-zone-tabs-scenarios.js';
 import { AC_PAGE_HEADER_SCENARIOS } from './anti-patterns.ac-page-header-scenarios.js';
+import { INLINE_ZONE_SEGMENT_BAR_SCENARIOS } from './anti-patterns.inline-zone-segment-bar-scenarios.js';
 
 const SCANNER_ENTRY = 'tools/scope-discovery/check-anti-patterns.ts';
 
@@ -367,6 +368,11 @@ async function runAll(): Promise<readonly ScenarioResult[]> {
     // adoption + the PageTitleRow drift-prevention registration.
     ...S3K_ZONE_TABS_SCENARIOS,
     ...AC_PAGE_HEADER_SCENARIOS,
+    // akai-harmonization Phase 2 task 2.2 Commit 6 — paired scenarios
+    // for the inline-zone-segment-bar anti-pattern entry registered
+    // alongside the AcZoneStrip primitive extraction (Commits 1-4 of
+    // the same dispatch).
+    ...INLINE_ZONE_SEGMENT_BAR_SCENARIOS,
     scenarioGuttedStub,
   ];
   const results: ScenarioResult[] = [];

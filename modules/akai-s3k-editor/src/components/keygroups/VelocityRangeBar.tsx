@@ -49,8 +49,8 @@ interface VelocityRangeBarProps {
  * Per-zone hue palette. Indices 0-3 carry blue / emerald / amber /
  * purple — same color identities as the pre-migration tailwind palette
  * (bg-blue-800 / bg-emerald-800 / bg-amber-800 / bg-purple-800), now
- * expressed as hue degrees so the canonical .ac-zone-segment HSL math
- * (anchored at +200deg base) derives the fill + stroke.
+ * expressed as hue degrees so the canonical AcZoneStrip HSL math
+ * (anchored at +200deg blue base) derives the fill + stroke.
  */
 const AKAI_VELOCITY_ZONE_HUES: readonly number[] = [0, 240, 200, 80];
 

@@ -323,6 +323,47 @@ adopter_manifests:
       and modules/akai-s3k-editor/src/components/ui/S3kParamRow.tsx
       for the canonical compositions.
 
+  # ────────────────────────────────────────────────────────────────────────
+  # akai-harmonization Phase 2 task 2.2 (2026-05-24) — AcZoneStrip
+  # primitive extraction. Promoted the .ac-zone-* family from roland's
+  # patches.css to editor-core/src/design/zone-strip-primitives.css
+  # alongside a new AcZoneStrip React component. Three adopters:
+  #   - roland ToneZoneEditor (per-edge handle mode; original
+  #     extraction surface)
+  #   - akai VelocityRangeBar (splitHandles=true; 4-zone velocity bar
+  #     with boundary handles between adjacent zones)
+  #   - akai KeyRangeEditor (per-edge handle mode; single zone with
+  #     low/high handles + handle a11y override for role="slider")
+  # ────────────────────────────────────────────────────────────────────────
+
+  - id: ac-zone-strip
+    introduced_in: 03f36ce3
+    from: '@audiocontrol/editor-core'
+    imports:
+      - AcZoneStrip
+    expected_adopters_glob:
+      - 'modules/roland-sxx0-editor/src/components/patches/ToneZoneEditor.tsx'
+      - 'modules/akai-s3k-editor/src/components/keygroups/VelocityRangeBar.tsx'
+      - 'modules/akai-s3k-editor/src/components/keygroups/KeyRangeEditor.tsx'
+    message: |
+      Segmented 1D zone bars (with per-segment drag handles) should
+      use the shared AcZoneStrip primitive from
+      @audiocontrol/editor-core (introduced commit 03f36ce3 during
+      akai-harmonization Phase 2 task 2.2). Two interaction modes:
+        - Per-edge handles (default): each zone has start/end drag
+          handles (consumer receives `onStartDrag(zoneIndex, 'start'|
+          'end', event)`). Used by ToneZoneEditor + KeyRangeEditor.
+        - Split handles (splitHandles={true}): a boundary handle
+          renders BETWEEN adjacent zones; consumer receives
+          `onStartDrag(leftZoneIndex, 'split', event)`. Used by
+          VelocityRangeBar.
+      Per-zone hue is exposed via the `hue` field on each zone OR
+      derives from the zone index via `defaultZoneHue` (matches
+      roland's `.ac-zone-segment` pre-extraction palette). For
+      interactive drag-edge handles, supply `startHandle` /
+      `endHandle` HandleA11yOverride to promote the handle from
+      role="separator" to role="slider".
+
   - id: slide-drawer-library-dialogs
     introduced_in: c41cf2a4
     from: '@audiocontrol/editor-core'

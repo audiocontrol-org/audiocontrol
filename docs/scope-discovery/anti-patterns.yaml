@@ -356,6 +356,64 @@ anti_patterns:
       (akai-harmonization Phase 2 task 2.2, Commit 3 of the AcRadioTabs
       promotion sequence).
 
+  # akai-harmonization Phase 2 task 2.2 (2026-05-24) — AcZoneStrip
+  # primitive extraction. Prevents re-introduction of inline
+  # .ac-zone-segment* / .ac-zone-handle* class usage outside the
+  # canonical AcZoneStrip + zone-strip-primitives.css source-of-truth.
+  # The classes are internal to the primitive; consumers should
+  # import <AcZoneStrip> instead of touching the class names directly.
+
+  - id: inline-zone-segment-bar
+    added_in: '0000bbbb'
+    primitive: AcZoneStrip
+    from: '@audiocontrol/editor-core'
+    # Matches the canonical zone-strip class family that lives ONLY
+    # in editor-core/src/design/zone-strip-primitives.css:
+    #   .ac-zone-segment, .ac-zone-segment--off, .ac-zone-segment--editing,
+    #   .ac-zone-segment--dragging, .ac-zone-segment-body,
+    #   .ac-zone-handle, .ac-zone-handle--start, .ac-zone-handle--end,
+    #   .ac-zone-handle--split, .ac-zone-handle--dragging
+    # The regex catches the bare class identifiers in any JSX className
+    # form (className="...", template-literal, modifier suffix). It is
+    # narrower than `\bac-zone-` to avoid false-positiving on the
+    # sibling .ac-zone-bar / .ac-zone-bar-empty / .ac-zone-section* /
+    # .ac-zone-axis / .ac-zone-form* / .ac-keygroup-zone-rect classes
+    # — those are either the primitive's outer container (legitimately
+    # used by AcZoneStrip itself) or roland's per-page chrome around
+    # the primitive (legitimate to retain).
+    shape_regex: '\bac-zone-(segment(-body|--off|--editing|--dragging)?|handle(--start|--end|--split|--dragging)?)\b'
+    canonical_implementation_file: 'modules/editor-core/src/components/AcZoneStrip.tsx'
+    excludes_paths:
+      # Scope-discovery validator scenarios that plant the legacy
+      # shape as a fixture (canonical excludes_paths secondary use
+      # case per the YAML schema header docs).
+      - 'tools/scope-discovery/anti-patterns.inline-zone-segment-bar-scenarios.ts'
+      # The CSS source-of-truth file declares the class names; the
+      # canonical_implementation_file: auto-exclude catches the .tsx
+      # but the regex would also flag the CSS rule selectors.
+      - 'modules/editor-core/src/design/zone-strip-primitives.css'
+      # Test files that legitimately query the canonical primitive's
+      # internal class names via container.querySelector to assert
+      # AcZoneStrip behavior (the primitive's own tests + per-
+      # consumer integration tests that need to drill into the
+      # rendered class tree). The classes are AcZoneStrip-internal
+      # surfaces; the tests don't re-introduce inline usage, they
+      # observe the primitive's emitted shape.
+      - 'modules/akai-s3k-editor/test/unit/components/keygroups/KeyRangeEditor.test.tsx'
+      - 'modules/akai-s3k-editor/test/unit/components/keygroups/VelocityRangeBar.test.tsx'
+      - 'modules/editor-core/src/components/AcZoneStrip.test.tsx'
+    message: |
+      Inline .ac-zone-segment* or .ac-zone-handle* class usage is an
+      anti-pattern. The classes are internal to the canonical
+      AcZoneStrip primitive (introduced commit 03f36ce3 during
+      akai-harmonization Phase 2 task 2.2). Consumers should import
+      the React component:
+        import { AcZoneStrip } from '@audiocontrol/editor-core';
+        <AcZoneStrip zones={...} range={...} ... />
+      Re-introducing the inline shape would split the canonical
+      source-of-truth and re-create the dialect-leak this commit
+      sequence closed.
+
   - id: ac-page-sticky-header-inline
     added_in: '0000aaaa'
     primitive: PageTitleRow

@@ -46,12 +46,10 @@ interface KeyRangeEditorProps {
 type DragTarget = 'low' | 'high' | null;
 
 /**
- * akai-blue hue (200deg degree input → +200deg base in HSL math =
- * 400 mod 360 = 40 — but the .ac-zone-segment rule uses `+ 200deg`
- * as additive base, so input 200 lands at 400deg = 40deg yellow).
- * We want a blue identity matching the pre-migration `.bg-blue-700`
- * fill, so input 0 (anchored by the base 200deg → blue) is the
- * correct single-zone hue identity for this surface.
+ * akai-blue hue. AcZoneStrip's segment-color rule anchors at +200deg
+ * (blue base), so input 0 lands on the same blue identity as the
+ * pre-migration tailwind `bg-blue-700` fill. Inputs add to the base
+ * and rotate around the wheel — 240 = blue→purple, 200 = blue→amber.
  */
 const KEY_RANGE_ZONE_HUE = 0;
 
