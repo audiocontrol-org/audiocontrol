@@ -238,7 +238,7 @@ export function AcZoneStrip({
             key={index}
             role="group"
             aria-label={ariaLabelText}
-            aria-pressed={zone.isSelected ? true : undefined}
+            data-selected={zone.isSelected ? 'true' : undefined}
             className={segmentClass(zone)}
             style={style}
             title={zone.title}

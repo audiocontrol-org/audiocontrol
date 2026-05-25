@@ -144,8 +144,15 @@ export function VelocityRangeBar({
   const hasSplitCallbacks =
     onSplitDrag !== undefined && onSplitCommit !== undefined;
 
-  const stripZones: AcZoneStripZone[] = zones
-    .map<AcZoneStripZone | null>((zone, index) => {
+  // AUDIT-20260524-12 (close): preserve the source-array index
+  // alongside each rendered zone so that visually skipping malformed
+  // entries (`highVel < lowVel`) does NOT rewrite the callback/index
+  // contract. The pre-compaction shape is `{ sourceIndex, zone }`
+  // pairs; the wrapper splits that into a bare AcZoneStripZone[] for
+  // the primitive + a renderedIndex → sourceIndex translator
+  // (`sourceIndexFor`) used by the callback adapters below.
+  const stripEntries: { sourceIndex: number; zone: AcZoneStripZone }[] = zones
+    .map<{ sourceIndex: number; zone: AcZoneStripZone } | null>((zone, sourceIndex) => {
       // Skip zones where highVel < lowVel (matches the legacy
       // skip-if-malformed behavior).
       if (zone.highVel < zone.lowVel) return null;
@@ -153,17 +160,43 @@ export function VelocityRangeBar({
       // explicit `?? 0` keeps the TS contract honest without
       // suppressing the narrowing.
       const hue =
-        AKAI_VELOCITY_ZONE_HUES[index % AKAI_VELOCITY_ZONE_HUES.length] ?? 0;
+        AKAI_VELOCITY_ZONE_HUES[sourceIndex % AKAI_VELOCITY_ZONE_HUES.length] ?? 0;
       return {
-        startValue: zone.lowVel,
-        endValue: zone.highVel,
-        hue,
-        label: zone.sampleName.trim() || `Z${index + 1}`,
-        isSelected: index === selectedZone,
-        title: `Zone ${index + 1}: ${zone.sampleName.trim() || '(empty)'} (${zone.lowVel}-${zone.highVel})`,
+        sourceIndex,
+        zone: {
+          startValue: zone.lowVel,
+          endValue: zone.highVel,
+          hue,
+          label: zone.sampleName.trim() || `Z${sourceIndex + 1}`,
+          isSelected: sourceIndex === selectedZone,
+          title: `Zone ${sourceIndex + 1}: ${zone.sampleName.trim() || '(empty)'} (${zone.lowVel}-${zone.highVel})`,
+        },
       };
     })
-    .filter((z): z is AcZoneStripZone => z !== null);
+    .filter(
+      (entry): entry is { sourceIndex: number; zone: AcZoneStripZone } =>
+        entry !== null,
+    );
+
+  const stripZones: AcZoneStripZone[] = stripEntries.map((e) => e.zone);
+  const sourceIndexFor = (renderedIndex: number): number | undefined =>
+    stripEntries[renderedIndex]?.sourceIndex;
+
+  const handleStripSelect = (renderedIndex: number): void => {
+    const src = sourceIndexFor(renderedIndex);
+    if (src === undefined) return;
+    onSelectZone(src);
+  };
+
+  const handleStripStartDrag = (
+    renderedIndex: number,
+    handle: 'start' | 'end' | 'split',
+    event: React.PointerEvent<HTMLElement>,
+  ): void => {
+    const src = sourceIndexFor(renderedIndex);
+    if (src === undefined) return;
+    handleStartDrag(src, handle, event);
+  };
 
   return (
     <div className="px-3 py-2">
@@ -171,8 +204,8 @@ export function VelocityRangeBar({
         barRef={barRef}
         zones={stripZones}
         range={{ min: 0, max: VELOCITY_MAX }}
-        onSelect={onSelectZone}
-        onStartDrag={hasSplitCallbacks ? handleStartDrag : undefined}
+        onSelect={handleStripSelect}
+        onStartDrag={hasSplitCallbacks ? handleStripStartDrag : undefined}
         splitHandles={true}
         ariaLabel="Velocity zones"
         emptyText="No velocity zones"

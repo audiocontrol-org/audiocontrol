@@ -82,7 +82,7 @@
   border-color: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 65% 64%);
 }
 
-.ac-zone-segment[aria-pressed="true"],
+.ac-zone-segment[data-selected="true"],
 .ac-zone-segment--editing {
   /* Inset outline + inset glow so the selected ring lives entirely
      inside the segment — when a zone touches the left or right edge

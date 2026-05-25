@@ -141,7 +141,16 @@ describe('AcZoneStrip', () => {
       expect(onSelect).toHaveBeenCalledWith(1);
     });
 
-    it('marks the selected zone via .ac-zone-segment--editing + aria-pressed', () => {
+    // Shared fixture for the two-zone first-selected scenario used by
+    // the data-selected + aria-pressed-absence assertions below. Kept
+    // local to the selection block so each test still reads as a
+    // self-contained spec; the helper exists only to avoid duplicating
+    // the setup boilerplate (clone-duplication gate at 6-line cap).
+    function renderTwoZonesFirstSelected(): {
+      segments: NodeListOf<Element>;
+      first: HTMLElement;
+      second: HTMLElement;
+    } {
       const zones: AcZoneStripZone[] = [
         { startValue: 0, endValue: 63, isSelected: true },
         { startValue: 64, endValue: 127 },
@@ -151,11 +160,33 @@ describe('AcZoneStrip', () => {
       );
       const segments = container.querySelectorAll('.ac-zone-segment');
       const [first, second] = Array.from(segments) as HTMLElement[];
+      return { segments, first, second };
+    }
+
+    it('marks the selected zone via .ac-zone-segment--editing + data-selected', () => {
+      const { first, second } = renderTwoZonesFirstSelected();
       expect(first.classList.contains('ac-zone-segment--editing')).toBe(true);
-      expect(first.getAttribute('aria-pressed')).toBe('true');
+      expect(first.getAttribute('data-selected')).toBe('true');
       expect(second.classList.contains('ac-zone-segment--editing')).toBe(false);
-      // unselected zone should NOT carry aria-pressed at all
-      expect(second.getAttribute('aria-pressed')).toBeNull();
+      // unselected zone should NOT carry data-selected at all
+      expect(second.getAttribute('data-selected')).toBeNull();
+    });
+
+    it('does NOT expose selection via aria-pressed on role="group" segments (invalid ARIA pairing)', () => {
+      // AUDIT-20260524-13 regression guard: aria-pressed is a
+      // toggle-button state, not a state for role="group" containers.
+      // Selection state is exposed via data-selected (CSS hook only)
+      // and the .ac-zone-segment--editing modifier class; ARIA carries
+      // only the segment's role + label.
+      const { segments } = renderTwoZonesFirstSelected();
+      // No segment carries aria-pressed at any value.
+      Array.from(segments).forEach((seg) => {
+        expect(seg.getAttribute('aria-pressed')).toBeNull();
+      });
+      // Screen-reader queries for toggle-button state must NOT match
+      // any zone segment — the segments are role="group", not buttons.
+      expect(screen.queryAllByRole('button', { pressed: true })).toHaveLength(0);
+      expect(screen.queryAllByRole('button', { pressed: false })).toHaveLength(0);
     });
   });
 

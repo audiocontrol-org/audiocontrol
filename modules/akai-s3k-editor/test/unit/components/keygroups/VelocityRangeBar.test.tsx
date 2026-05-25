@@ -143,6 +143,141 @@ describe('VelocityRangeBar', () => {
     expect(screen.queryByText('INVALID')).not.toBeInTheDocument();
   });
 
+  describe('source-index preservation across malformed entries (AUDIT-20260524-12)', () => {
+    // Regression guard for AUDIT-20260524-12. Pre-fix the wrapper
+    // compacted malformed zones BEFORE wiring callbacks, so the
+    // primitive's rendered-index was passed straight through to
+    // onSelectZone / handleStartDrag — drifting whenever any earlier
+    // source zone was malformed. The contract: regardless of which
+    // entries the wrapper visually skips, callbacks must report the
+    // ORIGINAL source-array index.
+
+    it('clicking the second rendered zone reports the source-array index when a malformed zone sits between two valid zones', () => {
+      // Source array: [valid@0, malformed@1, valid@2]
+      // Rendered:     [zone@0, zone@2]  (malformed compacted out)
+      // Pre-fix: clicking the second rendered zone → onSelectZone(1)  WRONG
+      // Post-fix: clicking the second rendered zone → onSelectZone(2) CORRECT
+      const zones = [
+        makeZone(0, 63, 'VALID0      '),
+        makeZone(100, 50, 'BAD         '), // highVel < lowVel
+        makeZone(64, 127, 'VALID2      '),
+      ];
+      const onSelectZone = vi.fn();
+
+      render(
+        <VelocityRangeBar
+          zones={zones}
+          selectedZone={0}
+          onSelectZone={onSelectZone}
+        />,
+      );
+
+      // Only TWO segments render (malformed compacted out visually).
+      expect(screen.getByTestId('ac-zone-segment-body-0')).toBeInTheDocument();
+      expect(screen.getByTestId('ac-zone-segment-body-1')).toBeInTheDocument();
+      expect(screen.queryByTestId('ac-zone-segment-body-2')).not.toBeInTheDocument();
+
+      // Click the SECOND rendered segment (rendered index 1).
+      fireEvent.click(screen.getByTestId('ac-zone-segment-body-1'));
+
+      // Must report SOURCE index 2, NOT rendered index 1.
+      expect(onSelectZone).toHaveBeenCalledWith(2);
+      expect(onSelectZone).not.toHaveBeenCalledWith(1);
+    });
+
+    it('clicking the first rendered zone reports its source-array index when a leading zone is malformed', () => {
+      // Source array: [malformed@0, valid@1, valid@2]
+      // Rendered:     [zone@1, zone@2]
+      const zones = [
+        makeZone(100, 50, 'BAD         '),
+        makeZone(0, 63, 'VALID1      '),
+        makeZone(64, 127, 'VALID2      '),
+      ];
+      const onSelectZone = vi.fn();
+
+      render(
+        <VelocityRangeBar
+          zones={zones}
+          selectedZone={1}
+          onSelectZone={onSelectZone}
+        />,
+      );
+
+      // Click the FIRST rendered segment.
+      fireEvent.click(screen.getByTestId('ac-zone-segment-body-0'));
+
+      // Must report SOURCE index 1, NOT rendered index 0.
+      expect(onSelectZone).toHaveBeenCalledWith(1);
+      expect(onSelectZone).not.toHaveBeenCalledWith(0);
+    });
+
+    it('split-drag between two rendered zones (with a malformed entry between them in the source) reports the LEFT zone\'s source-array index', () => {
+      // Source array: [valid@0, malformed@1, valid@2]
+      // Rendered:     [zone@0, zone@2]
+      // Boundary handle between rendered zones 0 and 1 represents the
+      // source-array boundary at LEFT zone = source-index 0.
+      const zones = [
+        makeZone(0, 63, 'VALID0      '),
+        makeZone(100, 50, 'BAD         '),
+        makeZone(64, 127, 'VALID2      '),
+      ];
+      const onSplitDrag = vi.fn();
+
+      render(
+        <VelocityRangeBar
+          zones={zones}
+          selectedZone={0}
+          onSelectZone={vi.fn()}
+          onSplitDrag={onSplitDrag}
+          onSplitCommit={vi.fn()}
+        />,
+      );
+
+      // Only one split handle renders (between the two rendered zones).
+      const handle = screen.getByTestId('ac-zone-handle-split-0');
+      fireEvent.pointerDown(handle, { clientX: 100 });
+
+      expect(onSplitDrag).toHaveBeenCalledTimes(1);
+      // splitIndex must be the SOURCE index of the LEFT rendered zone (0),
+      // not the rendered LEFT index (which also happens to be 0 here).
+      // In this fixture both source and rendered are 0 for the left;
+      // the next test exercises the case where they diverge.
+      expect(onSplitDrag.mock.calls[0][0]).toBe(0);
+    });
+
+    it('split-drag with a leading malformed zone reports the LEFT rendered zone\'s SOURCE index', () => {
+      // Source array: [malformed@0, valid@1, valid@2]
+      // Rendered:     [zone@1, zone@2]
+      // Boundary between rendered 0 and rendered 1 → LEFT source-index 1.
+      // Pre-fix: pointerdown → onSplitDrag(0, vel)  WRONG (rendered LEFT = 0)
+      // Post-fix: onSplitDrag(1, vel) CORRECT
+      const zones = [
+        makeZone(100, 50, 'BAD         '),
+        makeZone(0, 63, 'VALID1      '),
+        makeZone(64, 127, 'VALID2      '),
+      ];
+      const onSplitDrag = vi.fn();
+
+      render(
+        <VelocityRangeBar
+          zones={zones}
+          selectedZone={1}
+          onSelectZone={vi.fn()}
+          onSplitDrag={onSplitDrag}
+          onSplitCommit={vi.fn()}
+        />,
+      );
+
+      const handle = screen.getByTestId('ac-zone-handle-split-0');
+      fireEvent.pointerDown(handle, { clientX: 100 });
+
+      expect(onSplitDrag).toHaveBeenCalledTimes(1);
+      expect(onSplitDrag.mock.calls[0][0]).toBe(1);
+      // Defensive: must NOT report the rendered LEFT index.
+      expect(onSplitDrag).not.toHaveBeenCalledWith(0, expect.any(Number));
+    });
+  });
+
   it('renders title attributes with zone info', () => {
     const zones = [makeZone(0, 127, 'MY SAMPLE   ')];
 
