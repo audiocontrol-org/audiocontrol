@@ -21,7 +21,7 @@ Surfaced while reviewing the `AcLiveStatusFooter` extraction/adoption commits `1
 ### AcLiveStatusFooter turns a 100ms self-updating elapsed timer into a polite live-region announcement source
 
 Finding-ID: AUDIT-20260525-16
-Status:     open
+Status:     verified-f2f3e1e0
 Severity:   high
 Surface:    `modules/editor-core/src/components/AcLiveStatusFooter.tsx`, `modules/editor-core/src/components/AcLiveStatusFooter.test.tsx`
 
@@ -45,10 +45,14 @@ That means the component is not just visually updating every 100ms; it is mutati
 
 **Fix guidance:** split the announcement contract from the visual timer. For example, keep a non-live visual `"last edit X.Xs ago"` readout, and expose only the discrete write confirmation through a separate announcement channel or a non-ticking status string. Closure should require a regression test that proves fake-timer advancement does NOT create repeated live-region text churn after the initial write announcement.
 
+**Fix landed (commit `f2f3e1e0`):** the live-region announcement was split from the 100ms visual timer. `AcLiveStatusFooter.tsx`'s root + `__text` span no longer carry `role="status"` / `aria-live="polite"`; the visible chrome is silent to assistive tech, so the elapsed-time tick can re-render the `"X.Xs ago"` readout every 100ms without polluting the live region. A dedicated visually-hidden span (`.ac-live-status-footer__announcement.ac-sr-only`) carries the live-region attributes, and its content is set by a `computeAnnouncement(state, lastEditAt, errorMessage)` helper driven by a `useEffect([state, lastEditAt, errorMessage])` rising-edge guard. The announcement is `"Edit confirmed."` on a new `lastEditAt`, `"Device offline."` on the offline transition, `"Device error: {msg}."` on the error transition, and empty on initial-mount with `lastEditAt=null` (no spurious narration on first page load). The existing `.ac-sr-only` utility from `library.css` (imported via the editor-core design barrel) was reused — no new CSS authored, no duplication.
+
+Regression coverage in `AcLiveStatusFooter.test.tsx`: the prior root-level role assertion was replaced with a contract test that the visible chrome lacks `role`/`aria-live` AND the dedicated announcement span carries them + `.ac-sr-only`. A 50-tick fake-timer regression test (`does NOT churn the live-region announcement during 100ms visual ticks`) renders the footer with a fixed `lastEditAt`, advances 5 seconds of simulated time in 100ms increments, and asserts (a) the announcement text stays frozen at `"Edit confirmed."` across all 50 ticks while (b) the `__text` content advances from `0.0s ago` to `~5.0s ago` (proves the visual timer is running but the live region is silent). Two rising-edge tests cover the `null → timestamp` and `live → live` (different `lastEditAt`) state transitions, and a parameterized matrix covers `live → offline` and `live → error` announcement strings. Validator-paired-changes hard test (revert `AcLiveStatusFooter.tsx` only, leave test file intact): 5 new tests RED — `expected 'status' to be null` (visible chrome still carried `role="status"` pre-fix), `expected null not to be null` (the announcement element did not exist pre-fix), and 3 × `TypeError: Cannot read properties of null (reading 'textContent')` (rising-edge tests could not find the announcement element). Tests have teeth.
+
 ### The Akai footer wiring misses successful rename writes, so the page can still say READY after a confirmed device edit
 
 Finding-ID: AUDIT-20260525-17
-Status:     open
+Status:     verified-f2f3e1e0
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx`, `modules/akai-s3k-editor/src/pages/SamplesPage.tsx`
 
@@ -73,10 +77,14 @@ That leaves a visible behavior hole in the new live-status affordance: the opera
 
 **Fix guidance:** call `setLastEditAt(Date.now())` after successful rename writes on both pages, then add page-level regression coverage that proves a rename action advances the footer from `READY` to `LIVE`. This should be tested at the page layer, not only in the shared primitive, because the bug is in the adopter wiring.
 
-### ProgramsPage’s local unit suite is stale and red at branch head, so the new shell/footer work is not landing with the required regression coverage
+**Fix landed (commit `f2f3e1e0`):** `handleRenameProgram` (`ProgramsPage.tsx:211-216`) now calls `setLastEditAt(Date.now())` after `client.renameProgram(...)` resolves and the program-cache is invalidated. `handleRename` (`SamplesPage.tsx:106-122`) does the same after `client.renameSample(...)` resolves, before the optimistic `setSampleNames` update. Cross-editor check: roland's `PatchesPage.tsx` and `TonesPage.tsx` were grepped for `rename` / `Rename` and contain no list-row rename handlers — no parallel fix needed in roland surfaces. Akai's `KeygroupsPage` similarly has no rename row-action.
+
+Page-layer regression coverage (per the auditor's directive that the fix is not complete without integration tests at the adopter wiring): `ProgramsPage.test.tsx` adds `rename via list-row UI flips AcLiveStatusFooter from READY to LIVE (AUDIT-20260525-17)` which triggers the rename through the same UI interaction the operator uses — double-click `program-item-0` → type `NEW NAME` into `input.ac-akai-list-rename` → press `Enter` — then `waitFor`s the renameProgram mock to resolve and asserts both the visible `.ac-live-status-footer__text` flips from `READY` to `LIVE` AND the dedicated announcement span shows `"Edit confirmed."`. A new test file `SamplesPage.test.tsx` adds the same shape for the samples rename flow (with `useEditorDialogs` stubbed to a no-op idle state since the rename flow does not touch any dialog state). Validator-paired-changes hard test (revert `ProgramsPage.tsx` + `SamplesPage.tsx` only, leave both test files intact): both rename tests RED with identical error shape `Expected: LIVE / Received: READY · S3000XL connected`. Tests have teeth — they catch precisely the wiring gap (rename does not flip the footer because `setLastEditAt` was not called).
+
+### ProgramsPage's local unit suite is stale and red at branch head, so the new shell/footer work is not landing with the required regression coverage
 
 Finding-ID: AUDIT-20260525-18
-Status:     open
+Status:     verified-f2f3e1e0
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/test/unit/pages/ProgramsPage.test.tsx`
 
@@ -100,6 +108,10 @@ This is not just a stale assertion. It means the implementation landed without a
 **Actual:** the branch carries a red page-level test, and the surviving suite does not cover the new footer behavior.
 
 **Fix guidance:** update `ProgramsPage.test.tsx` to assert the shared `PageTitleRow` loading metric/progress contract that actually renders now, and add explicit footer regression coverage at the page layer. Minimum closure bar: one green test for the loading metric/progress shape, and one green test proving a successful page write flips the footer from `READY` to `LIVE`.
+
+**Fix landed (commit `f2f3e1e0`):** the stale `screen.getByTestId('loading-status')` assertion in `ProgramsPage.test.tsx:137-151` was replaced with `shows loading status via PageTitleRow metric-status span when isLoading with a message (AUDIT-20260525-18)`, which asserts against what the page actually renders now: (a) the loading message appears in `.ac-page-title-metric-status` with `role="status"` + `aria-live="polite"` (the canonical PageTitleRow live-region surface, distinct from AcLiveStatusFooter's announcement span — the page header and the footer narrate independently), and (b) the 50% progress is rendered via the separate `.ac-page-title-progress-fill` bar's inline `style.width="50%"` (not appended to the message text). The contract matches PageTitleRow.tsx's actual JSX (`PageTitleRow.tsx:134-166`) for the `isLoading + loadingMessage + loadingProgress` prop combination.
+
+The auditor's minimum closure bar called for two green tests: one for the loading metric/progress shape (the AUDIT-18 repair) and one for the READY→LIVE footer transition (the AUDIT-17 rename test). Both land in this commit on `ProgramsPage.test.tsx`, raising the akai test count from 231/232 (1 pre-existing failure = the stale AUDIT-18 test) to 234/234.
 
 ## 2026-05-24 Feature review — latest AcEnvelope / AcFrequencyResponse migration work
 
