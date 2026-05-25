@@ -518,19 +518,47 @@ anti_patterns:
   #
   # `excludes_paths:` documents the out-of-scope sub-shapes the
   # operator deferred for this dispatch (per task 2.5 NEEDS DECISION
-  # answers):
-  #   - ZoneOverviewToolbar.tsx: 4 zoom mini-buttons; no canonical
-  #     mini-button primitive exists yet
-  #     (#cross-editor-akai-mini-btn-primitive).
-  #   - DiskBrowserPanel.tsx + DeviceMemoryPanel.tsx: tree-disclosure
-  #     + selection-row list-button chrome; substantial separate work
-  #     to adopt a canonical selection-row primitive
-  #     (#cross-editor-akai-disk-tree-adoption).
+  # answers). Each deferral records WHAT migration is deferred, WHY,
+  # and WHAT WOULD UNLOCK it — the same substantive-tracking shape the
+  # adopter-manifest tracked_holdouts use post-AUDIT-20260525-20:
+  #
+  #   - ZoneOverviewToolbar.tsx — 4 zoom mini-buttons (zoom-in /
+  #     zoom-out / fit-to-window / reset-zoom) styled with tailwind
+  #     mini-btn chrome (bg-gray-* + px-2 + rounded). WHAT: replace
+  #     with a canonical .ac-mini-btn / .ac-icon-btn-sm primitive that
+  #     standardizes the small icon-button shape across editors. WHY:
+  #     no such primitive exists in editor-core yet; the current
+  #     .ac-btn vocabulary is sized for full-text-label buttons and
+  #     would visually outweigh the icon glyphs. UNLOCKS WHEN: a
+  #     primitive-extraction dispatch extracts the mini-btn shape into
+  #     editor-core/primitives.css (Phase 3+ when a second consumer
+  #     surfaces).
+  #
+  #   - DiskBrowserPanel.tsx + DeviceMemoryPanel.tsx — tree-disclosure
+  #     chevron buttons + selection-row list-button chrome (clickable
+  #     row that toggles selection and renders bg-* on hover/active).
+  #     WHAT: adopt a canonical TreeView component + selection-row
+  #     primitive that unifies the tree-disclosure and selectable-row
+  #     patterns across editors. WHY: the inline tailwind chrome
+  #     bundles tree-disclosure interaction state (expanded/collapsed +
+  #     focus + keyboard nav) with selection state; extracting both
+  #     into primitives needs an interaction-contract design pass
+  #     before chrome can land. UNLOCKS WHEN: an editor-core TreeView
+  #     primitive lands (separate Phase 3+ effort that also benefits
+  #     roland library navigation).
+  #
   #   - PluginLibraryBrowser.tsx (editor-core) + TriggerMethodContent.tsx
-  #     (sample-chopper): cross-editor holdouts surfaced by the repo-
-  #     wide scan. These live outside the akai-harmonization Phase 2
-  #     scope and should be migrated in a follow-up that touches their
-  #     respective modules (#cross-editor-tailwind-button-chrome-holdouts).
+  #     (sample-chopper) — cross-editor holdouts surfaced by the
+  #     repo-wide scan. WHAT: replace each file's inline tailwind
+  #     button chrome with .ac-btn (or variant) imports from
+  #     editor-core's primitives.css. WHY: both files live outside the
+  #     akai-s3k-editor module that Phase 2 task 2.5 scoped against
+  #     (editor-core itself + the sample-chopper module). Touching
+  #     those modules in this dispatch would have widened the scope
+  #     beyond what the task's PRD authorized. UNLOCKS WHEN: a
+  #     follow-up dispatch scopes against the editor-core or
+  #     sample-chopper modules and migrates these as part of that
+  #     module's design-system cleanup.
   - id: tailwind-button-chrome-inline
     added_in: '0000ffff'
     primitive: ac-btn
@@ -538,21 +566,32 @@ anti_patterns:
     shape_regex: '<button\b[^<]{0,400}?className=["''`](?:[^"''`]*\bbg-(?:gray|blue|amber|red)-\d+\b[^"''`]*\b(?:px-\d+|py-\d+|rounded)\b|[^"''`]*\b(?:px-\d+|py-\d+|rounded)\b[^"''`]*\bbg-(?:gray|blue|amber|red)-\d+\b)'
     excludes_paths:
       - 'tools/scope-discovery/anti-patterns.tailwind-button-chrome-scenarios.ts'
-      # Sub-shape C — out-of-scope for task 2.5
-      # (#cross-editor-akai-mini-btn-primitive). 4 zoom mini-buttons
-      # awaiting a canonical .ac-mini-btn / .ac-icon-btn-sm primitive.
+      # Sub-shape C — see header comment above for full deferral
+      # rationale. WHAT: replace ZoneOverviewToolbar's 4 zoom mini-
+      # buttons with a canonical .ac-mini-btn primitive. WHY: no
+      # such primitive exists in editor-core yet. UNLOCKS WHEN: a
+      # primitive-extraction dispatch lands .ac-mini-btn in
+      # editor-core/primitives.css (Phase 3+).
       - 'modules/akai-s3k-editor/src/components/keygroups/ZoneOverviewToolbar.tsx'
-      # Sub-shape D — out-of-scope for task 2.5
-      # (#cross-editor-akai-disk-tree-adoption). Tree disclosure +
-      # selection-row chrome awaiting a canonical TreeView /
-      # selection-row primitive adoption.
+      # Sub-shape D — see header comment above for full deferral
+      # rationale. WHAT: adopt a canonical TreeView + selection-row
+      # primitive for tree-disclosure + selectable-row chrome in
+      # DiskBrowserPanel + DeviceMemoryPanel. WHY: inline tailwind
+      # chrome bundles tree-disclosure interaction state with
+      # selection state; needs a design pass before extraction.
+      # UNLOCKS WHEN: an editor-core TreeView primitive lands
+      # (separate Phase 3+ effort).
       - 'modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx'
       - 'modules/akai-s3k-editor/src/components/library/DeviceMemoryPanel.tsx'
-      # Cross-editor holdouts — same anti-pattern shape exists in
-      # editor-core + sample-chopper. Out-of-scope for the akai-
-      # harmonization dispatch; tracked as
-      # #cross-editor-tailwind-button-chrome-holdouts for a follow-up
-      # that touches those modules.
+      # Cross-editor holdouts — see header comment above for full
+      # deferral rationale. WHAT: migrate inline tailwind button
+      # chrome to .ac-btn in editor-core's PluginLibraryBrowser +
+      # sample-chopper's TriggerMethodContent. WHY: both files live
+      # outside the akai-s3k-editor module that task 2.5 scoped
+      # against; touching them would have widened the scope beyond
+      # the PRD. UNLOCKS WHEN: a follow-up dispatch scopes against
+      # editor-core or sample-chopper and migrates these as part of
+      # that module's design-system cleanup.
       - 'modules/editor-core/src/components/library/PluginLibraryBrowser.tsx'
       - 'modules/sample-chopper/src/ui/components/TriggerMethodContent.tsx'
     message: |

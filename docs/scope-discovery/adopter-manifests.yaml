@@ -189,28 +189,100 @@ adopter_manifests:
       - 'modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx'
     tracked_holdouts:
       - path: 'modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx'
-        issue: '#cross-editor-akai-export-dialog-lifecycle'
         reason: |
-          akai export dialog uses inline lifecycle state (setIsComplete,
-          setHasError, setSteps, cancelledRef) instead of the canonical
-          useExportDialogLifecycle hook. Migration pending state-contract
-          alignment — out of scope for Phase 2 task 2.3 backfill.
+          WHAT: migrate this dialog from inline lifecycle state
+          (`useState<boolean>(false)` for isComplete + hasError,
+          `useState<StepState[]>` for steps, a `useRef<boolean>` for
+          cancellation) to the canonical `useExportDialogLifecycle`
+          hook from `@/hooks/useExportDialogLifecycle` (introduced
+          commit dce8fc72; consumed by all 3 roland export dialogs).
+          The hook owns `localError`, `hasStarted`, `isComplete`,
+          `effectiveError`, `steps`, and `handleClose`, deduplicating
+          ~40 lines of identical lifecycle wiring per dialog.
+
+          WHY: akai's SteppedProgressDrawer consumers shipped before
+          the canonical hook landed in roland's bugfix branch
+          (ROLAND-BUGFIX-V3-IMPORT, 2026-05-23). The state shape
+          differs slightly: the hook's `progress` + `operationError`
+          inputs assume a controller-supplied progress object, whereas
+          akai's dialogs derive progress from their own async-iterator
+          state machine (`useDeviceTransfer` / `useDiskOperation`).
+          Naively adopting the hook would either drop akai's progress
+          semantics or force a state-contract harmonization across
+          both editors.
+
+          UNLOCKS WHEN: either (a) the canonical hook grows a
+          discriminated-union progress contract that accepts both
+          roland's progress-object shape and akai's iterator-derived
+          shape, OR (b) akai's transfer hooks adopt the
+          progress-object shape (a follow-up that touches every
+          SteppedProgressDrawer call-site). Operator decides which
+          direction to take; both are larger than Phase 2 task 2.3's
+          adopter-manifest backfill scope, so the work was deferred.
       - path: 'modules/akai-s3k-editor/src/components/library/SendSampleDialog.tsx'
-        issue: '#cross-editor-akai-export-dialog-lifecycle'
         reason: |
-          Same as ExportProgramDialog. akai's SteppedProgressDrawer
-          consumers manage lifecycle state inline; canonical hook
-          adoption pending cross-editor state contract alignment.
+          WHAT: same migration as ExportProgramDialog above — adopt
+          `useExportDialogLifecycle` for the standard `localError` +
+          `hasStarted` + `isComplete` + `effectiveError` + `steps` +
+          `handleClose` derivation. SendSampleDialog wraps
+          SteppedProgressDrawer for the
+          DeviceMemory→Disk-Sample-Slot send operation.
+
+          WHY: shares the same blocker as ExportProgramDialog — the
+          dialog drives a progress source (`useSendSample` from
+          `@/state/use-send-sample`) whose progress object doesn't
+          match the canonical hook's expected shape. Inline lifecycle
+          state was used to keep the dialog compatible with akai's
+          progress contract while v3 chrome (SteppedProgressDrawer)
+          was being adopted in Phase 2 task 2.2.
+
+          UNLOCKS WHEN: the state-contract harmonization across all 4
+          akai SteppedProgressDrawer consumers lands as a single
+          follow-up effort. Splitting per-dialog would create
+          temporary inconsistency (some adopt the hook, some don't)
+          that the gate would mask as partial-adoption noise.
       - path: 'modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx'
-        issue: '#cross-editor-akai-export-dialog-lifecycle'
         reason: |
-          Same as ExportProgramDialog. Inline lifecycle state pending
-          canonical hook adoption.
+          WHAT: same migration as the two above — adopt the canonical
+          `useExportDialogLifecycle` hook. ReceiveSampleDialog wraps
+          SteppedProgressDrawer for the
+          Disk-Sample-Slot→DeviceMemory receive operation.
+
+          WHY: same root cause — the `useReceiveSample` hook drives a
+          progress source that doesn't match the canonical hook's
+          expected progress-object shape. Inline lifecycle state
+          remained the path of least resistance during the v3 chrome
+          adoption.
+
+          UNLOCKS WHEN: same as ExportProgramDialog above — depends on
+          the cross-editor state-contract harmonization. The 4
+          SteppedProgressDrawer-using akai dialogs (ExportProgram,
+          SendSample, ReceiveSample, DiskToLibrary) should migrate as
+          a single batch so the gate accounts for them uniformly.
       - path: 'modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx'
-        issue: '#cross-editor-akai-export-dialog-lifecycle'
         reason: |
-          Same as ExportProgramDialog. Inline lifecycle state pending
-          canonical hook adoption.
+          WHAT: same migration as the three above — adopt the
+          canonical `useExportDialogLifecycle` hook. DiskToLibraryDialog
+          wraps SteppedProgressDrawer for the bulk Disk→Library import
+          operation; it manages multi-item progress state (a
+          per-item completion list, an aggregate progress index, and
+          an item-level error map) atop the standard lifecycle state.
+
+          WHY: the multi-item progress shape is the most divergent
+          from the canonical hook's expectations. The hook treats
+          progress as a single scalar/object; DiskToLibraryDialog's
+          per-item state needs at least an extension point. Adopting
+          the hook here without growing its contract would either lose
+          per-item progress detail or require shadowing the hook's
+          state with the dialog's own per-item state (defeating the
+          point of adoption).
+
+          UNLOCKS WHEN: the canonical hook grows multi-item progress
+          support (a discriminated-union progress contract accepting
+          either scalar progress or a per-item progress array), OR
+          DiskToLibraryDialog's per-item state moves into a sibling
+          composable (`useDiskBulkImport`) that the hook can consume.
+          Either path is larger than Phase 2 task 2.3 scope.
     message: |
       Export-style dialogs/drawers with the shared lifecycle pattern
       (localError + hasStarted state, open-reset useEffect,
@@ -257,24 +329,87 @@ adopter_manifests:
       - 'modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx'
     tracked_holdouts:
       - path: 'modules/akai-s3k-editor/src/components/programs/ProgramList.tsx'
-        issue: '#cross-editor-akai-slot-info'
         reason: |
-          akai ProgramList renders slot-number + name pairs inline
-          (line 187) using <span className="ac-list-slot">{index + 1}
-          </span> + the name span. Should migrate to the canonical
-          <SlotInfo> primitive. Out of scope for Phase 2 task 2.3
-          backfill — the migration touches every row render path.
+          WHAT: migrate akai ProgramList from inline slot-number + name
+          pair rendering (line ~187: `<span
+          className="ac-list-slot">{index + 1}</span>` + a sibling
+          name span with `ac-list-info` chrome) to the canonical
+          `<SlotInfo>` primitive (introduced commit 30e7346e). The
+          canonical primitive owns the slot/name pair markup + the
+          status-suffix slot + the disabled/empty state rendering;
+          adoption deduplicates the 3 akai list components against
+          the 2 roland list components that already render via
+          SlotInfo.
+
+          WHY: the migration touches every row render path in
+          ProgramList (the row map, the keyboard-focus highlight, the
+          disabled-when-empty branch). Extracting the slot rendering
+          to SlotInfo requires either (a) reshaping the per-row data
+          structure SlotInfo expects, or (b) growing SlotInfo with an
+          akai-specific render variant — both larger than the Phase 2
+          task 2.3 cross-editor backfill scope, which was confined to
+          enumerating the holdout set rather than reworking render
+          paths.
+
+          UNLOCKS WHEN: a follow-up that touches ProgramList's row
+          render path lands — most naturally bundled with a broader
+          akai list-row primitive harmonization pass that aligns
+          ProgramList + SampleList + KeygroupList against the
+          canonical SlotInfo shape. Could be split per-list, but the
+          three akai lists share enough structure that a single
+          migration pass is more economical than three independent
+          ones.
       - path: 'modules/akai-s3k-editor/src/components/samples/SampleList.tsx'
-        issue: '#cross-editor-akai-slot-info'
         reason: |
-          Same as ProgramList: inline slot-number + name pair rendering
-          at line 193. Migration to <SlotInfo> pending.
+          WHAT: same migration as ProgramList above — adopt the
+          canonical `<SlotInfo>` primitive in place of the inline
+          slot-number + name pair (line ~193: `<span
+          className="ac-list-slot">{index + 1}</span>` + name span).
+          SampleList's row contract matches ProgramList's exactly
+          (numeric slot index + name), so the migration shape is
+          identical.
+
+          WHY: same blocker as ProgramList — the row render path
+          spans the row map, the keyboard-focus highlight, and the
+          empty-sample state. Extraction needs either a row-data
+          reshape or a SlotInfo variant; both larger than Phase 2
+          task 2.3 backfill scope. The migration should land as a
+          single pass alongside ProgramList + KeygroupList so the
+          three akai lists adopt the primitive uniformly.
+
+          UNLOCKS WHEN: bundled into the same akai list-row
+          harmonization pass as ProgramList. The three lists' shared
+          structure makes a single migration commit more economical
+          than three independent ones.
       - path: 'modules/akai-s3k-editor/src/components/keygroups/KeygroupList.tsx'
-        issue: '#cross-editor-akai-slot-info'
         reason: |
-          akai KeygroupList renders "KG{i + 1}" slot label inline (line
-          149); slight semantic variation from numeric slot labels. SlotInfo
-          adoption requires a label-format-callback prop or wrapper.
+          WHAT: same migration target as ProgramList + SampleList —
+          adopt the canonical `<SlotInfo>` primitive. KeygroupList is
+          the harder of the three because its slot label is
+          semantically distinct: it renders "KG{i + 1}" (e.g., "KG1",
+          "KG2") rather than the numeric "{i + 1}" used by Program
+          and Sample lists. The label-format delta is a known
+          adopter-side concern from the harmonization-spec.md slot-
+          label semantics section.
+
+          WHY: SlotInfo currently assumes numeric slot labels and
+          doesn't expose a label-format callback. KeygroupList
+          adoption needs either (a) a `labelFormatter?: (index:
+          number) => string` prop on SlotInfo, or (b) a
+          `KeygroupSlotInfo` thin wrapper that pre-formats the label
+          and forwards to SlotInfo. Option (a) is cleaner but
+          requires touching SlotInfo's API surface; option (b)
+          requires a new file. Either path is a primitive-extraction
+          decision the operator should weigh against the
+          akai-harmonization Phase 3 surface area.
+
+          UNLOCKS WHEN: a primitive-extraction dispatch picks one of
+          the two adopter-side patterns and ships it as a single
+          commit covering KeygroupList + any future per-editor
+          consumers with non-numeric slot labels. Should land in the
+          same akai list-row migration pass as ProgramList +
+          SampleList so all three akai lists end up on SlotInfo
+          uniformly.
     message: |
       Slot row info (name + status) should render via the SlotInfo
       component (introduced in commit 30e7346e). Replace inline
@@ -355,16 +490,44 @@ adopter_manifests:
       - 'modules/akai-s3k-editor/src/plugins/s3k-library-plugin.tsx'
     tracked_holdouts:
       - path: 'modules/akai-s3k-editor/src/plugins/s3k-library-plugin.tsx'
-        issue: '#cross-editor-akai-library-device-memory-panel'
         reason: |
-          akai's S3kMemoryPanelAdapter (s3k-library-plugin.tsx:62-107)
-          mirrors the canonical LibraryDeviceMemoryPanel adapter shape
-          but consumes the akai-specific S3kMemoryPanelState. Migration
-          to the canonical adapter is gated on state-contract
-          harmonization: roland's DeviceMemoryCustomState vs akai's
-          S3kMemoryPanelState need to unify (or the canonical adapter
-          needs to accept a discriminated-union state). Out of scope
-          for Phase 2 task 2.3 backfill.
+          WHAT: migrate akai's hand-rolled `S3kMemoryPanelAdapter`
+          (s3k-library-plugin.tsx:62-107, ~46 lines) to the canonical
+          `LibraryDeviceMemoryPanel` adapter from
+          `@/plugins/shared/LibraryDeviceMemoryPanel` (introduced
+          commit dedd4d2f; consumed by both roland s330 + s550 library
+          plugins). The canonical adapter owns DeviceMemoryPanel's
+          props-pass-through wiring + the empty-state / loading-state
+          branching; adopting it drops the akai-side adapter to a
+          one-line `<LibraryDeviceMemoryPanel state={state} />` render
+          and deduplicates the per-editor wrapper.
+
+          WHY: the canonical adapter's `state:
+          DeviceMemoryCustomState` contract was designed against
+          roland's per-bank library shape (8 patches per bank × 16
+          banks, with bank metadata + patch slots). Akai's
+          `S3kMemoryPanelState` is a flat-list shape (128 programs +
+          128 samples + 250 keygroups, no banks) carrying
+          akai-specific metadata (program-vs-keygroup-vs-sample
+          discriminator, drum-kit assignment). The two state shapes
+          can't be unified without one of:
+            (a) the canonical adapter accepting a discriminated-union
+                `state: DeviceMemoryCustomState | S3kMemoryPanelState`
+                with per-variant rendering — widens the canonical
+                adapter's surface;
+            (b) `S3kMemoryPanelState` reshaping into a
+                `DeviceMemoryCustomState`-compatible structure with
+                vestigial banks — distorts akai's natural data model;
+            (c) extracting a state-shape interface that both states
+                implement, behind a generic `LibraryDeviceMemoryPanel<S
+                extends LibraryPanelState>` — cleanest but largest
+                refactor.
+
+          UNLOCKS WHEN: the operator picks one of (a) / (b) / (c) as
+          the cross-editor harmonization direction. The decision crosses
+          the editor-core/akai-s3k-editor module boundary so it's an
+          architectural-direction call rather than a tactical
+          adopter-side fix. Phase 3+ scope.
     message: |
       Per-device library plugins should render DeviceMemoryPanel via
       the shared LibraryDeviceMemoryPanel adapter (introduced in commit
@@ -385,14 +548,36 @@ adopter_manifests:
       - 'modules/akai-s3k-editor/src/plugins/s3k-library-plugin.tsx'
     tracked_holdouts:
       - path: 'modules/akai-s3k-editor/src/plugins/s3k-library-plugin.tsx'
-        issue: '#cross-editor-akai-library-preview-panel'
         reason: |
-          akai's S3kPreviewPanelAdapter (imported from S3kItemPreviewPanel)
-          mirrors the canonical LibraryPreviewPanelAdapter shape but
-          consumes akai-specific S3kPreviewCustomState. Migration gated
-          on preview-state contract harmonization between roland's
-          PreviewPanelCustomState and akai's S3kPreviewCustomState.
-          Out of scope for Phase 2 task 2.3 backfill.
+          WHAT: migrate akai's hand-rolled `S3kPreviewPanelAdapter`
+          (routes selection events to `S3kItemPreviewPanel` and
+          renders the akai-specific preview chrome) to the canonical
+          `LibraryPreviewPanelAdapter` from
+          `@/plugins/shared/LibraryPreviewPanelAdapter` (introduced
+          commit dedd4d2f; consumed by both roland s330 + s550 library
+          plugins). The canonical adapter owns the preview-routing
+          function-body + the selection-to-preview-state mapping;
+          adoption drops the akai-side wrapper and deduplicates the
+          per-editor preview-panel wiring.
+
+          WHY: shares the same root cause as the
+          library-device-memory-panel-adapter holdout above — the
+          canonical adapter's `context: PreviewPanelCustomState`
+          contract was designed against roland's preview shape
+          (patch/tone/sample preview metadata with bank-relative
+          slot identifiers), while akai's `S3kPreviewCustomState`
+          carries program/keygroup/sample preview metadata with
+          flat-list slot identifiers + akai-specific drum-kit
+          attribution. Same three resolution paths apply: union the
+          state shapes, reshape akai to match roland, or extract a
+          state-shape interface.
+
+          UNLOCKS WHEN: bundled into the same cross-editor library-
+          plugin state harmonization pass as the device-memory-panel
+          adapter migration above. The two adapters share the same
+          state-contract decision (a / b / c) and should land
+          together so the akai library plugin ends up consuming both
+          canonical adapters uniformly rather than half-migrating.
     message: |
       Per-device library plugins should render the preview panel via
       the shared LibraryPreviewPanelAdapter (introduced in commit
