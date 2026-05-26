@@ -1,8 +1,8 @@
 /**
  * Parameter-panel chrome — `.ac-compact-grid` + `.ac-detail-live*`
  * families. Both live INSIDE a `.ac-detail-body` (per the detail-pane
- * recipe in `detail-pane-primitives.css`), so this file conventionally
- * ships alongside it.
+ * recipe in `editor-core/src/design/detail-pane-primitives.css`), so
+ * this file conventionally ships alongside it.
  *
  * Two families bundled here:
  *

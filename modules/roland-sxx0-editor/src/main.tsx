@@ -10,7 +10,6 @@ import '@audiocontrol/editor-core/styles.css';
 import '@/index.css';
 import '@/styles/_shared.css';
 import '@/styles/connect-page-primitives.css';
-import '@/styles/detail-pane-primitives.css';
 import '@/styles/device-memory-primitives.css';
 import '@/styles/export-dialog-primitives.css';
 import '@/styles/parameter-panel-primitives.css';

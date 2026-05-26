@@ -1,6 +1,8 @@
 /**
  * Detail-pane chrome — `.ac-detail-*` family, the shared list-detail
- * editor-page shell used by Tones, Patches, and the Library dialogs.
+ * editor-page shell used by every editor's selected-object pane
+ * (Roland Tones / Patches / Library dialogs; Akai Programs / Keygroups
+ * / Samples).
  *
  * Three sub-sections bundled here because they share the recipe
  * (eyebrow → title → body) and ship together to every consumer:
@@ -15,19 +17,21 @@
  *     surface with `min-width: 0` overflow discipline.
  *
  * The live-edit footer (`.ac-detail-live*`) ships in
- * `parameter-panel-primitives.css` alongside `.ac-compact-grid`
- * because both are panel-internal chrome that live INSIDE the
- * `.ac-detail-body`; keeping them out of this file lets the body's
- * scroll container stay independent from the footer's pulse rule.
+ * roland-sxx0-editor's `parameter-panel-primitives.css` alongside
+ * `.ac-compact-grid` because both are panel-internal chrome that live
+ * INSIDE the `.ac-detail-body`; keeping them out of this file lets
+ * the body's scroll container stay independent from the footer's
+ * pulse rule. Akai's editor pages use the newer `AcLiveStatusFooter`
+ * component (in editor-core) at the page level instead — both
+ * surfaces share this same `.ac-detail-pane` chrome but the footer
+ * shape differs.
  *
- * Extracted from `_shared.css` 2026-05-25 per akai-harmonization
- * Phase 2 task 2.8 (decompose `_shared.css` toward the 500-line cap).
- *
- * Stays roland-internal for now: akai's editor pages are scheduled to
- * adopt the same `.ac-detail-*` chrome in a follow-up promotion (see
- * the harmonization-spec list-detail page recipe entry). Once akai
- * adopts, this file lifts to editor-core under
- * `editor-core/src/design/detail-pane-primitives.css`.
+ * Extracted from roland-sxx0-editor's `_shared.css` 2026-05-25 per
+ * akai-harmonization Phase 2 task 2.8 (decompose `_shared.css` toward
+ * the 500-line cap); promoted to editor-core 2026-05-25 per
+ * AUDIT-20260525-26 once akai's editor pages adopted the same
+ * `.ac-detail-*` chrome for the harmonization-spec list-detail page
+ * recipe.
  */
 
 /* ============================================================

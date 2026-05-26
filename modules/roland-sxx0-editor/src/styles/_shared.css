@@ -151,12 +151,13 @@
 /* ============================================================
    DETAIL-PANE CHROME — .ac-detail-* family (eyebrow row, empty
    prompt, pane shell, head, title, slot, name input, body).
-   Extracted to
-   `modules/roland-sxx0-editor/src/styles/detail-pane-primitives.css`
-   on 2026-05-25 per akai-harmonization Phase 2 task 2.8 (decompose
-   `_shared.css` toward the 500-line cap). Stays roland-internal —
-   scheduled to lift to editor-core once akai's editor pages adopt
-   the same .ac-detail-* chrome per harmonization-spec.
+   Promoted 2026-05-25 to editor-core per AUDIT-20260525-26
+   (akai editor pages adopted the same chrome). Now lives at
+   `modules/editor-core/src/design/detail-pane-primitives.css`
+   and is bundled into `@audiocontrol/editor-core/styles.css`
+   alongside the other shared design primitives, so this module
+   picks it up automatically via main.tsx's editor-core styles
+   import — no roland-side @import line required.
    ============================================================ */
 
 /* ============================================================

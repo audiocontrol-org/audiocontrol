@@ -223,7 +223,8 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
       {/* Detail head — same shape as ToneEditorHead (eyebrow row +
           slot + always-editable name input). Both pages render
           pixel-identical chrome via the .ac-detail-* primitives in
-          _shared.css. */}
+          editor-core/src/design/detail-pane-primitives.css (promoted
+          from roland-sxx0-editor 2026-05-25 per AUDIT-20260525-26). */}
       <header className="ac-detail-head">
         <div className="ac-detail-eyebrow-row">
           <span>Patch</span>

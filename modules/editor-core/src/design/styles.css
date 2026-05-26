@@ -33,6 +33,12 @@
  *                               + status text; cross-editor canonical
  *                               per project memories `feedback_live_editing_no_save`
  *                               + `feedback_rec_led_accent`)
+ *   - detail-pane-primitives.css — `.ac-detail-*` family (eyebrow row,
+ *                               empty prompt, pane shell, head, title,
+ *                               slot, name input, body). Cross-editor
+ *                               canonical for list-detail editor pages;
+ *                               promoted from roland-sxx0-editor 2026-05-25
+ *                               per AUDIT-20260525-26.
  */
 
 @import './tokens.css';
@@ -51,3 +57,4 @@
 @import './zone-strip-primitives.css';
 @import './frequency-response-primitives.css';
 @import './live-status-footer-primitives.css';
+@import './detail-pane-primitives.css';

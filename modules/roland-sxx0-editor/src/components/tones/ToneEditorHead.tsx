@@ -7,7 +7,7 @@
  * that previously lived here was removed 2026-05-19 — those flows
  * are operator-owned by the library page now, and the title row is
  * the same shape as PatchEditor's by design (shared `.ac-detail-*`
- * primitives in `_shared.css`).
+ * primitives in editor-core's `detail-pane-primitives.css`).
  *
  * Existing `data-testid` on the name input is preserved verbatim so
  * `tone-writes.spec.ts` D-TONE-WAVE-01 (tone name commit path) keeps
