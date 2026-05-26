@@ -3,18 +3,18 @@
  * (mockup `mockups/samples.html:100-159`).
  *
  * The Wave tab carries the sample's "what is this audio?" surface:
- * source format / bandwidth pickers at the top, volume / pan /
- * velocity / fade-in / fade-out sliders in the middle, and the
- * length / duration / size / peak readouts at the bottom (read-only
- * context derived from the SLNGTH + SSRATE fields).
+ * source format / bandwidth pill-radios at the top, original-key
+ * slider in the middle, and the length / duration / size / sample-rate
+ * readouts at the bottom (read-only context derived from the SLNGTH +
+ * SSRATE fields, rendered with `.ac-compact-field--readout` chrome).
  *
  * Extracted from `SampleEditor.tsx` 2026-05-25 per AUDIT-20260525-25.
  */
 
 import type { SampleHeader } from '@audiocontrol/sampler-devices/s3k';
-import { AcNumberInput, formatBytes } from '@audiocontrol/editor-core';
+import { formatBytes } from '@audiocontrol/editor-core';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
-import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
+import { S3kParamRadioRow } from '@/components/ui/S3kParamRadioRow';
 
 export interface SampleWavePanelProps {
   header: SampleHeader;
@@ -43,7 +43,7 @@ export function SampleWavePanel({
   return (
     <div className="ac-panel-stack">
       <div className="ac-compact-grid">
-        <S3kParamSelectRow label="Bandwidth" value={header.SBANDW} options={BANDWIDTH_OPTIONS} onChange={num('SBANDW')} />
+        <S3kParamRadioRow label="Bandwidth" value={header.SBANDW} options={BANDWIDTH_OPTIONS} onChange={num('SBANDW')} />
       </div>
 
       <div className="ac-param-rows">
@@ -53,11 +53,11 @@ export function SampleWavePanel({
       <div className="ac-compact-grid">
         <div className="ac-compact-field ac-compact-field--readout">
           <span className="ac-field-label">Sample Rate</span>
-          <AcNumberInput value={header.SSRATE} unit="Hz" ariaLabel="Sample rate (read-only)" />
+          <span className="ac-field-readout">{header.SSRATE} Hz</span>
         </div>
         <div className="ac-compact-field ac-compact-field--readout">
           <span className="ac-field-label">Length</span>
-          <AcNumberInput value={header.SLNGTH} ariaLabel="Sample length (read-only)" />
+          <span className="ac-field-readout">{header.SLNGTH}</span>
         </div>
         <div className="ac-compact-field ac-compact-field--readout">
           <span className="ac-field-label">Duration</span>

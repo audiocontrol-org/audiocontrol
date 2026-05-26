@@ -17,7 +17,7 @@
 
 import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
-import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
+import { S3kParamRadioRow } from '@/components/ui/S3kParamRadioRow';
 import { S3kParamToggleRow } from '@/components/ui/S3kParamToggleRow';
 
 export interface ProgramEffectsPanelProps {
@@ -40,8 +40,8 @@ export function ProgramEffectsPanel({
   return (
     <div className="ac-panel-stack">
       <div className="ac-compact-grid">
-        <S3kParamSelectRow label="LFO 1 wave" value={header.LFO1WAVE} options={LFO_WAVEFORM_OPTIONS} onChange={num('LFO1WAVE')} />
-        <S3kParamSelectRow label="LFO 2 wave" value={header.LFO2WAVE} options={LFO_WAVEFORM_OPTIONS} onChange={num('LFO2WAVE')} />
+        <S3kParamRadioRow label="LFO 1 wave" value={header.LFO1WAVE} options={LFO_WAVEFORM_OPTIONS} onChange={num('LFO1WAVE')} />
+        <S3kParamRadioRow label="LFO 2 wave" value={header.LFO2WAVE} options={LFO_WAVEFORM_OPTIONS} onChange={num('LFO2WAVE')} />
         <S3kParamToggleRow label="LFO 1 desync" checked={header.DESYNC === 1} onChange={bool('DESYNC')} />
         <S3kParamToggleRow label="LFO 2 retrig" checked={header.LFO2TRIG === 1} onChange={bool('LFO2TRIG')} />
       </div>

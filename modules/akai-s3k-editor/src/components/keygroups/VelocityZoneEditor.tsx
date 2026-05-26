@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { AcRadioTabs, type AcRadioTabDef } from '@audiocontrol/editor-core';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
-import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
+import { S3kParamRadioRow } from '@/components/ui/S3kParamRadioRow';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 
 interface VelocityZoneEditorProps {
@@ -121,7 +121,7 @@ function SingleZoneEditor({
           <S3kParamRow label="Loudness" value={getZoneValue(header, 'VLOUD', zone)} min={-50} max={50} onChange={num('VLOUD')} bipolar />
           <S3kParamRow label="Filter" value={getZoneValue(header, 'VFREQ', zone)} min={-50} max={50} onChange={num('VFREQ')} bipolar />
           <S3kParamRow label="Pan" value={getZoneValue(header, 'VPANO', zone)} min={-50} max={50} onChange={num('VPANO')} bipolar />
-          <S3kParamSelectRow label="Playback" value={getZoneValue(header, 'ZPLAY', zone)} options={PLAYBACK_MODE_OPTIONS} onChange={num('ZPLAY')} />
+          <S3kParamRadioRow label="Playback" value={getZoneValue(header, 'ZPLAY', zone)} options={PLAYBACK_MODE_OPTIONS} onChange={num('ZPLAY')} />
         </div>
       </div>
     </div>

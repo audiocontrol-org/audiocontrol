@@ -14,7 +14,7 @@
 
 import type { SampleHeader } from '@audiocontrol/sampler-devices/s3k';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
-import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
+import { S3kParamRadioRow } from '@/components/ui/S3kParamRadioRow';
 
 export interface SampleMiscPanelProps {
   header: SampleHeader;
@@ -35,7 +35,7 @@ export function SampleMiscPanel({
   return (
     <div className="ac-panel-stack">
       <div className="ac-compact-grid">
-        <S3kParamSelectRow label="Playback Mode" value={header.SPTYPE} options={PLAYBACK_MODE_OPTIONS} onChange={num('SPTYPE')} />
+        <S3kParamRadioRow label="Playback Mode" value={header.SPTYPE} options={PLAYBACK_MODE_OPTIONS} onChange={num('SPTYPE')} />
       </div>
 
       <div className="ac-param-rows">

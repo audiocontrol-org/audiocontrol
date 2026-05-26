@@ -91,10 +91,9 @@ describe('SampleEditor', () => {
     // Wave is the default-active tab.
     expect(screen.getByText('Original Key')).toBeInTheDocument();
     expect(screen.getByText('Bandwidth')).toBeInTheDocument();
-    expect(screen.getByText('Sample Rate')).toBeInTheDocument();
-    const sampleRateReadout = screen.getByLabelText('Sample rate (read-only)');
-    expect(sampleRateReadout).toHaveTextContent('44100');
-    expect(sampleRateReadout).toHaveTextContent('Hz');
+    const sampleRateField = screen.getByText('Sample Rate').closest('.ac-compact-field');
+    expect(sampleRateField).toHaveTextContent('44100');
+    expect(sampleRateField).toHaveTextContent('Hz');
   });
 
   // AUDIT-20260525-25 — Playback Mode moved to the Misc tab (per

@@ -13,7 +13,7 @@
 
 import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
-import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
+import { S3kParamRadioRow } from '@/components/ui/S3kParamRadioRow';
 import { S3kParamToggleRow } from '@/components/ui/S3kParamToggleRow';
 
 export interface ProgramMidiPanelProps {
@@ -40,8 +40,8 @@ export function ProgramMidiPanel({
   return (
     <div className="ac-panel-stack">
       <div className="ac-compact-grid">
-        <S3kParamSelectRow label="Bend mode" value={header.B_MODE} options={BEND_MODE_OPTIONS} onChange={num('B_MODE')} />
-        <S3kParamSelectRow label="Portamento type" value={header.PORTYPE} options={PORTAMENTO_TYPE_OPTIONS} onChange={num('PORTYPE')} />
+        <S3kParamRadioRow label="Bend mode" value={header.B_MODE} options={BEND_MODE_OPTIONS} onChange={num('B_MODE')} />
+        <S3kParamRadioRow label="Portamento type" value={header.PORTYPE} options={PORTAMENTO_TYPE_OPTIONS} onChange={num('PORTYPE')} />
         <S3kParamToggleRow label="Portamento" checked={header.PORTEN === 1} onChange={bool('PORTEN')} />
         <S3kParamToggleRow label="Legato" checked={header.LEGATO === 1} onChange={bool('LEGATO')} />
       </div>

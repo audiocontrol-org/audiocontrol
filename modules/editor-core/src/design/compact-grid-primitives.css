@@ -70,15 +70,9 @@
 }
 
 .ac-compact-field--readout {
-  gap: var(--ac-space-1);
-}
-
-.ac-compact-field--readout > .ac-field-readout {
-  padding: var(--ac-space-1) var(--ac-space-3);
-  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
-  border-radius: var(--ac-radius-sm);
-  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
-  font-size: var(--ac-text-base);
+  flex-direction: row;
+  align-items: baseline;
+  gap: var(--ac-space-3);
 }
 
 .ac-field-readout {

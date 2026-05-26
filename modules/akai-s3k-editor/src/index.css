@@ -203,7 +203,7 @@
    *
    * akai dialect wrappers live at
    * modules/akai-s3k-editor/src/components/ui/S3kParamRow.tsx
-   * (+ S3kParamSelectRow.tsx + S3kParamToggleRow.tsx). The
+   * (+ S3kParamRadioRow.tsx + S3kParamToggleRow.tsx). The
    * akai-scoped bipolar center-tick is implemented in editor-core's
    * control-primitives.css as a :root[data-editor='s3000xl'] override.
    *
