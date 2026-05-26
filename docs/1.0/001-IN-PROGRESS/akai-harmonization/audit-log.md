@@ -196,7 +196,7 @@ border), never an external label above an unrelated section."
 ### Phase 4 capture infrastructure: mockup HTML renders unstyled when loaded via `file://`; current capture script produces unusable mockup baselines
 
 Finding-ID: AUDIT-20260525-27
-Status:     verified-PENDING-COMMIT-SHA
+Status:     verified-8432e816
 Severity:   low
 Surface:    `tools/visual-fidelity/capture.mjs` (was `.tmp/visual-fidelity/capture.mjs` — script promoted to tracked location as part of the fix)
 
