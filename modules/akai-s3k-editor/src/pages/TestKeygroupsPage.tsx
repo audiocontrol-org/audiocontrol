@@ -194,6 +194,8 @@ export function TestKeygroupsPage(): JSX.Element {
           onNoteRangeChange={setNoteRange}
           keygroups={keygroups}
           keygroupCount={keygroups.length}
+          expanded={true}
+          onToggleExpanded={() => { /* zone-overview interaction harness — always expanded */ }}
         />
         <ZoneOverview
           keygroups={keygroups}

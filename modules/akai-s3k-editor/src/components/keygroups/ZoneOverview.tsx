@@ -11,7 +11,7 @@ import {
 } from '@/components/keygroups/note-coordinate-utils';
 import type { ZoneDragField } from '@/components/keygroups/use-zone-drag';
 import { useZoneDrag } from '@/components/keygroups/use-zone-drag';
-import { ZoneRect } from '@/components/keygroups/ZoneOverviewZone';
+import { ZoneRect, keygroupHue } from '@/components/keygroups/ZoneOverviewZone';
 import type { NewZoneRange } from '@/components/keygroups/use-zone-overview-drags';
 import { useZoneOverviewDrags } from '@/components/keygroups/use-zone-overview-drags';
 
@@ -31,6 +31,77 @@ interface ZoneOverviewProps {
   onZoneCommit?: (keygroupIndex: number, field: ZoneDragField, value: number) => void;
   onCreateZone?: (range: NewZoneRange) => void;
   onNoteRangeChange?: (range: NoteRange) => void;
+  /**
+   * When false, renders a thin summary stripe (one cell per keygroup
+   * colored by its hue, click to select) instead of the full chart.
+   * Preserves at-a-glance "how many keygroups + which is selected"
+   * awareness while reclaiming the chart's ~240px of vertical space.
+   * Default true (expanded) to keep existing call sites' behavior.
+   */
+  expanded?: boolean;
+}
+
+/**
+ * Compact summary stripe shown when the chart is collapsed. Each
+ * keygroup is a button sized by its note span; selected keygroup
+ * carries a 2px accent ring. Hue matches the chart's per-keygroup
+ * color so the user's mental model of "which color is which keygroup"
+ * survives the collapse.
+ */
+function ZoneOverviewSummaryStripe({
+  keygroups,
+  keygroupCount,
+  selectedKeygroupIndex,
+  onSelectKeygroup,
+}: Pick<
+  ZoneOverviewProps,
+  'keygroups' | 'keygroupCount' | 'selectedKeygroupIndex' | 'onSelectKeygroup'
+>): JSX.Element {
+  const loaded: { index: number; header: KeygroupHeader }[] = [];
+  for (let i = 0; i < keygroupCount; i++) {
+    const kg = keygroups[i];
+    if (kg) loaded.push({ index: i, header: kg });
+  }
+
+  if (loaded.length === 0) {
+    return (
+      <div className="ac-zone-summary-stripe ac-zone-summary-stripe--empty">
+        No keygroups
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="ac-zone-summary-stripe"
+      role="group"
+      aria-label="Keygroup summary"
+    >
+      {loaded.map(({ index, header }) => {
+        const span = Math.max(1, header.HINOTE - header.LONOTE + 1);
+        const hue = keygroupHue(index, keygroupCount);
+        const isSelected = selectedKeygroupIndex === index;
+        const sampleName = header.SNAME1.trim() || '(none)';
+        return (
+          <button
+            key={index}
+            type="button"
+            className="ac-zone-summary-cell"
+            data-selected={isSelected || undefined}
+            style={{
+              flexGrow: span,
+              ['--ac-zone-hue' as string]: String(hue),
+            }}
+            onClick={() => onSelectKeygroup(index)}
+            aria-label={`Select keygroup ${index + 1}: ${sampleName}, notes ${header.LONOTE}-${header.HINOTE}`}
+            title={`KG${index + 1}: notes ${header.LONOTE}-${header.HINOTE} · ${sampleName}`}
+          >
+            <span className="ac-zone-summary-cell__label">KG{index + 1}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function CreationPreview({
@@ -66,7 +137,26 @@ function CreationPreview({
   );
 }
 
-export function ZoneOverview({
+export function ZoneOverview(props: ZoneOverviewProps): JSX.Element {
+  // Branch BEFORE the expanded chart's own hook tree to keep React's
+  // Rules of Hooks satisfied: the expanded path uses useRef + useCallback
+  // + useEffect + custom hooks; the collapsed stripe needs none of them.
+  // Each branch is a self-contained component that consistently calls
+  // its own hooks.
+  if (props.expanded === false) {
+    return (
+      <ZoneOverviewSummaryStripe
+        keygroups={props.keygroups}
+        keygroupCount={props.keygroupCount}
+        selectedKeygroupIndex={props.selectedKeygroupIndex}
+        onSelectKeygroup={props.onSelectKeygroup}
+      />
+    );
+  }
+  return <ZoneOverviewExpanded {...props} />;
+}
+
+function ZoneOverviewExpanded({
   keygroups,
   keygroupCount,
   selectedKeygroupIndex,

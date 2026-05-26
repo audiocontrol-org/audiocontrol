@@ -252,6 +252,115 @@
    * ================================================================ */
 
   /* ================================================================
+   * Zone Overview disclosure (chevron toggle in the toolbar) +
+   * collapsed summary stripe (shown when the chart is collapsed).
+   *
+   * The summary stripe is a single-row flex layout where each cell
+   * represents one keygroup. Cell width is proportional to the
+   * keygroup's note span (flex-grow = HINOTE - LONOTE + 1). Cell hue
+   * uses the SAME `--ac-zone-hue` formula as the full chart so the
+   * mental color → keygroup map survives the collapse.
+   *
+   * Operator visual review 2026-05-26: the chart eats ~240px of
+   * vertical space and is often not needed when editing a single
+   * keygroup's parameters. The collapse affordance reclaims that
+   * space; the summary stripe preserves at-a-glance awareness of
+   * "I have N keygroups + which is selected" even when collapsed.
+   * ================================================================ */
+
+  .ac-zone-overview-disclosure {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    padding: 0 var(--ac-space-1);
+    cursor: pointer;
+    color: var(--ac-color-text-muted);
+    border-radius: var(--ac-radius-sm);
+    transition: color var(--ac-duration-fast) var(--ac-easing-default),
+                background-color var(--ac-duration-fast) var(--ac-easing-default);
+  }
+
+  .ac-zone-overview-disclosure:hover,
+  .ac-zone-overview-disclosure:focus-visible {
+    color: var(--ac-color-accent);
+    background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+    outline: none;
+  }
+
+  .ac-zone-summary-stripe {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    gap: 1px;
+    height: 2rem;
+    margin: 0 1rem 0.75rem;
+    padding: 2px;
+    background: rgba(17, 24, 39, 0.7);
+    border: 1px solid rgba(55, 65, 81, 1);
+    border-radius: 0.25rem;
+    overflow: hidden;
+  }
+
+  .ac-zone-summary-stripe--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ac-color-text-muted);
+    font-size: var(--ac-text-xs);
+    font-style: italic;
+    height: 2rem;
+    margin: 0 1rem 0.75rem;
+    background: rgba(17, 24, 39, 0.7);
+    border: 1px solid rgba(55, 65, 81, 1);
+    border-radius: 0.25rem;
+  }
+
+  .ac-zone-summary-cell {
+    flex-shrink: 1;
+    flex-basis: 0;
+    min-width: 0;
+    border: 0;
+    border-radius: 2px;
+    padding: 0 var(--ac-space-1);
+    cursor: pointer;
+    overflow: hidden;
+    /* Match the full-chart's hue formula so colors stay consistent
+       across expanded/collapsed states. See
+       modules/editor-core/src/design/zone-strip-primitives.css for
+       the canonical formula source. */
+    background: hsl(calc(var(--ac-zone-hue, 0) * 1deg + 200deg) 52% 42%);
+    color: rgba(255, 255, 255, 0.92);
+    font-family: var(--ac-font-display);
+    font-size: var(--ac-text-xs);
+    letter-spacing: var(--ac-tracking-eyebrow);
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1;
+    transition: filter var(--ac-duration-fast) var(--ac-easing-default),
+                box-shadow var(--ac-duration-fast) var(--ac-easing-default);
+  }
+
+  .ac-zone-summary-cell:hover,
+  .ac-zone-summary-cell:focus-visible {
+    filter: brightness(1.18);
+    outline: none;
+  }
+
+  .ac-zone-summary-cell[data-selected] {
+    box-shadow: inset 0 0 0 2px var(--ac-color-text-on-accent, #ffffff);
+    filter: brightness(1.12);
+  }
+
+  .ac-zone-summary-cell__label {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+  }
+
+  /* ================================================================
    * Velocity Zone Editor
    *
    * The `.s3k-zone-tab*` family (display: flex container + per-tab

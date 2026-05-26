@@ -64,6 +64,7 @@ export function TestKeygroupsShellPage(): JSX.Element {
   );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(0);
   const [noteRange, setNoteRange] = useState<NoteRange>(FULL_RANGE);
+  const [zoneOverviewExpanded, setZoneOverviewExpanded] = useState<boolean>(true);
 
   // No-op handlers — the contract under test is shell geometry, not
   // zone editing. The real components are mounted (matching the
@@ -107,6 +108,8 @@ export function TestKeygroupsShellPage(): JSX.Element {
             onNoteRangeChange={setNoteRange}
             keygroups={keygroups}
             keygroupCount={keygroups.length}
+            expanded={zoneOverviewExpanded}
+            onToggleExpanded={() => setZoneOverviewExpanded((v) => !v)}
           />
           <ZoneOverview
             keygroups={keygroups}
@@ -118,6 +121,7 @@ export function TestKeygroupsShellPage(): JSX.Element {
             onZoneCommit={handleZoneDrag}
             onCreateZone={() => { /* no-op for shell harness */ }}
             onNoteRangeChange={setNoteRange}
+            expanded={zoneOverviewExpanded}
           />
           <p className="text-gray-300">
             Test detail pane — selected keygroup:{' '}

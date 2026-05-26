@@ -249,6 +249,7 @@ export function KeygroupsPage(): JSX.Element {
     selectedKeygroupIndex !== null ? keygroups[selectedKeygroupIndex] : undefined;
 
   const [noteRange, setNoteRange] = useState<NoteRange>(FULL_RANGE);
+  const [zoneOverviewExpanded, setZoneOverviewExpanded] = useState<boolean>(true);
 
   // Ctrl+Arrow: pan zone overview regardless of focused element
   useEffect(() => {
@@ -354,6 +355,8 @@ export function KeygroupsPage(): JSX.Element {
             onNoteRangeChange={setNoteRange}
             keygroups={keygroups}
             keygroupCount={keygroupCount}
+            expanded={zoneOverviewExpanded}
+            onToggleExpanded={() => setZoneOverviewExpanded((v) => !v)}
           />
           <ZoneOverview
             keygroups={keygroups}
@@ -365,6 +368,7 @@ export function KeygroupsPage(): JSX.Element {
             onZoneCommit={handleZoneCommit}
             onCreateZone={handleCreateZone}
             onNoteRangeChange={setNoteRange}
+            expanded={zoneOverviewExpanded}
           />
           {selectedHeader ? (
             <KeygroupEditor
