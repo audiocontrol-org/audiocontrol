@@ -258,23 +258,14 @@
   margin-top: var(--ac-space-3);
 }
 
-/* Parameter-row grid for tabs whose body is a stack of slider rows
-   (Filter, Amp). Container-aware: each cell holds a self-contained
-   `.ac-slider` (label | bar | readout) and stays at least 28rem wide
-   so the bar has usable resolution; the column count drops
-   automatically as the detail pane narrows. On wide screens this
-   yields 2-3 sliders per row instead of a single sparse stack. */
-.tones__param-rows {
-  display: grid;
-  /* 22rem minimum lets 3 sliders fit per row at typical wide-viewport
-     detail widths (~1240px usable) while still dropping cleanly to 2
-     then 1 columns as the pane narrows. The AcSlider's internal grid
-     (label ~7rem | bar 1fr | readout ~5rem) needs roughly 16rem to be
-     ergonomic; 22rem leaves the bar ~10rem of resolution. */
-  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
-  column-gap: var(--ac-space-6);
-  min-width: 0;
-}
+/* .tones__param-rows — DELETED 2026-05-25 (akai-harmonization Phase 4 /
+   AUDIT-20260525-24). The rule was the working pattern; the akai
+   editor's invented `.s3k-section-grid` rule used inadequate column
+   minimums (6.5rem / 8rem) and broke the AcSlider inner grid. Promoted
+   this rule to the canonical `.ac-param-rows` primitive (22rem minimum)
+   in modules/editor-core/src/design/control-primitives.css so both
+   editors share the same load-bearing grid contract. Contract test:
+   modules/editor-core/test/ui/ac-param-rows.spec.tsx. */
 
 /* Inline label + control affordance for non-slider parameters
    (toggles, small selects). Label sits to the left, control to the

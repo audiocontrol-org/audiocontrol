@@ -169,6 +169,37 @@
 }
 
 /* =========================================================================
+ * PARAM ROWS — multi-column grid that holds `.ac-slider` parameter rows.
+ *
+ * `.ac-slider` is itself a 3-column grid (label | range-bar | readout) that
+ * needs ~16rem of usable width to read cleanly, and benefits from ≥22rem so
+ * the range-bar gets enough resolution (~10rem) for fine drag. The container
+ * does NOT just say "minmax(0, 1fr)" — that produces 4+ per-row columns at
+ * typical wide-viewport detail widths and collapses the inner ac-slider grid
+ * (label / readout overlap, range-bar shrinks to a glyph).
+ *
+ * The 22rem minimum is load-bearing: it lets 2-3 sliders fit per row on wide
+ * panes and drops cleanly to 1 column as the detail pane narrows. Do NOT
+ * lower the minimum without proving the AcSlider inner grid still resolves
+ * — the canonical assertion lives in
+ * `modules/editor-core/test/ui/ac-param-rows.spec.tsx`.
+ *
+ * Replaces (deleted in same commit, AUDIT-20260525-24):
+ *   - `.s3k-section-grid` / `.s3k-section-grid--wide` in akai-s3k-editor
+ *     (had `minmax(6.5rem, 1fr)` / `minmax(8rem, 1fr)` — both inadequate
+ *     for AcSlider's inner grid; broke ProgramsPage layout)
+ *   - `.tones__param-rows` in roland-sxx0-editor (the working pattern; the
+ *     canonical primitive carries its semantics forward)
+ * ========================================================================= */
+
+.ac-param-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+  column-gap: var(--ac-space-6);
+  min-width: 0;
+}
+
+/* =========================================================================
  * RANGE BAR — the bounded visualization with start/end ticks INSIDE and an
  * accent-filled width driven by --ac-range-fill. Variants:
  *

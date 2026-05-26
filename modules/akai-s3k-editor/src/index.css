@@ -230,16 +230,22 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   }
 
-  .s3k-section-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
-    gap: 1rem;
-    padding: 1rem;
-  }
-
-  .s3k-section-grid--wide {
-    grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
-  }
+  /* ================================================================
+   * .s3k-section-grid / .s3k-section-grid--wide — DELETED 2026-05-25
+   * (akai-harmonization Phase 4 / AUDIT-20260525-24). Both used
+   * `minmax(6.5rem, 1fr)` / `minmax(8rem, 1fr)` which collapsed the
+   * inner `<AcSlider>` 3-column grid (label / range-bar / readout)
+   * — the range-bar shrank to a glyph and the label/readout
+   * overlapped at the same x-coordinate. Promoted to the canonical
+   * `.ac-param-rows` primitive (22rem minimum) in
+   * modules/editor-core/src/design/control-primitives.css.
+   *
+   * Contract test: modules/editor-core/test/ui/ac-param-rows.spec.tsx.
+   *
+   * Anti-pattern entry preventing re-introduction lives in
+   * docs/scope-discovery/anti-patterns.yaml (if needed for future
+   * regression-prevention).
+   * ================================================================ */
 
   /* ================================================================
    * Velocity Zone Editor

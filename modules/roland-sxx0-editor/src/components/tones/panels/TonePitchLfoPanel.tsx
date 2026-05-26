@@ -107,7 +107,7 @@ export function TonePitchLfoPanel({ tone, onUpdate, onCommit }: Props): JSX.Elem
         <span>Pitch</span>
       </header>
 
-      <div className="tones__param-rows">
+      <div className="ac-param-rows">
         <ParamSliderRow
           label="Transpose"
           value={tone.transpose}

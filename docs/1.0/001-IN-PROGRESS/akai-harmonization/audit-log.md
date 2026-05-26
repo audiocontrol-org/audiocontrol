@@ -28,7 +28,7 @@ causes. They are filed grouped so that one dispatch closes each.
 ### `.s3k-section-grid` packs `AcSlider` rows into ~6.5rem cells; the canonical 3-column slider grid (label | bar | readout) collapses with label and readout overlapping at the same x-coordinate
 
 Finding-ID: AUDIT-20260525-24
-Status:     open
+Status:     verified-2026-05-25
 Severity:   high
 Surface:    `modules/akai-s3k-editor/src/index.css:233-242`, `modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:54`, `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:71,101`, `modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx:117`, `modules/akai-s3k-editor/src/components/samples/SampleEditor.tsx:34`
 
@@ -66,6 +66,43 @@ ONE rule at a time, do not sweep. Per `.claude/rules/agent-discipline.md`
 600px-wide grid container and asserts the label/readout aren't overlapping (e.g.,
 `getBoundingClientRect()` on `.ac-slider__label` and `.ac-slider__readout` —
 right edge of label < left edge of readout − bar_min_width).
+
+**Closure (2026-05-25):** `.ac-param-rows` landed in
+`modules/editor-core/src/design/control-primitives.css` with the canonical
+`repeat(auto-fit, minmax(22rem, 1fr))` shape carried forward from the working
+roland pattern. All 7 JSX consumer sites migrated in the same commit
+(5 akai: `ProgramEditor.tsx`, `KeygroupEditor.tsx` ×2, `VelocityZoneEditor.tsx`,
+`SampleEditor.tsx`; 3 roland: `ToneFilterPanel.tsx`, `ToneAmpPanel.tsx`,
+`TonePitchLfoPanel.tsx`). The deprecated `.s3k-section-grid` /
+`.s3k-section-grid--wide` and `.tones__param-rows` rules were deleted in the
+same commit; their former locations now carry pointer comments to the canonical
+primitive + this finding ID. The `wide` prop on the akai `<Section>` wrapper
+was removed (the canonical primitive supersedes both former widths; the
+auto-fit drop from 3→2→1 columns handles every viewport).
+
+Validator-paired contract test landed at
+`modules/editor-core/test/ui/ac-param-rows.spec.tsx`. The spec:
+1. Asserts the canonical `.ac-param-rows` rule resolves to a grid with
+   `minmax(22rem, …)` columns (load-bearing); explicitly rejects the prior
+   regression values (`6.5rem`, `8rem`).
+2. Asserts an `<AcSlider>` rendered inside `.ac-param-rows` resolves
+   `display: grid` with the canonical 3-column shape (5.5rem | 1fr | 4rem).
+3. Carries a `GUTTED:` self-check that confirms the assertions FAIL when the
+   `.ac-param-rows` container is omitted — proving the assertions have teeth.
+
+The teeth-test was independently verified end-to-end: the production rule was
+temporarily gutted to `minmax(6.5rem, 1fr)` (the prior regression shape) and
+the load-bearing assertion failed with
+`AssertionError: expected 'repeat(auto-fill, minmax(6.5rem, 1fr))' to contain '22rem'`.
+After restoring the canonical rule, all 33 editor-core UI tests pass.
+
+Build and test gates re-run independently by the controller after dispatch:
+- `make` — full topological build, green.
+- `pnpm test` (editor-core) — 393 unit + 33 UI tests passing.
+- `pnpm test` (akai-s3k-editor) — 234 tests passing.
+- `make test-ui-roland` — 4 passed / 2 skipped (test-harness e2e config).
+- `make test-ui-s3k` — 43 passed.
+- `make test-ui-editor-core` — 33 passed.
 
 ---
 

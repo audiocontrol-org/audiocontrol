@@ -114,7 +114,7 @@ function SingleZoneEditor({
 
       {/* Right: zone parameters in dense grid */}
       <div className="s3k-zone-params">
-        <div className="s3k-section-grid">
+        <div className="ac-param-rows">
           <S3kParamRow label="Lo Vel" value={getZoneValue(header, 'LOVEL', zone)} min={0} max={127} onChange={num('LOVEL')} />
           <S3kParamRow label="Hi Vel" value={getZoneValue(header, 'HIVEL', zone)} min={0} max={127} onChange={num('HIVEL')} />
           <S3kParamRow label="Tune" value={getZoneValue(header, 'VTUNO', zone)} min={-50} max={50} onChange={num('VTUNO')} bipolar />

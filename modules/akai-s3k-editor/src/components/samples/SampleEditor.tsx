@@ -2,6 +2,7 @@ import type { SampleHeader } from '@audiocontrol/sampler-devices/s3k';
 import { AcNumberInput } from '@audiocontrol/editor-core';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
 import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
+import { Section } from '@/components/ui/Section';
 
 interface SampleEditorProps {
   header: SampleHeader;
@@ -20,21 +21,6 @@ const PLAYBACK_MODE_OPTIONS = [
   { value: 2, label: 'No Loop' },
   { value: 3, label: 'Play to End' },
 ];
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}): JSX.Element {
-  return (
-    <div className="s3k-section">
-      <div className="s3k-section-title">{title}</div>
-      <div className="s3k-section-grid">{children}</div>
-    </div>
-  );
-}
 
 function LoopSection({
   loopNumber,

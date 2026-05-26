@@ -6,6 +6,7 @@ import {
 } from '@audiocontrol/editor-core';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
 import { S3kParamToggleRow } from '@/components/ui/S3kParamToggleRow';
+import { Section } from '@/components/ui/Section';
 import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
@@ -53,26 +54,6 @@ interface KeygroupEditorProps {
   noteRange: NoteRange;
 }
 
-function Section({
-  title,
-  children,
-  headerContent,
-}: {
-  title: string;
-  children: React.ReactNode;
-  headerContent?: React.ReactNode;
-}): JSX.Element {
-  return (
-    <div className="s3k-section">
-      <div className="s3k-section-title">{title}</div>
-      {headerContent && (
-        <div className="s3k-section-header-content">{headerContent}</div>
-      )}
-      <div className="s3k-section-grid">{children}</div>
-    </div>
-  );
-}
-
 export function KeygroupEditor({
   header,
   keygroupIndex,
@@ -98,7 +79,7 @@ export function KeygroupEditor({
       {/* Note Range — keep KeyRangeEditor as-is */}
       <div className="s3k-section">
         <div className="s3k-section-title">Note Range</div>
-        <div className="s3k-section-grid">
+        <div className="ac-param-rows">
           <div style={{ gridColumn: '1 / -1' }}>
             <KeyRangeEditor
               lowNote={header.LONOTE}

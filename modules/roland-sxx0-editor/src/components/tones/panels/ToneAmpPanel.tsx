@@ -81,7 +81,7 @@ export function ToneAmpPanel({ tone, onUpdate, onCommit }: ToneAmpPanelProps) {
   return (
     <section className="tones__section">
       {/* No section header — duplicates the active AMP tab. */}
-      <div className="tones__param-rows">
+      <div className="ac-param-rows">
         <ParamSliderRow label="Level" value={tone.tva.level} onChange={handleLevelChange} tooltip={TONE_TOOLTIPS.tvaLevel} />
         <ParamSliderRow label="LFO Depth" value={tone.tva.lfoDepth} onChange={handleLfoDepthChange} tooltip={TONE_TOOLTIPS.tvaLfoDepth} />
         <ParamSliderRow label="Key Rate" value={tone.tva.keyRate} onChange={handleKeyRateChange} tooltip={TONE_TOOLTIPS.tvaKeyRate} />

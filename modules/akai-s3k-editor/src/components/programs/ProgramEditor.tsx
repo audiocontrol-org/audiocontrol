@@ -3,6 +3,7 @@ import { AcNumberInput } from '@audiocontrol/editor-core';
 import { S3kParamRow } from '@/components/ui/S3kParamRow';
 import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
 import { S3kParamToggleRow } from '@/components/ui/S3kParamToggleRow';
+import { Section } from '@/components/ui/Section';
 
 interface ProgramEditorProps {
   header: ProgramHeader;
@@ -39,25 +40,6 @@ const PORTAMENTO_TYPE_OPTIONS = [
   { value: 1, label: 'Time' },
 ];
 
-function Section({
-  title,
-  children,
-  wide,
-}: {
-  title: string;
-  children: React.ReactNode;
-  wide?: boolean;
-}): JSX.Element {
-  return (
-    <div className="s3k-section">
-      <div className="s3k-section-title">{title}</div>
-      <div className={`s3k-section-grid ${wide ? 's3k-section-grid--wide' : ''}`}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
 export function ProgramEditor({
   header,
   onParameterChange,
@@ -83,7 +65,7 @@ export function ProgramEditor({
 
       {/* Two-column layout for related sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-        <Section title="MIDI" wide>
+        <Section title="MIDI">
           <S3kParamRow label="Program #" value={header.PRGNUM} min={0} max={128} onChange={num('PRGNUM')} />
           <S3kParamRow label="Channel" value={header.PMCHAN} min={0} max={255} onChange={num('PMCHAN')} />
           <S3kParamRow label="Polyphony" value={header.POLYPH} min={0} max={31} onChange={num('POLYPH')} />

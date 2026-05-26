@@ -78,7 +78,7 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
           compact-grid row below, since both are binary/few-position
           enums that read better as segmented controls than as a
           checkbox + dropdown. */}
-      <div className="tones__param-rows">
+      <div className="ac-param-rows">
         <ParamSliderRow label="Cutoff" value={tvf.cutoff} onChange={handleCutoffChange} tooltip={TONE_TOOLTIPS.tvfCutoff} disabled={!tvf.enabled} />
         <ParamSliderRow label="Resonance" value={tvf.resonance} onChange={handleResonanceChange} tooltip={TONE_TOOLTIPS.tvfResonance} disabled={!tvf.enabled} />
         <ParamSliderRow label="Key Follow" value={tvf.keyFollow} onChange={handleKeyFollowChange} tooltip={TONE_TOOLTIPS.tvfKeyFollow} disabled={!tvf.enabled} />
