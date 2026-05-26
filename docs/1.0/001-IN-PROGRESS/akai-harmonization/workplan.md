@@ -2,7 +2,7 @@
 
 **Branch:** `feature/akai-harmonization`
 **Worktree:** `~/work/audiocontrol-work/audiocontrol-akai-harmonization`
-**Status:** FEATURE COMPLETE — all 22 tasks closed (21 [x] + 1 operator-deferred per AUDIT-20260524-03 closure). See [`implementation-summary.md`](./implementation-summary.md) for the substantive feature outcomes. Pending operator close-out (PR review + directory move from `001-IN-PROGRESS/` to `003-COMPLETE/`).
+**Status:** ~~FEATURE COMPLETE~~ — **RE-OPENED 2026-05-25 evening** after operator visual review of the live ProgramsPage revealed the rendered UI bears only a "bizarro-world relationship to our mockups." Phase 2's structural gates (43 spec passes, 0 anti-pattern findings, 0 holdouts) verified contracts but did NOT verify visual fidelity against `mockups/programs.html` et al. The premature COMPLETE annotation is the failure mode `feedback_actually_review` memory names: computed-style checks and DOM-shape assertions aren't enough; pages need actual side-by-side visual comparison with the mockup before any complete claim. **Phase 4 (Visual fidelity review against mockups) added below; FEATURE COMPLETE re-asserted only after Phase 4 closes.** See [`implementation-summary.md`](./implementation-summary.md) for structural outcomes (still accurate); the visual-fidelity gap is enumerated in Phase 4.
 
 ## GitHub Tracking
 
@@ -212,3 +212,34 @@ Each task is one commit or one tight commit-set; `canonical_side` is declared in
 | `pnpm test:scope-discovery` | when scope-discovery file touched | n/a | every commit | every commit |
 | `make test-ui-akai` / `make test-ui-roland` | every fix commit | n/a | every commit | every commit |
 | Controller re-runs gate independently | after every implementer dispatch | n/a | after every implementer dispatch | after every implementer dispatch |
+
+## Phase 4: Visual fidelity review against mockups
+
+**Why this exists:** Phase 2's structural-contract gates (page-shell-contract spec, keyboard-nav harness, anti-pattern matchers, adopter-manifest scanner) verify that primitives are wired and DOM shapes match contracts. They do NOT verify that the rendered page LOOKS like the mockup the operator approved at Phase 1 closure. Operator visual review of the live ProgramsPage on 2026-05-25 revealed multiple obvious regressions (collapsed `.ac-slider` grid with overlapping label+readout; missing AcRadioTabs adoption on ProgramEditor despite spec § 4.1; keygroup row contrast hole). Phase 4 closes the gap by walking every akai page in a real browser, capturing screenshots, comparing pixel-by-region against the corresponding `mockups/<page>.html`, and dispatching fixes for every delta that's not an intentional dialect variance.
+
+**Deliverable:** every akai page renders such that side-by-side with its mockup the differences reduce to (a) live data vs mockup placeholder, (b) intentional dynamic chrome (loading states, hover transitions). Any structural / layout / typography / color delta beyond those two categories is a regression to fix.
+
+### Tasks
+
+- [ ] **4.1 Capture live screenshots of every akai page** at desktop 1280×900 and mobile 414×896. Pages: `/akai/s3000xl/editor/programs`, `/akai/s3000xl/editor/keygroups`, `/akai/s3000xl/editor/samples`, `/akai/s3000xl/editor/library`. For each, capture the page in its default state (whatever loads when no device is connected, since the dev environment may not have a live device). Save to `.tmp/visual-fidelity/<page>-<viewport>.png`.
+
+- [ ] **4.2 Capture mockup screenshots** of each `mockups/<page>.html` at the same viewports. Save to `.tmp/visual-fidelity/mockup-<page>-<viewport>.png`. Treats the mockup as the source of truth for layout / typography / chrome / color usage.
+
+- [ ] **4.3 Enumerate every visible delta per page.** Side-by-side compare each live↔mockup pair. File each delta as an audit-log entry (AUDIT-20260525-23 onward) naming: (a) the specific visual symptom, (b) the canonical mockup reference (file + line), (c) the live source file likely responsible, (d) a one-line repro recipe. Categories observed so far on the live ProgramsPage that will absolutely surface:
+  - AcSlider 3-column grid collapse (`PROGRAM #` / `CHANNEL` / `POLYPHONY` / `LEVEL` / `PAN` etc. all show overlapping label+readout instead of `LABEL | range-bar | readout`)
+  - ProgramEditor missing AcRadioTabs (mockup has Common · MIDI · Effects · Output tabs; live page has all sections flat-stacked)
+  - First keygroup row text invisible against the dark navy `Keygroups (1)` band — contrast hole between the LCD blue accent and the cream-on-cream row text
+  - Likely more across KeygroupsPage / SamplesPage / LibraryPage; enumerate per page
+
+- [ ] **4.4 Fix each filed delta** — one dispatch per related group (e.g., one dispatch for "AcSlider grid collapse" because it likely shares one CSS root cause across all rows; one dispatch for "ProgramEditor adopts AcRadioTabs"; one per per-page contrast fix). Per-dispatch closure: live page re-screenshotted matches the mockup modulo (a) and (b) above. Update the audit-log entry to `verified-<sha>` only after the visual diff is clean.
+
+- [ ] **4.5 Add a Playwright visual-regression spec** under `modules/akai-s3k-editor/test/ui/` that screenshots each akai page at both viewports and compares against committed baselines (`test/ui/__snapshots__/<page>-<viewport>.png`). Pixel threshold: ≤0.1% differing pixels. Per `feedback_actually_review`: this spec runs on every commit to akai pages; future regressions fire at commit time, not at the next operator review. **Acceptance: a failing spec that intentionally regresses a chrome class fires red with a `pngdiff` artifact pointing at the regression.**
+
+- [ ] **4.6 Re-assert FEATURE COMPLETE** in the workplan header only after 4.1-4.5 close. Update implementation-summary.md to add a "Visual fidelity" section documenting the per-page comparison + the new Playwright regression spec. Mark the workplan header `**Status:** FEATURE COMPLETE` only when every audit finding from 4.3 has `Status: verified-<sha>` AND the regression spec is green on the actual committed baselines.
+
+### Phase 4 Acceptance Criteria
+
+- Every akai page screenshot side-by-side with its mockup shows only (a) live-data-vs-placeholder differences and (b) intentional dynamic chrome
+- Every visible regression filed as an audit finding with a verified-<sha> closure
+- Playwright visual-regression spec lives in `test/ui/visual-fidelity.spec.ts`; runs on every commit; uses pngdiff with ≤0.1% threshold; has a verifiable revert-test ("change a chrome class → spec goes red with diff artifact")
+- Workplan header re-asserts FEATURE COMPLETE only after all of the above
