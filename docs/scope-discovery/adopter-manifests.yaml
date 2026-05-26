@@ -745,6 +745,12 @@ adopter_manifests:
   # Two akai consumers (filter env multi-segment + amp env adsr) +
   # one roland consumer (tone env multi-segment) make up the
   # cross-editor adopter set.
+  # Note: AUDIT-20260525-25 (2026-05-25) split the akai KeygroupEditor's
+  # filter + amp envelope mountings into per-tab panel subcomponents
+  # under `panels/` (one panel per tab in the AcRadioTabs partition).
+  # The canonical adopter sites moved with them — the parent
+  # `KeygroupEditor.tsx` no longer imports AcEnvelope directly. The
+  # adopter glob is updated to track the new locations.
   - id: ac-envelope
     introduced_in: d524da07
     from: '@audiocontrol/editor-core'
@@ -752,7 +758,8 @@ adopter_manifests:
       - AcEnvelope
     expected_adopters_glob:
       - 'modules/roland-sxx0-editor/src/components/ui/ToneEnvelopeEditor.tsx'
-      - 'modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx'
+      - 'modules/akai-s3k-editor/src/components/keygroups/panels/KeygroupFilterPanel.tsx'
+      - 'modules/akai-s3k-editor/src/components/keygroups/panels/KeygroupAmpPanel.tsx'
     message: |
       SVG-direct envelope chrome should use the shared AcEnvelope
       primitive from @audiocontrol/editor-core. The primitive carries
@@ -773,13 +780,17 @@ adopter_manifests:
   # primitive extraction. Filter-response visualization (cutoff + Q on a
   # log-frequency × dB graph) was previously implemented inline in akai's
   # FilterDisplay.tsx; the canonical primitive ships in editor-core.
+  # Note: AUDIT-20260525-25 (2026-05-25) split the akai KeygroupEditor's
+  # filter response mounting into the KeygroupFilterPanel under
+  # `panels/` (the Filter tab of the AcRadioTabs partition). The parent
+  # `KeygroupEditor.tsx` no longer imports AcFrequencyResponse directly.
   - id: ac-frequency-response
     introduced_in: b83318d3
     from: '@audiocontrol/editor-core'
     imports:
       - AcFrequencyResponse
     expected_adopters_glob:
-      - 'modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx'
+      - 'modules/akai-s3k-editor/src/components/keygroups/panels/KeygroupFilterPanel.tsx'
     message: |
       Filter frequency-response curves (cutoff + Q on a log-frequency
       × dB graph) should use the shared AcFrequencyResponse primitive

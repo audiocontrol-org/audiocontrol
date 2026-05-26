@@ -185,14 +185,15 @@
    ============================================================ */
 
 /* ============================================================
-   PARAMETER-PANEL CHROME — .ac-compact-grid / .ac-compact-field /
-   .ac-field-readout / .ac-field-label plus the .ac-detail-live*
-   live-edit footer. Extracted to
-   `modules/roland-sxx0-editor/src/styles/parameter-panel-primitives.css`
-   on 2026-05-25 per akai-harmonization Phase 2 task 2.8 (decompose
-   `_shared.css` toward the 500-line cap). Stays roland-internal —
-   scheduled to lift to editor-core alongside .ac-detail-* once akai
-   adopts the same panel chrome.
+   PARAMETER-PANEL CHROME split across two files:
+     - `.ac-compact-grid` / `.ac-compact-field` / `.ac-field-readout` —
+       PROMOTED to `modules/editor-core/src/design/compact-grid-primitives.css`
+       2026-05-25 (AUDIT-20260525-25) once akai's ProgramEditor /
+       KeygroupEditor / SampleEditor adopted them. Cross-editor canonical;
+       the akai dialect consumes via `@audiocontrol/editor-core/styles.css`.
+     - `.ac-detail-live*` live-edit footer — STAYS roland-only in
+       `modules/roland-sxx0-editor/src/styles/parameter-panel-primitives.css`.
+       Akai uses `AcLiveStatusFooter` at the page level instead.
    ============================================================ */
 
 /* =========================================================================

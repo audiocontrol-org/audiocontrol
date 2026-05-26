@@ -212,13 +212,17 @@
    * that prevent reintroduction.
    * ================================================================ */
 
-  /* Section panel for grouped parameters */
-  .s3k-section {
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 0.5rem;
-    overflow: hidden;
-  }
-
+  /*
+   * Section title eyebrow — used by VelocityZoneEditor's inline
+   * "Sample" sub-label inside the per-zone editor body. The legacy
+   * `.s3k-section` border-and-radius wrapper was DELETED 2026-05-25
+   * (AUDIT-20260525-25) when ProgramEditor / KeygroupEditor /
+   * SampleEditor migrated to AcRadioTabs (the tab-panel chrome
+   * itself supplies the visual grouping; the bordered .s3k-section
+   * wrapper is no longer needed). The .s3k-section-title rule stays
+   * because VelocityZoneEditor still consumes it as an inline
+   * eyebrow label.
+   */
   .s3k-section-title {
     font-size: 0.875rem;
     font-weight: 600;
@@ -318,10 +322,13 @@
     padding: 0.75rem;
   }
 
-  /* Full-width content above the grid inside a section */
-  .s3k-section-header-content {
-    padding: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  }
+  /*
+   * `.s3k-section-header-content` — DELETED 2026-05-25
+   * (AUDIT-20260525-25). Was the "rich chrome above the grid" slot
+   * inside the now-deleted `<Section>` helper; the AcRadioTabs
+   * per-tab panels mount rich chrome (AcEnvelope, AcFrequencyResponse)
+   * directly inside their own `.ac-panel-stack` flex column instead,
+   * which gives the same spacing without the per-section wrapper.
+   */
 
 }

@@ -19,6 +19,20 @@ function renderEditor(
   };
 }
 
+/**
+ * Click the SampleEditor tab whose visible label matches `label`. The
+ * AcRadioTabs primitive renders the visible label as a `<label>`
+ * element with `htmlFor={id}`; clicking it fires the radio input's
+ * change handler which drives AcRadioTabs' controlled-mode active id.
+ */
+function selectTab(label: string): void {
+  const tabLabel = screen
+    .getAllByText(label)
+    .find((el) => el.classList.contains('ac-radio-tab'));
+  if (!tabLabel) throw new Error(`SampleEditor tab "${label}" not found`);
+  fireEvent.click(tabLabel);
+}
+
 describe('SampleEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -66,84 +80,93 @@ describe('SampleEditor', () => {
     expect(input.tagName).toBe('INPUT');
   });
 
-  it('renders Basic section with Original Key, Bandwidth, Sample Rate, Playback Mode', () => {
+  // AUDIT-20260525-25 — sample params live inside an AcRadioTabs
+  // partition (Wave / Loop / Trim / Misc per mockups/samples.html).
+  // The Wave tab carries Original Key + Bandwidth + Sample Rate.
+  it('renders Wave tab with Original Key, Bandwidth, Sample Rate readouts (AUDIT-20260525-25)', () => {
     renderEditor({
       header: makeSampleHeader({ SPITCH: 60, SBANDW: 1, SSRATE: 44100, SPTYPE: 0 }),
     });
 
-    expect(screen.getByText('Basic')).toBeInTheDocument();
+    // Wave is the default-active tab.
     expect(screen.getByText('Original Key')).toBeInTheDocument();
     expect(screen.getByText('Bandwidth')).toBeInTheDocument();
     expect(screen.getByText('Sample Rate')).toBeInTheDocument();
-    // Sample Rate (read-only) renders via AcNumberInput as
-    // `<span class="ac-number-input__value">44100</span>
-    //  <span class="ac-number-input__unit">Hz</span>` — two sibling spans
-    // inside a span[aria-label="Sample rate (read-only)"].
     const sampleRateReadout = screen.getByLabelText('Sample rate (read-only)');
     expect(sampleRateReadout).toHaveTextContent('44100');
     expect(sampleRateReadout).toHaveTextContent('Hz');
-    expect(screen.getByText('Playback Mode')).toBeInTheDocument();
   });
 
-  it('renders Tuning section with Tune Offset and Hold Loop Tune', () => {
+  // AUDIT-20260525-25 — Playback Mode moved to the Misc tab (per
+  // mockup partition); switching to Misc reveals it.
+  it('exposes Playback Mode inside the Misc tab (AUDIT-20260525-25)', () => {
     renderEditor({
-      header: makeSampleHeader({ STUNO: 100, SHLTO: -10 }),
+      header: makeSampleHeader({ SPTYPE: 0 }),
     });
 
-    expect(screen.getByText('Tuning')).toBeInTheDocument();
+    selectTab('Misc');
+
+    expect(screen.getByText('Playback Mode')).toBeInTheDocument();
     expect(screen.getByText('Tune Offset')).toBeInTheDocument();
     expect(screen.getByText('Hold Loop Tune')).toBeInTheDocument();
   });
 
-  it('renders Playback Range with Start, End, Length', () => {
+  // AUDIT-20260525-25 — Start / End / Length live on the Trim tab.
+  it('exposes Start / End / Length on the Trim tab (AUDIT-20260525-25)', () => {
     renderEditor({
       header: makeSampleHeader({
         SSTART: 100,
         SMPEND: 22050,
         SLNGTH: 48000,
-        SLOOPS: 0, // no loops so SLNGTH value only appears once (in Length display)
+        SLOOPS: 0, // no loops so SLNGTH value only appears once
       }),
     });
 
-    expect(screen.getByText('Playback Range')).toBeInTheDocument();
+    selectTab('Trim');
+
     expect(screen.getByText('Start')).toBeInTheDocument();
     expect(screen.getByText('End')).toBeInTheDocument();
     expect(screen.getByText('Length')).toBeInTheDocument();
-    // Length is rendered as a static span, verify via its title-less s3k-param-value span
-    expect(screen.getByText('48000')).toBeInTheDocument();
+    // Length is rendered as an AcNumberInput readout.
+    expect(screen.getByLabelText('Trim length (read-only)')).toHaveTextContent('48000');
   });
 
-  it('shows Loop 1 section when SLOOPS >= 1', () => {
+  // AUDIT-20260525-25 — Loops live on the Loop tab; loop count is
+  // gated by SLOOPS per the device contract.
+  it('reveals Loop 1 start/length/dwell on the Loop tab when SLOOPS >= 1 (AUDIT-20260525-25)', () => {
     renderEditor({
       header: makeSampleHeader({ SLOOPS: 1 }),
     });
 
-    expect(screen.getByText('Loop 1')).toBeInTheDocument();
-    expect(screen.getByText('Loop Start')).toBeInTheDocument();
-    expect(screen.getByText('Loop Length')).toBeInTheDocument();
-    expect(screen.getByText('Dwell')).toBeInTheDocument();
+    selectTab('Loop');
+
+    expect(screen.getByText('Loop 1 start')).toBeInTheDocument();
+    expect(screen.getByText('Loop 1 length')).toBeInTheDocument();
+    expect(screen.getByText('Loop 1 dwell')).toBeInTheDocument();
   });
 
-  it('hides Loop sections when SLOOPS = 0', () => {
+  it('renders the empty-loops state on the Loop tab when SLOOPS = 0 (AUDIT-20260525-25)', () => {
     renderEditor({
       header: makeSampleHeader({ SLOOPS: 0 }),
     });
 
-    expect(screen.queryByText('Loop 1')).not.toBeInTheDocument();
-    expect(screen.queryByText('Loop 2')).not.toBeInTheDocument();
-    expect(screen.queryByText('Loop 3')).not.toBeInTheDocument();
-    expect(screen.queryByText('Loop 4')).not.toBeInTheDocument();
+    selectTab('Loop');
+
+    expect(screen.getByText('No loops on this sample')).toBeInTheDocument();
+    expect(screen.queryByText('Loop 1 start')).not.toBeInTheDocument();
   });
 
-  it('shows multiple loop sections when SLOOPS > 1', () => {
+  it('reveals multiple loop rows on the Loop tab when SLOOPS > 1 (AUDIT-20260525-25)', () => {
     renderEditor({
       header: makeSampleHeader({ SLOOPS: 3 }),
     });
 
-    expect(screen.getByText('Loop 1')).toBeInTheDocument();
-    expect(screen.getByText('Loop 2')).toBeInTheDocument();
-    expect(screen.getByText('Loop 3')).toBeInTheDocument();
-    expect(screen.queryByText('Loop 4')).not.toBeInTheDocument();
+    selectTab('Loop');
+
+    expect(screen.getByText('Loop 1 start')).toBeInTheDocument();
+    expect(screen.getByText('Loop 2 start')).toBeInTheDocument();
+    expect(screen.getByText('Loop 3 start')).toBeInTheDocument();
+    expect(screen.queryByText('Loop 4 start')).not.toBeInTheDocument();
   });
 
   it('calls onParameterChange when sample name input changes', () => {
@@ -157,7 +180,7 @@ describe('SampleEditor', () => {
     expect(onParameterChange).toHaveBeenCalledWith('SHNAME', 'NEW NAME');
   });
 
-  it('calls onParameterChange when the Original Key readout is edited', () => {
+  it('calls onParameterChange when the Original Key readout is edited (Wave tab)', () => {
     const { onParameterChange } = renderEditor({
       header: makeSampleHeader({ SPITCH: 60 }),
     });

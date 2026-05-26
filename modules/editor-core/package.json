@@ -32,6 +32,7 @@
     "./tab-primitives.css": "./src/design/tab-primitives.css",
     "./zone-strip-primitives.css": "./src/design/zone-strip-primitives.css",
     "./detail-pane-primitives.css": "./src/design/detail-pane-primitives.css",
+    "./compact-grid-primitives.css": "./src/design/compact-grid-primitives.css",
     "./vite": "./src/vite/vite.ts",
     "./tailwind-preset": "./src/tailwind.preset.ts",
     "./dev/styles.css": "./src/dev/styles.css",

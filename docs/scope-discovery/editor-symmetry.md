@@ -15,7 +15,7 @@ Rows are adoption conventions declared in `docs/scope-discovery/adopter-manifest
 | ac-control-primitives-row (`@audiocontrol/editor-core`) | ✓ 2/2 | — | — | — | — | ✓ 1/1 | — |
 | ac-zone-strip (`@audiocontrol/editor-core`) | ✓ 2/2 | — | — | — | — | ✓ 1/1 | — |
 | slide-drawer-library-dialogs (`@audiocontrol/editor-core`) | ✓ 9/9 | — | — | — | — | ✓ 6/6 | — |
-| ac-envelope (`@audiocontrol/editor-core`) | ✓ 1/1 | — | — | — | — | ✓ 1/1 | — |
+| ac-envelope (`@audiocontrol/editor-core`) | ✓ 2/2 | — | — | — | — | ✓ 1/1 | — |
 | ac-frequency-response (`@audiocontrol/editor-core`) | ✓ 1/1 | — | — | — | — | — | — |
 | ac-live-status-footer (`@audiocontrol/editor-core`) | ✓ 3/3 | — | — | — | — | ✓ 2/2 | — |
 

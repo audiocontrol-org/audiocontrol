@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
-import { AcNumberInput } from '@audiocontrol/editor-core';
-import { S3kParamRow } from '@/components/ui/S3kParamRow';
-import { S3kParamSelectRow } from '@/components/ui/S3kParamSelectRow';
-import { S3kParamToggleRow } from '@/components/ui/S3kParamToggleRow';
-import { Section } from '@/components/ui/Section';
+import { AcRadioTabs, type AcRadioTabDef } from '@audiocontrol/editor-core';
+import { ProgramCommonPanel } from '@/components/programs/panels/ProgramCommonPanel';
+import { ProgramMidiPanel } from '@/components/programs/panels/ProgramMidiPanel';
+import { ProgramEffectsPanel } from '@/components/programs/panels/ProgramEffectsPanel';
+import { ProgramOutputPanel } from '@/components/programs/panels/ProgramOutputPanel';
 
 interface ProgramEditorProps {
   header: ProgramHeader;
@@ -12,32 +13,11 @@ interface ProgramEditorProps {
   children?: React.ReactNode;
 }
 
-const PRIORITY_OPTIONS = [
-  { value: 0, label: 'Low' },
-  { value: 1, label: 'Normal' },
-  { value: 2, label: 'High' },
-  { value: 3, label: 'Hold' },
-];
-
-const VOICE_STEALING_OPTIONS = [
-  { value: 0, label: 'Oldest' },
-  { value: 1, label: 'Quietest' },
-];
-
-const LFO_WAVEFORM_OPTIONS = [
-  { value: 0, label: 'Triangle' },
-  { value: 1, label: 'Sawtooth' },
-  { value: 2, label: 'Square' },
-];
-
-const BEND_MODE_OPTIONS = [
-  { value: 0, label: 'Normal' },
-  { value: 1, label: 'Held' },
-];
-
-const PORTAMENTO_TYPE_OPTIONS = [
-  { value: 0, label: 'Rate' },
-  { value: 1, label: 'Time' },
+const PROGRAM_TABS: readonly AcRadioTabDef[] = [
+  { id: 'ap-common', label: 'Common' },
+  { id: 'ap-midi', label: 'MIDI' },
+  { id: 'ap-effects', label: 'Effects' },
+  { id: 'ap-output', label: 'Output' },
 ];
 
 /**
@@ -58,6 +38,13 @@ export function ProgramEditor({
 }: ProgramEditorProps): JSX.Element {
   const num = (field: string) => (value: number) => onParameterChange(field, value);
   const bool = (field: string) => (checked: boolean) => onParameterChange(field, checked ? 1 : 0);
+
+  // Tabs are CONTROLLED so the test harness + sub-components can read
+  // the active id (e.g., for tab-aware spotlight in a future pass).
+  // Matches the canonical pattern established by VelocityZoneEditor
+  // 2026-05-24 (controlled-mode AcRadioTabs consumers don't register
+  // per-tab-ID CSS selectors).
+  const [activeTab, setActiveTab] = useState<string>('ap-common');
 
   return (
     <article
@@ -97,80 +84,40 @@ export function ProgramEditor({
       <div className="ac-detail-body">
         {children}
 
-        {/* Two-column layout for related sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <Section title="MIDI">
-            <S3kParamRow label="Program #" value={header.PRGNUM} min={0} max={128} onChange={num('PRGNUM')} />
-            <S3kParamRow label="Channel" value={header.PMCHAN} min={0} max={255} onChange={num('PMCHAN')} />
-            <S3kParamRow label="Polyphony" value={header.POLYPH} min={0} max={31} onChange={num('POLYPH')} />
-            <S3kParamSelectRow label="Priority" value={header.PRIORT} options={PRIORITY_OPTIONS} onChange={num('PRIORT')} />
-            <S3kParamSelectRow label="Stealing" value={header.VASSOQ} options={VOICE_STEALING_OPTIONS} onChange={num('VASSOQ')} />
-          </Section>
-
-          <Section title="Output">
-            <S3kParamRow label="Level" value={header.PRLOUD} min={0} max={99} onChange={num('PRLOUD')} />
-            <S3kParamRow label="Pan" value={header.PANPOS} min={-50} max={50} onChange={num('PANPOS')} bipolar />
-            <S3kParamRow label="Stereo" value={header.STEREO} min={0} max={99} onChange={num('STEREO')} />
-            <S3kParamRow label="Routing" value={header.OUTPUT} min={0} max={99} onChange={num('OUTPUT')} />
-            <S3kParamRow label="Vel→Amp" value={header.V_LOUD} min={-50} max={50} onChange={num('V_LOUD')} bipolar />
-            <S3kParamRow label="FX Bus" value={header.PFXCHAN} min={0} max={4} onChange={num('PFXCHAN')} />
-          </Section>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <Section title="Pitch">
-            <S3kParamRow label="Tune" value={header.PTUNO} min={-50} max={50} onChange={num('PTUNO')} bipolar />
-            <S3kParamRow label="Transpose" value={header.TRANSPOSE} min={-50} max={50} onChange={num('TRANSPOSE')} bipolar />
-            <S3kParamRow label="Bend ↑" value={header.B_PTCH} min={0} max={99} onChange={num('B_PTCH')} />
-            <S3kParamRow label="Bend ↓" value={header.B_PTCHD} min={0} max={99} onChange={num('B_PTCHD')} />
-            <S3kParamRow label="Press→Pitch" value={header.P_PTCH} min={-50} max={50} onChange={num('P_PTCH')} bipolar />
-            <S3kParamSelectRow label="Bend Mode" value={header.B_MODE} options={BEND_MODE_OPTIONS} onChange={num('B_MODE')} />
-          </Section>
-
-          <Section title="Portamento">
-            <S3kParamToggleRow label="Enable" checked={header.PORTEN === 1} onChange={bool('PORTEN')} />
-            <S3kParamRow label="Time" value={header.PORTIME} min={0} max={99} onChange={num('PORTIME')} />
-            <S3kParamSelectRow label="Type" value={header.PORTYPE} options={PORTAMENTO_TYPE_OPTIONS} onChange={num('PORTYPE')} />
-            <S3kParamToggleRow label="Legato" checked={header.LEGATO === 1} onChange={bool('LEGATO')} />
-          </Section>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <Section title="LFO 1">
-            <S3kParamRow label="Rate" value={header.LFORAT} min={0} max={99} onChange={num('LFORAT')} />
-            <S3kParamRow label="Depth" value={header.LFODEP} min={0} max={99} onChange={num('LFODEP')} />
-            <S3kParamRow label="Delay" value={header.LFODEL} min={0} max={99} onChange={num('LFODEL')} />
-            <S3kParamSelectRow label="Wave" value={header.LFO1WAVE} options={LFO_WAVEFORM_OPTIONS} onChange={num('LFO1WAVE')} />
-            <S3kParamToggleRow label="Desync" checked={header.DESYNC === 1} onChange={bool('DESYNC')} />
-            <S3kParamRow label="Mod Wheel" value={header.MWLDEP} min={0} max={99} onChange={num('MWLDEP')} />
-            <S3kParamRow label="Aftertouch" value={header.PRSDEP} min={0} max={99} onChange={num('PRSDEP')} />
-            <S3kParamRow label="Velocity" value={header.VELDEP} min={0} max={99} onChange={num('VELDEP')} />
-          </Section>
-
-          <Section title="LFO 2 — Pan">
-            <S3kParamRow label="Rate" value={header.PANRAT} min={0} max={99} onChange={num('PANRAT')} />
-            <S3kParamRow label="Depth" value={header.PANDEP} min={0} max={99} onChange={num('PANDEP')} />
-            <S3kParamRow label="Delay" value={header.PANDEL} min={0} max={99} onChange={num('PANDEL')} />
-            <S3kParamSelectRow label="Wave" value={header.LFO2WAVE} options={LFO_WAVEFORM_OPTIONS} onChange={num('LFO2WAVE')} />
-            <S3kParamToggleRow label="Retrigger" checked={header.LFO2TRIG === 1} onChange={bool('LFO2TRIG')} />
-          </Section>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <Section title="Soft Pedal">
-            <S3kParamRow label="Loudness" value={header.SPLOUD} min={0} max={99} onChange={num('SPLOUD')} />
-            <S3kParamRow label="Attack" value={header.SPATT} min={0} max={99} onChange={num('SPATT')} />
-            <S3kParamRow label="Filter" value={header.SPFILT} min={0} max={99} onChange={num('SPFILT')} />
-          </Section>
-
-          <Section title="Advanced">
-            <S3kParamToggleRow label="KG Crossfade" checked={header.KXFADE === 1} onChange={bool('KXFADE')} />
-            <div className="ac-compact-field">
-              <span className="ac-field-label">Keygroups</span>
-              <AcNumberInput value={header.GROUPS} ariaLabel="Keygroups (read-only)" />
-            </div>
-          </Section>
-        </div>
+        {/* AcRadioTabs partitions the program parameters into four
+            mockup-specified panels: Common / MIDI / Effects / Output
+            (per mockups/programs.html:94-105). Each panel body is a
+            per-tab component under ./panels/ so this file stays under
+            the 300-500 line cap and the panel-by-panel structure stays
+            obvious. Controlled mode (activeId + onActiveIdChange) means
+            only the active panel renders — no per-tab-ID CSS selectors
+            need registering in any consumer stylesheet. */}
+        <AcRadioTabs
+          tabs={PROGRAM_TABS}
+          panels={{
+            'ap-common': (
+              <ProgramCommonPanel
+                header={header}
+                num={num}
+                bool={bool}
+                programIndex={programIndex}
+              />
+            ),
+            'ap-midi': (
+              <ProgramMidiPanel header={header} num={num} bool={bool} />
+            ),
+            'ap-effects': (
+              <ProgramEffectsPanel header={header} num={num} bool={bool} />
+            ),
+            'ap-output': (
+              <ProgramOutputPanel header={header} num={num} />
+            ),
+          }}
+          activeId={activeTab}
+          onActiveIdChange={setActiveTab}
+          groupName="program-editor-tabs"
+          ariaLabel="Program editor sections"
+        />
       </div>
     </article>
   );

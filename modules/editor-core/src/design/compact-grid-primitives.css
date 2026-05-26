@@ -1,0 +1,95 @@
+/**
+ * Compact-field grid chrome — `.ac-compact-grid` + `.ac-compact-field`
+ * (+ `--readout` modifier) + `.ac-field-readout` family.
+ *
+ * The flex-wrap container for stacks of small labeled toggles / picks /
+ * readouts. Each `.ac-compact-field` is a column-stacked
+ * label-over-control unit; the parent `.ac-compact-grid` wraps them
+ * across the available width.
+ *
+ * Consumed by:
+ *   - roland tones-page wave panel (Bank / Loop Mode / Output toggles)
+ *   - roland patches-page common panel (Key Mode / Key Assign / A.T
+ *     Assign / Output / P.Bend Range / Oct.Shift)
+ *   - akai dialect wrappers (`S3kParamToggleRow`, `S3kParamSelectRow`)
+ *     which render `.ac-compact-field` containers
+ *   - akai ProgramEditor / KeygroupEditor / SampleEditor tab panels
+ *     (this dispatch — AUDIT-20260525-25) for toggle clusters and
+ *     identity-readout strips
+ *
+ * Originally lived in `modules/roland-sxx0-editor/src/styles/parameter-panel-primitives.css`.
+ * Promoted to editor-core 2026-05-25 (akai-harmonization Phase 4 /
+ * AUDIT-20260525-25) once the akai dialect became the second consumer.
+ *
+ * Per `.claude/rules/primitive-extraction-checklist.md` §1 (class-name
+ * conflict grep): no other CSS file declares any of these class names.
+ * Per §2 (ARIA validity): the chrome is purely layout (no roles, no
+ * aria-attrs). Per §3 (value-domain delta): CSS-only, no JS API.
+ * Per §4 (consumer-side adapter survey): roland kept its existing
+ * import of `parameter-panel-primitives.css` for the still-roland-only
+ * `.ac-detail-live*` rules; the akai modules now consume the canonical
+ * primitive via `@audiocontrol/editor-core/styles.css` (which already
+ * imports this file).
+ *
+ * The `.ac-detail-live*` live-edit footer family stays in
+ * `roland-sxx0-editor/src/styles/parameter-panel-primitives.css`
+ * because akai uses the newer `AcLiveStatusFooter` (in editor-core) at
+ * the page level instead. Promoting that footer family would be
+ * speculative until a non-roland consumer adopts it.
+ */
+
+/* ============================================================
+   COMPACT FIELD GRID — flex-wrap container for stacks of small
+   labeled toggles / readouts. Each child is a column-stacked
+   `.ac-compact-field` (label-on-top, control-below). The grid
+   wraps across the available width at any breakpoint.
+   ============================================================ */
+
+.ac-compact-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ac-space-4) var(--ac-space-6);
+  align-items: flex-end;
+  padding-block: var(--ac-space-2);
+}
+
+.ac-compact-field {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+  min-width: 0;
+}
+
+.ac-compact-field > .ac-field-label {
+  font-family: var(--ac-font-display);
+  font-size: var(--ac-text-eyebrow);
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-muted);
+  white-space: nowrap;
+}
+
+.ac-compact-field--readout {
+  gap: var(--ac-space-1);
+}
+
+.ac-compact-field--readout > .ac-field-readout {
+  padding: var(--ac-space-1) var(--ac-space-3);
+  border: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  background: color-mix(in srgb, var(--ac-color-surface-canvas) 70%, transparent);
+  font-size: var(--ac-text-base);
+}
+
+.ac-field-readout {
+  font-family: var(--ac-font-mono);
+  font-size: var(--ac-text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--ac-color-text-primary);
+}
+
+.ac-field-readout strong {
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+}

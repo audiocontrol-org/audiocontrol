@@ -16,15 +16,16 @@
  *     title row, always-live name input affordance, and the body
  *     surface with `min-width: 0` overflow discipline.
  *
- * The live-edit footer (`.ac-detail-live*`) ships in
- * roland-sxx0-editor's `parameter-panel-primitives.css` alongside
- * `.ac-compact-grid` because both are panel-internal chrome that live
- * INSIDE the `.ac-detail-body`; keeping them out of this file lets
- * the body's scroll container stay independent from the footer's
- * pulse rule. Akai's editor pages use the newer `AcLiveStatusFooter`
- * component (in editor-core) at the page level instead — both
- * surfaces share this same `.ac-detail-pane` chrome but the footer
- * shape differs.
+ * Adjacent panel-body chrome:
+ *   - `.ac-compact-grid` + `.ac-compact-field` + `.ac-field-readout`
+ *     family — promoted to `compact-grid-primitives.css` (same
+ *     directory, separate file so the cross-editor compact-field
+ *     surfaces import only the layout chrome they need).
+ *   - `.ac-detail-live*` live-edit footer — stays roland-only in
+ *     `roland-sxx0-editor/src/styles/parameter-panel-primitives.css`.
+ *     Akai's editor pages use the newer `AcLiveStatusFooter` component
+ *     (in editor-core) at the page level instead — both surfaces share
+ *     this same `.ac-detail-pane` chrome but the footer shape differs.
  *
  * Extracted from roland-sxx0-editor's `_shared.css` 2026-05-25 per
  * akai-harmonization Phase 2 task 2.8 (decompose `_shared.css` toward

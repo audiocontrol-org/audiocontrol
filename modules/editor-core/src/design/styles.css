@@ -39,6 +39,13 @@
  *                               canonical for list-detail editor pages;
  *                               promoted from roland-sxx0-editor 2026-05-25
  *                               per AUDIT-20260525-26.
+ *   - compact-grid-primitives.css — `.ac-compact-grid` / `.ac-compact-field`
+ *                               (+ `--readout` modifier) / `.ac-field-readout`
+ *                               family. Flex-wrap container for toggle
+ *                               clusters + identity-readout strips inside
+ *                               tab-panel bodies. Cross-editor canonical;
+ *                               promoted from roland-sxx0-editor
+ *                               2026-05-25 per AUDIT-20260525-25.
  */
 
 @import './tokens.css';
@@ -58,3 +65,4 @@
 @import './frequency-response-primitives.css';
 @import './live-status-footer-primitives.css';
 @import './detail-pane-primitives.css';
+@import './compact-grid-primitives.css';
