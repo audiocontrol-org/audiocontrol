@@ -1,4 +1,4 @@
-generated_at: 2026-05-25T12:39:10.224Z
+generated_at: 2026-05-26T05:50:48.379Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -42,13 +42,13 @@ clones:
       - modules/roland-sxx0-editor/playwright.harness.shared.ts:38:54
     disposition: keep-with-reason
     reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
-  - id: 41255eb6a8a0
-    lines: 9
+  - id: 369cc2965252
+    lines: 7
     members:
-      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:84:92
-      - modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:65:71
+      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:68:74
+      - modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:58:62
     disposition: keep-with-reason
-    reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
+    reason: Intra-akai parallel-block duplication of the canonical editor-component prologue (props-destructure end + num/bool field-update helpers + opening <article className="ac-detail-pane" aria-label data-testid> wrapper) — same root cause as the prior id 41255eb6a8a0 that this id replaces after the AUDIT-20260525-26 chrome wrap shifted the line numbers. The .ac-detail-pane / .ac-detail-head / .ac-detail-body CSS recipe is already canonical in editor-core (modules/editor-core/src/design/detail-pane-primitives.css). A subsequent dispatch will extract a thin <AcDetailPane> JSX component (props for ariaLabel + testid + optional render-slots for slot/eyebrow/name-input children) that unifies all 5 consumers (akai ProgramEditor + KeygroupEditor + SampleEditor + roland ToneEditor + the PatchEditor head wrapper) — at which point this clone refactors to a single import per file. Roland is partially heterogeneous (PatchEditor wraps its head in a plain <div> while ToneEditor uses the article-class shell at the editor level and PatchesPage wraps the article externally) so the extraction requires its own audit before promotion. Flip to refactor when the AcDetailPane extraction lands.
   - id: 5f51abbeaf50
     lines: 37
     members:
@@ -257,7 +257,7 @@ clones:
     lines: 6
     members:
       - modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx:72:79
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:411:416
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:412:417
     disposition: keep-with-reason
     reason: "Library-dialog SteppedProgressDrawer scaffolding pattern. Every akai-s3k-editor library dialog (DiskToLibraryDialog, SendSampleDialog, ImportDrumKitDialog, ImportProgramDialog, ExportProgramDialog, ImportInstrumentDialog, ReceiveSampleDialog) shares the same chrome: ProgressStep[] state + isComplete + hasError + summary + cancelledRef + useEffect(open) with try/catch + updateStep helper + cancelled-cleanup return + SteppedProgressDrawer render. Each dialog's BODY (the work inside useEffect) is per-domain (load WAV vs disk-file vs program; send via SDS vs write keygroup header vs save common-area yaml) and that is the load-bearing per-dialog code. Refactor candidate: lift the chrome to a useSteppedProgressFlow(steps, runOnOpen) hook in editor-core; the dialogs would each pass their work fn and render the wrapped SteppedProgressDrawer. The unification was identified during the prior SlideDrawer task but deferred because: (1) Roland-side library dialogs share the same shape — a hook lift makes sense as a cross-editor harmonization dispatch, not an akai-only refactor; (2) cancelled-ref semantics differ slightly per dialog (some return-and-restart, some abort-via-controller); the hook needs to support both cleanly. Flip to refactor when a cross-editor harmonization dispatch is scoped that lifts the chrome to editor-core's drawer family."
   - id: 8a9862c34efd
@@ -425,7 +425,7 @@ clones:
     lines: 18
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:739:756
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:360:669
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:361:669
     disposition: keep-with-reason
     reason: "Editor-dialog mount JSX block parallelism between LibraryPage and SamplesPage. Both pages mount the same trio of editor dialogs (SampleChopperDialog with S3kKitOutputConfig render-prop, SampleEditorDialog, DrumKitEditorDialog) using the shared useEditorDialogs hook. The clone is the JSX render block (18 lines). Refactor candidate: extract an <S3kEditorDialogsMount editorDialogs={...} root={...} /> component that encapsulates the three Dialog mounts + the render-output-config wiring. Deferred because: (1) per-page differences exist — LibraryPage's chopper uses root for onSave gating (onSave={root ? editorDialogs.handleChopperSave : undefined}) while SamplesPage passes handleChopperSave unconditionally because the SamplesPage flow only runs when a sample is selected; the component lift needs to thread the per-page conditional through; (2) the akai-s3k-editor module is moving toward a per-page-shell pattern where each page composes its own dialogs explicitly; a premature lift would harden a pattern that's still being shaped. Flip to refactor when the page-shell layout has settled across both pages AND the per-page onSave-conditional has a consistent shape."
   - id: 2af001e22e7f
@@ -445,14 +445,14 @@ clones:
   - id: 0c8162dddb47
     lines: 28
     members:
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:333:360
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:334:361
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:633:659
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 423f58d97969
     lines: 11
     members:
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:367:377
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:368:378
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:659:669
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.

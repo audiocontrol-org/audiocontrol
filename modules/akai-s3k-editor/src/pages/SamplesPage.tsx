@@ -292,6 +292,7 @@ export function SamplesPage(): JSX.Element {
               <SampleEditor
                 header={selectedHeader}
                 sampleIndex={selectedSampleIndex}
+                sampleCount={sampleNames.length}
                 onParameterChange={handleParameterChange}
               />
             </>

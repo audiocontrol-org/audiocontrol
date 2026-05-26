@@ -9,6 +9,7 @@ function renderEditor(
   const defaults = {
     header: makeSampleHeader(),
     sampleIndex: 0,
+    sampleCount: 1,
     onParameterChange: vi.fn(),
   };
   const props = { ...defaults, ...overrides };
@@ -21,6 +22,40 @@ function renderEditor(
 describe('SampleEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  // AUDIT-20260525-26 — every akai editor body must wrap in the
+  // canonical .ac-detail-pane > .ac-detail-head + .ac-detail-body
+  // chrome (promoted from roland-sxx0-editor; CSS lives in
+  // editor-core/src/design/detail-pane-primitives.css). The eyebrow
+  // + h3 title (slot + name input) must render INSIDE the panel
+  // border — never floating above it.
+  it('wraps content in .ac-detail-pane / .ac-detail-head / .ac-detail-body chrome (AUDIT-20260525-26)', () => {
+    const { container } = renderEditor({
+      header: makeSampleHeader({ SHNAME: 'TEST SMP' }),
+      sampleIndex: 2,
+      sampleCount: 62,
+    });
+
+    const pane = container.querySelector('article.ac-detail-pane');
+    expect(pane).not.toBeNull();
+    expect(pane?.getAttribute('aria-label')).toBe('Sample editor');
+    expect(pane?.getAttribute('data-testid')).toBe('sample-detail');
+
+    // Head + body live INSIDE the pane (so the title renders inside
+    // the bordered surface, not floating above it).
+    const head = pane?.querySelector(':scope > header.ac-detail-head');
+    const body = pane?.querySelector(':scope > .ac-detail-body');
+    expect(head).not.toBeNull();
+    expect(body).not.toBeNull();
+
+    // Head carries the eyebrow row + h3 title with slot + editable name.
+    expect(head?.querySelector('.ac-detail-eyebrow-row')).not.toBeNull();
+    const slot = head?.querySelector('.ac-detail-slot');
+    expect(slot?.textContent).toBe('003');
+    const nameInput = head?.querySelector('input.ac-detail-name-input');
+    expect(nameInput).not.toBeNull();
+    expect((nameInput as HTMLInputElement).value).toBe('TEST SMP');
   });
 
   it('renders sample name in input', () => {

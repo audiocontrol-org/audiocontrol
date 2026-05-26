@@ -45,6 +45,8 @@ const AKAI_FILTER_ENV_LEVEL_FIELDS = ['ENV2L1', 'ENV2L2', 'ENV2L3', 'ENV2L4'] as
 interface KeygroupEditorProps {
   header: KeygroupHeader;
   keygroupIndex: number;
+  /** Total keygroups in the parent program — drives the "N of M" eyebrow. */
+  keygroupCount: number;
   sampleNames: string[];
   onParameterChange: (field: string, value: number | string) => void;
   /** Optimistic-only update during drag (no device write) */
@@ -57,6 +59,7 @@ interface KeygroupEditorProps {
 export function KeygroupEditor({
   header,
   keygroupIndex,
+  keygroupCount,
   sampleNames,
   onParameterChange,
   onDragChange,
@@ -68,14 +71,45 @@ export function KeygroupEditor({
   const bool = (field: string) => (checked: boolean) =>
     onParameterChange(field, checked ? 1 : 0);
 
-  return (
-    <div className="space-y-3">
-      {/* Title */}
-      <div className="px-1 text-lg font-semibold text-gray-200">
-        Keygroup {keygroupIndex + 1}: {formatMidiNote(header.LONOTE)}–
-        {formatMidiNote(header.HINOTE)}
-      </div>
+  const rangeLabel = `${formatMidiNote(header.LONOTE)}–${formatMidiNote(header.HINOTE)}`;
 
+  return (
+    <article
+      className="ac-detail-pane"
+      aria-label="Keygroup editor"
+      data-testid="keygroup-detail"
+    >
+      {/* Detail head — eyebrow ("Keygroup · Editing · N of M") + slot
+          ("KG<N>") + range-as-name input. Mockup contract at
+          docs/.../mockups/keygroups.html. Canonical chrome lives in
+          editor-core/src/design/detail-pane-primitives.css (promoted
+          from roland-sxx0-editor 2026-05-25 per AUDIT-20260525-26).
+          The range row is rendered as a read-only input via the same
+          .ac-detail-name-input affordance the mockup uses; the
+          editable note bounds live in the Note Range section in the
+          body, so the head is informational. */}
+      <header className="ac-detail-head">
+        <div className="ac-detail-eyebrow-row">
+          <span>Keygroup</span>
+          <span className="ac-detail-eyebrow-sep">·</span>
+          <span className="ac-detail-eyebrow-accent">Editing</span>
+          <span className="ac-detail-eyebrow-sep">·</span>
+          <span>{keygroupIndex + 1} of {keygroupCount}</span>
+        </div>
+        <h3 id="keygroup-detail-title" className="ac-detail-title">
+          <span className="ac-detail-slot">KG{keygroupIndex + 1}</span>
+          <input
+            type="text"
+            value={rangeLabel}
+            readOnly
+            aria-label="Keygroup note range"
+            data-testid="keygroup-range-label"
+            className="ac-input ac-detail-name-input"
+          />
+        </h3>
+      </header>
+
+      <div className="ac-detail-body">
       {/* Note Range — keep KeyRangeEditor as-is */}
       <div className="s3k-section">
         <div className="s3k-section-title">Note Range</div>
@@ -228,6 +262,7 @@ export function KeygroupEditor({
           <S3kParamRow label="R Key XF" value={header.RKXF} min={0} max={99} onChange={num('RKXF')} />
         </Section>
       </div>
-    </div>
+      </div>
+    </article>
   );
 }

@@ -363,6 +363,7 @@ export function KeygroupsPage(): JSX.Element {
             <KeygroupEditor
               header={selectedHeader}
               keygroupIndex={selectedKeygroupIndex!}
+              keygroupCount={keygroupCount}
               sampleNames={sampleNames}
               onParameterChange={handleParameterChange}
               onDragChange={handleDragChange}
