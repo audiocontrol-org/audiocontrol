@@ -328,24 +328,14 @@ export function KeygroupsPage(): JSX.Element {
 
       {error && <ErrorBanner message={error} />}
 
-      <ZoneOverviewToolbar
-        noteRange={noteRange}
-        onNoteRangeChange={setNoteRange}
-        keygroups={keygroups}
-        keygroupCount={keygroupCount}
-      />
-      <ZoneOverview
-        keygroups={keygroups}
-        keygroupCount={keygroupCount}
-        selectedKeygroupIndex={selectedKeygroupIndex}
-        onSelectKeygroup={selectKeygroup}
-        noteRange={noteRange}
-        onZoneDrag={handleZoneDrag}
-        onZoneCommit={handleZoneCommit}
-        onCreateZone={handleCreateZone}
-        onNoteRangeChange={setNoteRange}
-      />
-
+      {/* Layout: list on the LEFT extends full-height like Programs/Samples
+          pages; ZoneOverviewToolbar + ZoneOverview live INSIDE
+          .ac-detail-scroll above the editor body so the right column
+          scrolls through overview + editor content as a single
+          continuous surface. Operator visual review 2026-05-26: the
+          prior layout (overview as a fixed-height sibling above
+          .ac-app-shell) ate top space across BOTH columns and
+          constrained the list to a short bottom section. */}
       <div className="ac-app-shell" aria-labelledby="keygroups-page-heading">
         <KeygroupList
           keygroups={keygroups}
@@ -359,6 +349,23 @@ export function KeygroupsPage(): JSX.Element {
         />
 
         <div className="ac-detail-scroll">
+          <ZoneOverviewToolbar
+            noteRange={noteRange}
+            onNoteRangeChange={setNoteRange}
+            keygroups={keygroups}
+            keygroupCount={keygroupCount}
+          />
+          <ZoneOverview
+            keygroups={keygroups}
+            keygroupCount={keygroupCount}
+            selectedKeygroupIndex={selectedKeygroupIndex}
+            onSelectKeygroup={selectKeygroup}
+            noteRange={noteRange}
+            onZoneDrag={handleZoneDrag}
+            onZoneCommit={handleZoneCommit}
+            onCreateZone={handleCreateZone}
+            onNoteRangeChange={setNoteRange}
+          />
           {selectedHeader ? (
             <KeygroupEditor
               header={selectedHeader}

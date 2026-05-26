@@ -89,24 +89,6 @@ export function TestKeygroupsShellPage(): JSX.Element {
         headingText="Test Keygroups (harness)"
       />
 
-      <ZoneOverviewToolbar
-        noteRange={noteRange}
-        onNoteRangeChange={setNoteRange}
-        keygroups={keygroups}
-        keygroupCount={keygroups.length}
-      />
-      <ZoneOverview
-        keygroups={keygroups}
-        keygroupCount={keygroups.length}
-        selectedKeygroupIndex={selectedIndex}
-        onSelectKeygroup={setSelectedIndex}
-        noteRange={noteRange}
-        onZoneDrag={handleZoneDrag}
-        onZoneCommit={handleZoneDrag}
-        onCreateZone={() => { /* no-op for shell harness */ }}
-        onNoteRangeChange={setNoteRange}
-      />
-
       <div
         className="ac-app-shell"
         aria-labelledby="test-keygroups-shell-page-heading"
@@ -120,6 +102,23 @@ export function TestKeygroupsShellPage(): JSX.Element {
         />
 
         <div className="ac-detail-scroll" data-testid="kg-detail-scroll">
+          <ZoneOverviewToolbar
+            noteRange={noteRange}
+            onNoteRangeChange={setNoteRange}
+            keygroups={keygroups}
+            keygroupCount={keygroups.length}
+          />
+          <ZoneOverview
+            keygroups={keygroups}
+            keygroupCount={keygroups.length}
+            selectedKeygroupIndex={selectedIndex}
+            onSelectKeygroup={setSelectedIndex}
+            noteRange={noteRange}
+            onZoneDrag={handleZoneDrag}
+            onZoneCommit={handleZoneDrag}
+            onCreateZone={() => { /* no-op for shell harness */ }}
+            onNoteRangeChange={setNoteRange}
+          />
           <p className="text-gray-300">
             Test detail pane — selected keygroup:{' '}
             {selectedHeader
