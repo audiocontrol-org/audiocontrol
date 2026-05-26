@@ -110,7 +110,9 @@ Each of these has shipped at least once. Recognize them in your own work and sto
 
 ## Mechanical enforcement
 
-The pre-commit gate enforces visual verification at the commit boundary.
+The commit-msg gate enforces visual verification at the commit boundary.
+
+Implementation: `tools/check-visual-verify.ts` is invoked from `.githooks/commit-msg` whenever staged files include any UI source. Validator-paired test at `tools/visual-verify.validate.ts` carries gutted-stub teeth proofs (a no-op accept-all stub is mounted alongside the production check; every rejection assertion must FAIL against the stub, proving the production rejections are load-bearing). Wired into `pnpm test:scope-discovery`.
 
 **Rule:** any commit touching `modules/*/src/**/*.{tsx,jsx,css,scss}` must carry one of these markers in its commit message:
 
@@ -123,15 +125,19 @@ Visual-verify: skipped-test-fixture-only-no-rendering-effect
 The marker format:
 
 - `Visual-verify: <comma-separated-routes>` — names the routes actually captured. The captured PNGs must exist at `.tmp/visual-fidelity/<route>-<viewport>.png` with mtime newer than the staged source files.
-- `Visual-verify: skipped-<substantive-reason>` — for commits whose UI-source touch genuinely doesn't change rendering (test-only edits, comment-only edits, dead-code removal). The reason must be ≥ 40 characters AND must not contain gaming phrases (`TBD`, `next commit`, `for now`, `will add later`, etc.). Validator mirrors the AUDIT-20 `substantive_reason` pattern at `tools/scope-discovery/util/substantive-reason.ts`.
+- `Visual-verify: skipped-<substantive-reason>` — for commits whose UI-source touch genuinely doesn't change rendering (test-only edits, comment-only edits, dead-code removal). The reason must be ≥ 40 characters AND must not match any registered gaming phrase (`TBD`, `TODO`, `deferred`, `later`, `will fix`, `see issue`, `placeholder`, etc. — full list in `tools/scope-discovery/util/substantive-reason.ts`'s `REASON_GAMING_PHRASES`). Validator reuses the AUDIT-20 `checkSubstantiveReason` helper with `minChars: 40` (the registry uses 80; commit messages are shorter context).
 
-The pre-commit hook fails the commit if:
+The commit-msg hook fails the commit if:
 
 - A staged file matches the UI-touching glob AND no `Visual-verify:` marker is present.
-- The marker is `Visual-verify: <routes>` but no matching `.tmp/visual-fidelity/<route>-<viewport>.png` exists, OR its mtime is older than the staged source files.
-- The marker is `Visual-verify: skipped-<reason>` but the reason fails the substantive-reason validator.
+- The marker is `Visual-verify: <routes>` but the comma-separated list resolves to zero non-empty entries.
+- The marker is `Visual-verify: skipped-<reason>` but the reason fails the substantive-reason validator (too short OR placeholder phrase).
 
-A gutted-stub self-check (per `.claude/rules/agent-discipline.md` §"Validator-paired changes") proves the gate's rejection has teeth. The hook lives alongside the existing pre-commit gates (clone-detection, anti-pattern, adopter-manifest, chevron-sizing).
+Gutted-stub self-check (per `.claude/rules/agent-discipline.md` §"Validator-paired changes") lives at `tools/visual-verify.validate.ts` — a no-op accept-all stub is mounted alongside the production check; every rejection scenario asserts that the gutted stub silently PASSES the input while the production check rejects it. This proves the rejections are load-bearing, not coincidentally satisfied. Run via `make check-visual-verify-validate` or as part of `pnpm test:scope-discovery`.
+
+Out-of-scope by design: the gate does NOT verify that a corresponding `.tmp/visual-fidelity/<route>-<viewport>.png` actually exists on disk — captured PNGs are operator-local scratch artifacts (gitignored). Verifying their presence would couple the gate to a running dev server and a successful capture run, which not every commit environment can satisfy. The honor-system + operator visual review is the behavioral check; this gate is the LIST-OF-PAGES claim.
+
+The hook lives alongside the existing commit-msg gates (refactor-preconditions, sentinel-write).
 
 ## Sub-agent dispatch contract
 
