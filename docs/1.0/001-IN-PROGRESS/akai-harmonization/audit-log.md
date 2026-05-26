@@ -11,6 +11,207 @@ Canonical grep queue:
 
 ---
 
+## 2026-05-25 evening — Phase 4 visual-fidelity review
+
+Operator visually reviewed the live `/akai/s3000xl/editor/programs` page with a
+connected S3000XL on 2026-05-25 evening and surfaced multiple obvious
+regressions from the Phase-1-approved mockups. Phase 2 structural gates
+(43 page-shell-contract passes, 30 keyboard-nav passes, 0 anti-pattern findings,
+0 adopter holdouts) verified contracts but did NOT verify visual fidelity —
+exactly the failure mode `feedback_actually_review` names. FEATURE COMPLETE was
+withdrawn; the workplan was amended with a new Phase 4 covering live-vs-mockup
+delta enumeration, fixes, and a pngdiff-baselined Playwright regression spec.
+
+The findings below decompose the operator's screenshot into four shared root
+causes. They are filed grouped so that one dispatch closes each.
+
+### `.s3k-section-grid` packs `AcSlider` rows into ~6.5rem cells; the canonical 3-column slider grid (label | bar | readout) collapses with label and readout overlapping at the same x-coordinate
+
+Finding-ID: AUDIT-20260525-24
+Status:     open
+Severity:   high
+Surface:    `modules/akai-s3k-editor/src/index.css:233-242`, `modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:54`, `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:71,101`, `modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx:117`, `modules/akai-s3k-editor/src/components/samples/SampleEditor.tsx:34`
+
+The akai editor invented a local `.s3k-section-grid` rule with
+`grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr))`, then placed
+`<S3kParamRow>` (which renders `<AcSlider>`) inside those cells. `.ac-slider`
+is itself a 3-column grid that needs at minimum `5.5rem + 0 + 4rem = ~9.5rem`
+to lay out cleanly. At ~6.5rem cell widths the inner grid's columns overlap
+visually — label and red readout sit at the same x-coordinate, the range-bar
+collapses to a thin glyph. That is exactly the operator's screenshot.
+
+This is also a DRY violation: the Roland editor's `.tones__param-rows` rule
+(`modules/roland-sxx0-editor/src/styles/tones.css:267-277`) solves the same
+problem correctly with `minmax(22rem, 1fr)` — wide enough that the inner
+AcSlider grid never collapses, and dropping cleanly to 2/1 columns as the
+pane narrows.
+
+**Evidence:**
+
+- Broken rule: `modules/akai-s3k-editor/src/index.css:233-242`
+- Correct sibling: `modules/roland-sxx0-editor/src/styles/tones.css:267-277`
+- AcSlider's inner grid (5.5rem + 1fr + 4rem): `modules/editor-core/src/design/control-primitives.css:130-137`
+- Live screenshot baseline (operator's review): the production ProgramsPage with PRG #A03 selected, all parameter rows visibly overlapping at 1280×900.
+
+**Expected:** every consumer of AcSlider lays out rows at ≥22rem per cell, so the inner LABEL | bar | readout grid never collapses.
+
+**Actual:** akai editors pack rows into ~6.5rem cells; the inner grid overlaps.
+
+**Fix guidance:** promote `.tones__param-rows` to a canonical `.ac-param-rows`
+primitive in `modules/editor-core/src/design/control-primitives.css`. Update both
+roland (`tones.css` consumers) and akai (all 5 sites above) to consume it. Per
+`.claude/rules/css-refactor.md`: screenshot every affected page before/after, do
+ONE rule at a time, do not sweep. Per `.claude/rules/agent-discipline.md`
+"Validator-paired changes": add a `*.spec.tsx` that mounts AcSlider inside a
+600px-wide grid container and asserts the label/readout aren't overlapping (e.g.,
+`getBoundingClientRect()` on `.ac-slider__label` and `.ac-slider__readout` —
+right edge of label < left edge of readout − bar_min_width).
+
+---
+
+### `ProgramEditor`, `KeygroupEditor`, `SampleEditor` are missing `AcRadioTabs`; all sections render flat-stacked instead of behind tab navigation per mockup spec
+
+Finding-ID: AUDIT-20260525-25
+Status:     open
+Severity:   high
+Surface:    `modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:69-159`, `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx`, `modules/akai-s3k-editor/src/components/samples/SampleEditor.tsx`
+
+Per `docs/1.0/001-IN-PROGRESS/akai-harmonization/mockups/programs.html:94-105`:
+
+```html
+<div class="ac-tabs">
+  <input type="radio" name="ap-tabs" id="ap-common" checked />
+  …
+  <div class="ac-tab-strip" role="tablist">
+    <label class="ac-tab" for="ap-common" role="tab">Common</label>
+    <label class="ac-tab" for="ap-midi" role="tab">MIDI</label>
+    <label class="ac-tab" for="ap-effects" role="tab">Effects</label>
+    <label class="ac-tab" for="ap-output" role="tab">Output</label>
+  </div>
+  <div class="ac-panels">…</div>
+</div>
+```
+
+Equivalent mockup tabs for Keygroups (Zones / Pitch / Filter / Amp / LFO,
+`keygroups.html` `ak-*-tabs`) and Samples (Wave / Loop / Trim / Misc,
+`samples.html` `as-*-tabs`).
+
+The live editors have all sections flat-stacked vertically inside `s3k-section`
+wrappers. Result: long vertical scroll, no information hierarchy, fundamental
+divergence from the approved design. `VelocityZoneEditor` was successfully
+migrated to `AcRadioTabs` on 2026-05-24 (anti-pattern entry blocks regression)
+and is the reference implementation.
+
+**Evidence:**
+
+- Mockup tab structure: `mockups/programs.html:94-105`, `mockups/keygroups.html`, `mockups/samples.html`
+- Live editors missing AcRadioTabs: `programs/ProgramEditor.tsx:69-159`, `keygroups/KeygroupEditor.tsx`, `samples/SampleEditor.tsx`
+- Reference (correct) consumer: `VelocityZoneEditor.tsx:117` post-migration
+
+**Expected:** each editor mounts `<AcRadioTabs>` with the mockup-specified tab labels and partitions its sections into the matching panels.
+
+**Actual:** all sections flat-stacked; tab navigation absent; mockup spec § 4.1 / 4.2 / 4.3 unsatisfied.
+
+**Fix guidance:** one dispatch per editor that (a) introduces the AcRadioTabs scaffold, (b) regroups the existing `<Section>` blocks into mockup-specified panels, (c) deletes any sections that the mockup does not include. Per "Just for now is bullshit": do all three editors in one effort.
+
+---
+
+### `ProgramsPage` / `KeygroupsPage` / `SamplesPage` don't wrap editor bodies in `.ac-detail-pane` + `.ac-detail-head` chrome; the lean-page-header / panel-header-inside-the-border invariants are violated
+
+Finding-ID: AUDIT-20260525-26
+Status:     open
+Severity:   medium
+Surface:    `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx`, `modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx`, `modules/akai-s3k-editor/src/pages/SamplesPage.tsx`
+
+Per `feedback_panel_header_pattern` and `feedback_lean_page_header` memories +
+mockup structure (`mockups/programs.html:78-91`):
+
+```html
+<section class="ac-detail-pane" aria-label="Program editor">
+  <header class="ac-detail-head">
+    <span class="ac-detail-eyebrow">Program</span>
+    <h3 class="ac-detail-title">A03 · PRG_MPC_STK</h3>
+    …status / icon-buttons…
+  </header>
+  <div class="ac-detail-body">…</div>
+</section>
+```
+
+The live pages render the editor body with no `.ac-detail-pane` wrapper — the
+title floats outside the panel border instead of inside the head. This is the
+same anti-pattern `feedback_panel_header_pattern` names: "labeled bordered panels
+use `.ac-detail-head` shape (eyebrow + title + hairline, all inside the panel
+border), never an external label above an unrelated section."
+
+**Evidence:**
+
+- Mockup chrome: `mockups/programs.html:78-91` (and equivalents in `keygroups.html`, `samples.html`)
+- Live pages without wrapper: grep `ac-detail-pane` in `modules/akai-s3k-editor/src/pages/*.tsx` → zero matches.
+
+**Expected:** every editor body wraps in `.ac-detail-pane` with `.ac-detail-head` (eyebrow + h3 + status + icon-buttons) and `.ac-detail-body` (content).
+
+**Actual:** no wrapper; chrome diverges from mockup; header pattern memory violated.
+
+**Fix guidance:** one dispatch per page that adds the canonical wrapping primitives. If `.ac-detail-pane` doesn't exist yet as a JSX component, create `<AcDetailPane>` in editor-core (header + body slots, ARIA-labelled). If it does, use it. Cross-check with `roland-sxx0-editor` to see if the primitive is already promoted; if so, consume it.
+
+---
+
+### Phase 4 capture infrastructure: mockup HTML renders unstyled when loaded via `file://`; current capture script produces unusable mockup baselines
+
+Finding-ID: AUDIT-20260525-27
+Status:     open
+Severity:   low
+Surface:    `.tmp/visual-fidelity/capture.mjs`
+
+Phase 4 task 4.2 captures mockup screenshots via Playwright at `file://…/mockups/*.html`. The mockup HTML's `<link href="./akai-dialect.css">` and any further-up CSS imports don't resolve correctly under `file://` (CORS-like restrictions + relative-path semantics differ); the resulting PNGs render as unstyled HTML in Times New Roman with no layout. They cannot serve as visual baselines for delta enumeration (Phase 4.3) or pngdiff comparison (Phase 4.5).
+
+**Evidence:**
+
+- `.tmp/visual-fidelity/mockup-keygroups-desktop.png` — visibly unstyled.
+- Other `mockup-*` PNGs render the same way.
+
+**Expected:** mockup captures render with the canonical mockup chrome (AcRadioTabs strip visible, `.ac-slider` rows laid out in 3-col grid, CRT band tinted, etc.).
+
+**Actual:** unstyled HTML.
+
+**Fix guidance:** serve the mockups directory via a short-lived static HTTP server (e.g., `python3 -m http.server` rooted at `docs/1.0/001-IN-PROGRESS/akai-harmonization/mockups/`) and update `capture.mjs` to point at `http://localhost:<port>/<page>.html` instead of `file://…`. Re-run the capture; verify the resulting PNGs render with the canonical chrome. This unblocks Phase 4 tasks 4.3 and 4.5.
+
+---
+
+## 2026-05-25 Feature review — latest tracked-holdout schema follow-up + Phase 3 closeout work
+
+Surfaced while reviewing the implementation commits `f2e49c0e`, `f90c989d`, and the subsequent Phase 3 closeout stack through branch head `4c2818af` on 2026-05-25.
+
+### The tracked-holdout schema amendment landed in code, but the operator docs and generated matrix prose still state the old “issue is mandatory” contract
+
+Finding-ID: AUDIT-20260525-23
+Status:     open
+Severity:   medium
+Surface:    `tools/scope-discovery/adopter-manifests-registry.ts`, `docs/scope-discovery/LAYOUT.md`, `docs/scope-discovery/README.md`, `docs/scope-discovery/editor-symmetry.md`
+
+The parser and manifest header now explicitly allow issue-less `tracked_holdouts` when `reason:` is substantive (`adopter-manifests-registry.ts:11-60`; `adopter-manifests.yaml` header already reflects that), but the operator-facing docs still describe the pre-AUDIT-20 contract:
+
+- [LAYOUT.md](/Users/orion/work/audiocontrol-work/audiocontrol-akai-harmonization/docs/scope-discovery/LAYOUT.md:121) still shows `issue:` as required in the schema example and says each entry “MUST have `path` + `issue` + `reason`”.
+- [README.md](/Users/orion/work/audiocontrol-work/audiocontrol-akai-harmonization/docs/scope-discovery/README.md:156) still says every `tracked_holdouts:` entry “MUST carry `path:`, `issue:`, and `reason:`”.
+- [editor-symmetry.md](/Users/orion/work/audiocontrol-work/audiocontrol-akai-harmonization/docs/scope-discovery/editor-symmetry.md:3) still defines the `⏳` glyph as a `tracked_holdouts:` entry “naming the follow-up issue”.
+
+So after `f2e49c0e`/`f90c989d`, the repo has two incompatible contracts for the same field: the live parser accepts issue-less entries with substantive inline tracking context, while the docs and generated artifact still instruct operators that `issue:` is mandatory.
+
+**Evidence:**
+
+- Code/schema now allows issue-less tracked holdouts with substantive `reason:`:
+  - `tools/scope-discovery/adopter-manifests-registry.ts:11-60`
+- Stale operator docs still require `issue:`:
+  - `docs/scope-discovery/LAYOUT.md:121-126`
+  - `docs/scope-discovery/README.md:156`
+  - `docs/scope-discovery/editor-symmetry.md:3`
+
+**Expected:** the operator docs, schema examples, and generated matrix intro should describe the same tracked-holdout contract the parser enforces.
+
+**Actual:** the parser accepts issue-less entries, while the docs still tell operators the opposite.
+
+**Fix guidance:** update every operator-facing description of `tracked_holdouts:` to the post-AUDIT-20 rule: `issue:` optional, but substantive `reason:` mandatory when absent. Because `editor-symmetry.md` is generated, closure should include regenerating it from the updated renderer text rather than hand-editing only the artifact.
+
 ## 2026-05-25 Feature review — latest anti-pattern backfill + editor-core keyboard-navigation gate work
 
 Surfaced while reviewing the implementation commits through `84f44f17`, `128ab75c`, and the editor-core keyboard-navigation/gate work now present at branch head `9e8d99c0` on 2026-05-25. Targeted verification run:
