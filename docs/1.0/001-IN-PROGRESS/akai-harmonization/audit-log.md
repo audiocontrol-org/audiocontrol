@@ -156,7 +156,7 @@ and is the reference implementation.
 ### `ProgramsPage` / `KeygroupsPage` / `SamplesPage` don't wrap editor bodies in `.ac-detail-pane` + `.ac-detail-head` chrome; the lean-page-header / panel-header-inside-the-border invariants are violated
 
 Finding-ID: AUDIT-20260525-26
-Status:     open
+Status:     verified-a58375de
 Severity:   medium
 Surface:    `modules/akai-s3k-editor/src/pages/ProgramsPage.tsx`, `modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx`, `modules/akai-s3k-editor/src/pages/SamplesPage.tsx`
 
@@ -190,6 +190,35 @@ border), never an external label above an unrelated section."
 **Actual:** no wrapper; chrome diverges from mockup; header pattern memory violated.
 
 **Fix guidance:** one dispatch per page that adds the canonical wrapping primitives. If `.ac-detail-pane` doesn't exist yet as a JSX component, create `<AcDetailPane>` in editor-core (header + body slots, ARIA-labelled). If it does, use it. Cross-check with `roland-sxx0-editor` to see if the primitive is already promoted; if so, consume it.
+
+**Closure (this commit pair):** two commits land the fix.
+
+Commit 1 — `refactor(editor-core): promote detail-pane-primitives.css from roland-sxx0-editor`. The `.ac-detail-*` family (eyebrow row, empty prompt, pane shell, head, title, slot, name input, body) moves from `modules/roland-sxx0-editor/src/styles/detail-pane-primitives.css` to `modules/editor-core/src/design/detail-pane-primitives.css`, gets bundled into `@audiocontrol/editor-core/styles.css`, and is exported via `package.json`'s `./detail-pane-primitives.css` subpath. Roland's redundant `main.tsx` import drops; class names + rule shapes are bit-identical so visual output is unchanged for the existing roland consumers. File-move-only refactor; no rule edits.
+
+Commit 2 — `feat(akai-s3k-editor): wrap editor pages in canonical .ac-detail-pane chrome`. The three akai editor components are refactored to wrap their content in `<article className="ac-detail-pane">`:
+- `modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx` — eyebrow `Program · Editing · Source · S3000XL`, slot `01..128`, editable name input.
+- `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx` — eyebrow `Keygroup · Editing · N of M` (new required `keygroupCount` prop), slot `KG<N>`, read-only range label as name.
+- `modules/akai-s3k-editor/src/components/samples/SampleEditor.tsx` — eyebrow `Sample · Editing · NNN of MMM · <rate> Hz · <size> · <duration>` (new required `sampleCount` prop), slot `001..512`, editable name input.
+
+Each editor's existing parameter content moves INSIDE the `.ac-detail-body`; the title row renders inside the bordered panel head per the `feedback_panel_header_pattern` invariant. `AcLiveStatusFooter` at the page level is unchanged (the canonical live-edit chrome differs from roland's in-pane `.ac-detail-live` footer; both consume the same outer `.ac-detail-pane` recipe).
+
+Call-site wiring: `KeygroupsPage.tsx` passes `keygroupCount={keygroupCount}` from the keygroup store; `SamplesPage.tsx` passes `sampleCount={sampleNames.length}`.
+
+**Verification:**
+
+- `make` — passes (cache-warm; previous run rebuilt all editors).
+- `make test-ui-roland` — 4 passed, 2 skipped (file move only — class names unchanged so Roland rendering is bit-identical; gate proves the CSS is still bundled correctly).
+- `make test-ui-editor-core` — 33 passed (no editor-core component changed shape; the new CSS imports get picked up automatically via styles.css).
+- `make test-ui-s3k` — 43 passed (Playwright suite covers zone-overview interactions on `TestKeygroupsShellPage`; the test harnesses don't mount the real editors so the chrome change is invisible to these specs, but the suite proves no regression in the surfaces the test harnesses DO cover).
+- `pnpm --filter @audiocontrol/akai-s3k-editor test` — 238 passed (was 234 before; 4 new chrome-contract test cases added in `test/unit/components/EditorChrome.audit-26.test.tsx` exercising the article shell + eyebrow row + slot + name input on ProgramEditor / KeygroupEditor / SampleEditor; the SampleEditor unit test gained one additional chrome-contract case at the top of `describe('SampleEditor')`).
+- `make check-css-duplication` / `make check-chevron-sizing` / `make check-anti-patterns` / `make check-adopters` / `make check-clone-duplication` / `make check-editor-symmetry` — all pass. The clone gate flagged one new intra-akai parallel-block clone (id `369cc2965252` — replaces the prior id `41255eb6a8a0` after my edits shifted line numbers). Dispositioned `keep-with-reason` via `tools/scope-discovery/batch-dispose.ts` with rationale naming the future `<AcDetailPane>` JSX-primitive extraction dispatch that would unify the 3 akai sites + the 2 partially-divergent roland consumers (ToneEditor uses the article-class shell; PatchEditor wraps its head in a plain `<div>` inside an externally-wrapped `<article>`). The extraction is the right next dispatch but needs its own audit of roland's heterogeneity before promotion; this dispatch's brief explicitly authorized "leave both as raw JSX and let a future dispatch consolidate" when the shapes diverge meaningfully.
+- `pnpm test:scope-discovery` — passes.
+
+**Visual verification artifact:** `.tmp/visual-fidelity/audit-26-live-programs-after.png` (live `/akai/s3000xl/editor/programs`, disconnected state — the editor pane only renders when a program is selected against a connected device; visual confirmation of the chrome on the editor body requires the operator to connect a device or extend the existing test harnesses to mount the real editors with stub data per the pending task #45). The 4 chrome-contract unit tests in `EditorChrome.audit-26.test.tsx` are the regression-detection net: they assert the `<article.ac-detail-pane>` wrapper exists with the correct `aria-label`, eyebrow text, slot format, and `<input.ac-detail-name-input>` for each of the three editors.
+
+**Test-helpers promotion (in scope):** a new `modules/akai-s3k-editor/src/test-helpers/program-factory.ts` was added alongside the existing `sample-factory.ts` + `keygroup-factory.ts` to provide a properly-typed `makeProgramHeader(overrides?)` without the `as ProgramHeader` cast that the existing in-test factory at `test/unit/lib/program-serialization.test.ts` uses (the in-test factory is unchanged in this commit — flipping it to use the new helper is a separate cleanup; the new factory enumerates every field structurally so the return type satisfies `ProgramHeader` without an escape hatch).
+
+**Next dispatch (already named):** AUDIT-20260525-25 (AcRadioTabs body restructure for ProgramEditor / KeygroupEditor / SampleEditor body content). That dispatch operates on the `.ac-detail-body` contents and inherits this dispatch's wrapping chrome unchanged.
 
 ---
 
