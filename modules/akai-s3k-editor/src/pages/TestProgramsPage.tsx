@@ -10,15 +10,17 @@
  * (alongside TestSamplesPage / TestLibraryPage) at desktop and
  * mobile viewports.
  *
- * The detail pane intentionally renders a stub `<div>` rather than
- * the production `ProgramEditor` — the contract under test is the
- * SHELL geometry, not the editor content. Keeping detail content
- * minimal also means the harness boots in <100ms and the Playwright
- * spec doesn't need to wait on store/effect plumbing.
+ * Per AUDIT-20260525-25/26 the detail pane mounts the REAL
+ * `ProgramEditor` against a factory-generated header so the canonical
+ * detail-pane chrome + AcRadioTabs body restructure are reachable for
+ * visual verification without a connected device.
  */
 import { useState } from 'react';
 import { PageTitleRow } from '@audiocontrol/editor-core';
 import { ProgramList } from '@/components/programs';
+import { ProgramEditor } from '@/components/programs/ProgramEditor';
+import { makeProgramHeader } from '@/test-helpers/program-factory';
+import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
 
 function buildProgramNames(): string[] {
   // 32 program slots — enough to make the list scroll inside its
@@ -31,8 +33,24 @@ function buildProgramNames(): string[] {
 export function TestProgramsPage(): JSX.Element {
   const [programNames] = useState<string[]>(buildProgramNames);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(0);
+  const [header, setHeader] = useState<ProgramHeader>(() =>
+    makeProgramHeader({ PRNAME: 'TEST PRG 01 ' }),
+  );
 
-  const selectedName = selectedIndex !== null ? programNames[selectedIndex] : null;
+  function handleParameterChange(field: string, value: number | string): void {
+    setHeader((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function handleSelect(idx: number | null): void {
+    setSelectedIndex(idx);
+    if (idx !== null) {
+      setHeader(
+        makeProgramHeader({
+          PRNAME: (programNames[idx] ?? 'TEST').padEnd(12),
+        }),
+      );
+    }
+  }
 
   return (
     <div className="ac-page ac-page-shell ac-page-shell--fixed-viewport">
@@ -45,21 +63,18 @@ export function TestProgramsPage(): JSX.Element {
         <ProgramList
           programNames={programNames}
           selectedIndex={selectedIndex}
-          onSelect={setSelectedIndex}
+          onSelect={handleSelect}
           isLoading={false}
         />
 
         <div className="ac-detail-scroll">
-          <p className="text-gray-300">
-            Test detail pane — selected program: {selectedName?.trim() ?? '(none)'}
-          </p>
-          <p className="text-gray-500 text-sm mt-2">
-            This harness exercises the fixed-viewport shell contract for
-            the Programs page (list + detail). The production page
-            renders the same `.ac-page-shell--fixed-viewport` +
-            `.ac-app-shell` + `.ac-detail-scroll` scaffold around a
-            real `ProgramEditor`.
-          </p>
+          {selectedIndex !== null ? (
+            <ProgramEditor
+              header={header}
+              programIndex={selectedIndex}
+              onParameterChange={handleParameterChange}
+            />
+          ) : null}
         </div>
       </div>
     </div>
