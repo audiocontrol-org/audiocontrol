@@ -81,7 +81,11 @@ export const REASON_GAMING_PHRASES: readonly string[] = [
  * would fail both checks; the operator gets better guidance from "this
  * is a placeholder phrase, expand it" than from "8 chars too few".)
  */
-export function checkSubstantiveReason(reason: string): string | null {
+export function checkSubstantiveReason(
+  reason: string,
+  options: { minChars?: number } = {},
+): string | null {
+  const minChars = options.minChars ?? SUBSTANTIVE_REASON_MIN_CHARS;
   const trimmed = reason.trim();
   const lower = trimmed.toLowerCase();
   const stripped = lower.replace(/[.,;:!?\s]+/g, ' ').trim();
@@ -94,9 +98,9 @@ export function checkSubstantiveReason(reason: string): string | null {
       );
     }
   }
-  if (trimmed.length < SUBSTANTIVE_REASON_MIN_CHARS) {
+  if (trimmed.length < minChars) {
     return (
-      `\`reason\` must be substantive (>= ${SUBSTANTIVE_REASON_MIN_CHARS} chars after trim) ` +
+      `\`reason\` must be substantive (>= ${minChars} chars after trim) ` +
       `when \`issue\` is absent; got ${trimmed.length} chars`
     );
   }

@@ -682,6 +682,24 @@ check-editor-symmetry-write:
 check-editor-symmetry-validate:
 	tsx tools/scope-discovery/editor-symmetry.validate.ts
 
+# Visual-verify commit-msg gate (VISUAL-VERIFICATION.md). Adversarial
+# validator harness for tools/check-visual-verify.ts: proves the gate
+# fires on UI-touching commits, passes through non-UI commits, accepts
+# well-formed markers (route list + skipped-<substantive-reason>),
+# rejects missing markers / placeholder reasons / short reasons, AND
+# carries a gutted-stub teeth-proof scenario showing every rejection is
+# load-bearing (a no-op accept-all stub passes inputs the production
+# check rejects).
+check-visual-verify-validate:
+	tsx tools/visual-verify.validate.ts
+
+# Production gate. Invoked from .githooks/commit-msg when staged files
+# include any UI source (modules/<editor>/src/**/*.{tsx,jsx,css,scss}).
+# Exit 0 if the commit message carries a valid Visual-verify: marker;
+# exit 1 with a diagnostic otherwise.
+check-visual-verify:
+	tsx tools/check-visual-verify.ts $(COMMIT_MSG_FILE)
+
 # Deprecation-driven scan (T6.4). Walks the source tree for
 # file-level `@deprecated` JSDoc tags + inline `// DEPRECATED:`
 # markers, counts remaining importers per deprecated file, and

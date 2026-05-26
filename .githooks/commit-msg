@@ -30,6 +30,20 @@ if grep -qiE '^[[:space:]]*Closes[[:space:]]+clones\.yaml[[:space:]]+' "$msg_fil
   make --no-print-directory check-refactor-preconditions COMMIT_MSG_FILE="$msg_file"
 fi
 
+# VISUAL-VERIFICATION.md gate. Fires when staged files include any UI
+# source (modules/<editor>/src/**/*.{tsx,jsx,css,scss}). Requires the
+# commit message to carry a `Visual-verify:` marker (route list or
+# `skipped-<substantive-reason>` form). Same lifecycle-slot semantics
+# as the refactor-preconditions check above: gate runs as a child
+# process so the marker write at the bottom of this hook still fires
+# on the success path; a non-zero exit aborts the commit before the
+# marker write.
+if git diff --cached --name-only --diff-filter=ACM \
+     | grep -qE '^modules/[^/]+-editor/src/.*\.(tsx|jsx|css|scss)$'; then
+  echo "commit-msg: UI source staged; running check-visual-verify..."
+  make --no-print-directory check-visual-verify COMMIT_MSG_FILE="$msg_file"
+fi
+
 # T7.5 marker-write (moved here per AUDIT-20260522-03). This MUST be the
 # last successful action of commit-msg. Architectural rationale:
 #
