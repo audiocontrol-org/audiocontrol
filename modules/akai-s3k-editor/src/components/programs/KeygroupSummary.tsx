@@ -10,7 +10,27 @@ interface KeygroupSummaryProps {
   onDeleteKeygroup?: (index: number) => void;
 }
 
-/** Count how many additional velocity zones (beyond zone 1) have a non-empty sample name. */
+/**
+ * `<KeygroupSummary>` — the program-internal keygroup roster.
+ *
+ * Renders the list of keygroups assigned to the currently-edited program
+ * as a labeled .ac-summary-table — bordered panel + .ac-detail-head-style
+ * header with the count + Add affordance + a single row per keygroup with
+ * note-range, sample name, extra-zone count, and a delete affordance.
+ *
+ * Affordances (Add, Delete) are ALWAYS VISIBLE — never opacity-on-hover.
+ * Touch devices have no hover concept; hiding the delete affordance until
+ * pointer-hover makes it impossible to target on mobile and confusingly
+ * absent on touchscreen laptops.
+ *
+ * Refactored 2026-05-26 to retire the Tailwind dark-mode chrome that
+ * pre-dated the akai-harmonization design-token migration. The previous
+ * implementation hardcoded `bg-gray-800`, `text-gray-300`, `divide-y
+ * divide-gray-800` etc.; those rendered as illegible cream-on-cream
+ * against the akai canvas surface. Now every visual value is sourced from
+ * the canonical design tokens declared in editor-core.
+ */
+
 function countExtraZones(kg: KeygroupHeader): number {
   let count = 0;
   if (kg.SNAME2.trim().length > 0) count++;
@@ -19,38 +39,39 @@ function countExtraZones(kg: KeygroupHeader): number {
   return count;
 }
 
-function KeygroupRow({
-  kg,
-  index,
-  onDelete,
-}: {
+interface KeygroupRowProps {
   kg: KeygroupHeader;
   index: number;
   onDelete?: (index: number) => void;
-}): JSX.Element {
-  const noteRange = `${formatMidiNote(kg.LONOTE)} \u2014 ${formatMidiNote(kg.HINOTE)}`;
+}
+
+function KeygroupRow({ kg, index, onDelete }: KeygroupRowProps): JSX.Element {
+  const noteRange = `${formatMidiNote(kg.LONOTE)} — ${formatMidiNote(kg.HINOTE)}`;
   const primarySample = kg.SNAME1.trim() || '(none)';
   const extraZones = countExtraZones(kg);
 
   return (
-    <div className="group flex items-center gap-4 py-1.5 px-3 text-sm">
-      <span className="text-gray-500 w-8 text-right shrink-0">{index + 1}</span>
-      <span className="text-gray-300 font-mono w-28 shrink-0">{noteRange}</span>
-      <span className="text-gray-300 font-mono truncate flex-1">{primarySample}</span>
-      {extraZones > 0 && (
-        <span className="text-gray-500 shrink-0">+{extraZones} zone{extraZones > 1 ? 's' : ''}</span>
-      )}
-      {onDelete && (
+    <li className="ac-summary-row">
+      <span className="ac-summary-row__index">{index + 1}</span>
+      <span className="ac-summary-row__range">{noteRange}</span>
+      <span className="ac-summary-row__name">{primarySample}</span>
+      {extraZones > 0 ? (
+        <span className="ac-summary-row__meta">
+          +{extraZones} zone{extraZones > 1 ? 's' : ''}
+        </span>
+      ) : null}
+      {onDelete ? (
         <button
           type="button"
           onClick={() => onDelete(index)}
-          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-opacity shrink-0 p-0.5 rounded"
+          className="ac-summary-row__action"
+          aria-label={`Delete keygroup ${index + 1}`}
           title={`Delete keygroup ${index + 1}`}
         >
           <DeleteIcon />
         </button>
-      )}
-    </div>
+      ) : null}
+    </li>
   );
 }
 
@@ -61,39 +82,59 @@ export function KeygroupSummary({
   onAddKeygroup,
   onDeleteKeygroup,
 }: KeygroupSummaryProps): JSX.Element {
+  const labelId = 'program-keygroup-summary-label';
+  const showLoading =
+    isLoading && keygroupCount > 0 && keygroups.every((kg) => kg === undefined);
+  const showEmpty = keygroupCount === 0;
+
   return (
-    <div className="border border-gray-700 rounded-lg overflow-hidden mb-3">
-      <div className="bg-gray-800 px-3 py-2 text-sm font-medium flex items-center justify-between">
-        <span>Keygroups ({keygroupCount})</span>
-        {onAddKeygroup && (
+    <section className="ac-summary-table" aria-labelledby={labelId}>
+      <header className="ac-summary-head">
+        <div className="ac-summary-head__title">
+          <span id={labelId} className="ac-summary-head__label">
+            Program keygroups
+          </span>
+          <span className="ac-summary-head__count" aria-hidden="true">
+            {keygroupCount}
+          </span>
+        </div>
+        {onAddKeygroup ? (
           <button
             type="button"
             onClick={onAddKeygroup}
             disabled={isLoading}
-            className="text-xs text-gray-400 hover:text-gray-200 disabled:opacity-50 transition-colors"
+            className="ac-summary-head__action"
+            aria-label="Add keygroup"
             title="Add keygroup"
           >
             + Add
           </button>
-        )}
-      </div>
-      <div className="divide-y divide-gray-800">
-        {isLoading && keygroupCount > 0 && keygroups.every((kg) => kg === undefined) ? (
-          <div className="py-2 px-3 text-sm text-gray-400">Loading keygroups...</div>
-        ) : keygroupCount === 0 ? (
-          <div className="py-2 px-3 text-sm text-gray-400">No keygroups</div>
+        ) : null}
+      </header>
+      <ol className="ac-summary-list">
+        {showLoading ? (
+          <li className="ac-summary-row ac-summary-row--note">
+            Loading keygroups…
+          </li>
+        ) : showEmpty ? (
+          <li className="ac-summary-row ac-summary-row--note">No keygroups</li>
         ) : (
           keygroups.map((kg, i) =>
-            kg ? (
-              <KeygroupRow key={i} kg={kg} index={i} onDelete={onDeleteKeygroup} />
+            kg !== undefined ? (
+              <KeygroupRow
+                key={i}
+                kg={kg}
+                index={i}
+                onDelete={onDeleteKeygroup}
+              />
             ) : (
-              <div key={i} className="py-1.5 px-3 text-sm text-gray-500">
-                Loading keygroup {i + 1}...
-              </div>
+              <li key={i} className="ac-summary-row ac-summary-row--note">
+                Loading keygroup {i + 1}…
+              </li>
             ),
           )
         )}
-      </div>
-    </div>
+      </ol>
+    </section>
   );
 }

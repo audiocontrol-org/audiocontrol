@@ -245,6 +245,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
             placeholder="(unnamed)"
             data-testid="patch-name-input"
             maxLength={12}
+            size={12}
             className="ac-input ac-detail-name-input"
           />
         </h3>

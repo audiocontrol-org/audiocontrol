@@ -127,10 +127,19 @@
    underlying .ac-input primitive adds a rounded all-sides border plus
    a 3px shadow-ring on focus; without these resets the underline would
    render as a curved arc and the focus state as a framed rounded-rect.
-   Width is a CSS variable so each editor can size to its device's
-   name-length cap (S-330/S-550 patches: 12; tones: 8). */
+   Width is driven by the input's HTML `size` attribute (per consumer,
+   based on the device's name-length cap — S-330/S-550 patches: 12;
+   tones: 8; akai programs: 12). The browser's typography-aware
+   text-input sizing handles letter-spacing + horizontal padding
+   correctly; CSS `width: Nch` does not (`ch` is the width of `0`
+   which is < average character width in proportional fonts, AND
+   doesn't budget for letter-spacing, so values were cropped). */
 .ac-detail-name-input {
-  display: block;
+  display: inline-block;
+  /* Override the .ac-input cascade which sets `width: 100%` for full-row
+     input fields. The detail-name input is sized by its HTML `size`
+     attribute so the slot + name render inline on one row. */
+  width: auto;
   background: transparent;
   border: 0;
   border-bottom: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-text-muted) 50%, transparent);
@@ -141,7 +150,6 @@
   color: var(--ac-color-text-primary);
   font-family: var(--ac-font-mono);
   letter-spacing: 0.02em;
-  width: var(--ac-detail-name-width, 12ch);
   outline: none;
   transition: border-color var(--ac-duration-fast) var(--ac-easing-default);
 }

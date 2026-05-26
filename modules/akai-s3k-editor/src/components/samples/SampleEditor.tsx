@@ -95,6 +95,7 @@ export function SampleEditor({
             type="text"
             value={header.SHNAME}
             maxLength={12}
+            size={12}
             onChange={(e) => onParameterChange('SHNAME', e.target.value)}
             placeholder="(unnamed)"
             data-testid="sample-name-input"

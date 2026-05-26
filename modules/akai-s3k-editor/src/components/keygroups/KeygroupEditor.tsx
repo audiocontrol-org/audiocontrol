@@ -82,6 +82,7 @@ export function KeygroupEditor({
             type="text"
             value={rangeLabel}
             readOnly
+            size={Math.max(12, rangeLabel.length)}
             aria-label="Keygroup note range"
             data-testid="keygroup-range-label"
             className="ac-input ac-detail-name-input"

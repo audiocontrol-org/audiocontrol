@@ -17,10 +17,11 @@
  */
 import { useState } from 'react';
 import { PageTitleRow } from '@audiocontrol/editor-core';
-import { ProgramList } from '@/components/programs';
+import { ProgramList, KeygroupSummary } from '@/components/programs';
 import { ProgramEditor } from '@/components/programs/ProgramEditor';
 import { makeProgramHeader } from '@/test-helpers/program-factory';
-import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
+import { makeKeygroupHeader } from '@/test-helpers/keygroup-factory';
+import type { ProgramHeader, KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 
 function buildProgramNames(): string[] {
   // 32 program slots — enough to make the list scroll inside its
@@ -30,12 +31,35 @@ function buildProgramNames(): string[] {
   );
 }
 
+function buildKeygroupHeaders(): KeygroupHeader[] {
+  return [
+    makeKeygroupHeader({
+      LONOTE: 21,
+      HINOTE: 60,
+      LOVEL1: 0,
+      HIVEL1: 127,
+      SNAME1: 'TEST SMP A  ',
+    }),
+    makeKeygroupHeader({
+      LONOTE: 61,
+      HINOTE: 108,
+      LOVEL1: 0,
+      HIVEL1: 80,
+      SNAME1: 'TEST SMP B  ',
+      LOVEL2: 81,
+      HIVEL2: 127,
+      SNAME2: 'TEST SMP C  ',
+    }),
+  ];
+}
+
 export function TestProgramsPage(): JSX.Element {
   const [programNames] = useState<string[]>(buildProgramNames);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(0);
   const [header, setHeader] = useState<ProgramHeader>(() =>
-    makeProgramHeader({ PRNAME: 'TEST PRG 01 ' }),
+    makeProgramHeader({ PRNAME: 'TEST PROGRAM' }),
   );
+  const [keygroups, setKeygroups] = useState<KeygroupHeader[]>(buildKeygroupHeaders);
 
   function handleParameterChange(field: string, value: number | string): void {
     setHeader((prev) => ({ ...prev, [field]: value }));
@@ -50,6 +74,23 @@ export function TestProgramsPage(): JSX.Element {
         }),
       );
     }
+  }
+
+  function handleAddKeygroup(): void {
+    setKeygroups((prev) => [
+      ...prev,
+      makeKeygroupHeader({
+        LONOTE: 21,
+        HINOTE: 108,
+        LOVEL1: 0,
+        HIVEL1: 127,
+        SNAME1: `TEST SMP ${String.fromCharCode(65 + prev.length)}  `,
+      }),
+    ]);
+  }
+
+  function handleDeleteKeygroup(index: number): void {
+    setKeygroups((prev) => prev.filter((_, i) => i !== index));
   }
 
   return (
@@ -73,7 +114,15 @@ export function TestProgramsPage(): JSX.Element {
               header={header}
               programIndex={selectedIndex}
               onParameterChange={handleParameterChange}
-            />
+            >
+              <KeygroupSummary
+                keygroups={keygroups}
+                keygroupCount={keygroups.length}
+                isLoading={false}
+                onAddKeygroup={handleAddKeygroup}
+                onDeleteKeygroup={handleDeleteKeygroup}
+              />
+            </ProgramEditor>
           ) : null}
         </div>
       </div>

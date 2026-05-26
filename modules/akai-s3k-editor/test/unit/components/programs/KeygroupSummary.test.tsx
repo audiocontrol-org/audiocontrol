@@ -11,18 +11,21 @@ describe('KeygroupSummary', () => {
     );
 
     expect(screen.getByText('No keygroups')).toBeInTheDocument();
-    expect(screen.getByText('Keygroups (0)')).toBeInTheDocument();
+    expect(screen.getByText('Program keygroups')).toBeInTheDocument();
+    // Count is a separate <span aria-hidden> alongside the label.
+    expect(screen.getByText('0')).toBeInTheDocument();
   });
 
-  it('renders "Loading keygroups..." when isLoading and all keygroups are undefined', () => {
+  it('renders "Loading keygroups…" when isLoading and all keygroups are undefined', () => {
     const keygroups = [undefined, undefined];
 
     render(
       <KeygroupSummary keygroups={keygroups} keygroupCount={2} isLoading={true} />,
     );
 
-    expect(screen.getByText('Loading keygroups...')).toBeInTheDocument();
-    expect(screen.getByText('Keygroups (2)')).toBeInTheDocument();
+    expect(screen.getByText('Loading keygroups…')).toBeInTheDocument();
+    expect(screen.getByText('Program keygroups')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('renders keygroup rows with correct note range, sample name, and zone count', () => {
@@ -40,7 +43,7 @@ describe('KeygroupSummary', () => {
       <KeygroupSummary keygroups={[kg]} keygroupCount={1} isLoading={false} />,
     );
 
-    expect(screen.getByText('Keygroups (1)')).toBeInTheDocument();
+    expect(screen.getByText('Program keygroups')).toBeInTheDocument();
     // Note range: C2 — C5
     expect(screen.getByText(/C2/)).toBeInTheDocument();
     expect(screen.getByText(/C5/)).toBeInTheDocument();
@@ -116,7 +119,7 @@ describe('KeygroupSummary', () => {
     expect(screen.queryByText(/\+\d+ zone/)).not.toBeInTheDocument();
   });
 
-  it('shows "Loading keygroup N..." for undefined entries in the array', () => {
+  it('shows "Loading keygroup N…" for undefined entries in the array', () => {
     const kg = makeKeygroupHeader({
       LONOTE: 36,
       HINOTE: 72,
@@ -131,8 +134,8 @@ describe('KeygroupSummary', () => {
     );
 
     expect(screen.getByText('LOADED')).toBeInTheDocument();
-    expect(screen.getByText('Loading keygroup 2...')).toBeInTheDocument();
-    expect(screen.getByText('Loading keygroup 3...')).toBeInTheDocument();
+    expect(screen.getByText('Loading keygroup 2…')).toBeInTheDocument();
+    expect(screen.getByText('Loading keygroup 3…')).toBeInTheDocument();
   });
 
   it('renders multiple keygroup rows', () => {
@@ -151,7 +154,11 @@ describe('KeygroupSummary', () => {
       <KeygroupSummary keygroups={[kg1, kg2]} keygroupCount={2} isLoading={false} />,
     );
 
-    expect(screen.getByText('Keygroups (2)')).toBeInTheDocument();
+    expect(screen.getByText('Program keygroups')).toBeInTheDocument();
+    // Count appears in head; row indices "1" "2" appear in each row's index cell.
+    // Query the count specifically via its class to disambiguate.
+    const count = document.querySelector('.ac-summary-head__count');
+    expect(count?.textContent).toBe('2');
     expect(screen.getByText('LOW BASS')).toBeInTheDocument();
     expect(screen.getByText('MID PAD')).toBeInTheDocument();
   });

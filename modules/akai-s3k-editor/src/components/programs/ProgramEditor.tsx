@@ -73,6 +73,7 @@ export function ProgramEditor({
             type="text"
             value={header.PRNAME}
             maxLength={12}
+            size={12}
             onChange={(e) => onParameterChange('PRNAME', e.target.value)}
             placeholder="(unnamed)"
             data-testid="program-name-input"
