@@ -196,9 +196,9 @@ border), never an external label above an unrelated section."
 ### Phase 4 capture infrastructure: mockup HTML renders unstyled when loaded via `file://`; current capture script produces unusable mockup baselines
 
 Finding-ID: AUDIT-20260525-27
-Status:     open
+Status:     verified-PENDING-COMMIT-SHA
 Severity:   low
-Surface:    `.tmp/visual-fidelity/capture.mjs`
+Surface:    `tools/visual-fidelity/capture.mjs` (was `.tmp/visual-fidelity/capture.mjs` — script promoted to tracked location as part of the fix)
 
 Phase 4 task 4.2 captures mockup screenshots via Playwright at `file://…/mockups/*.html`. The mockup HTML's `<link href="./akai-dialect.css">` and any further-up CSS imports don't resolve correctly under `file://` (CORS-like restrictions + relative-path semantics differ); the resulting PNGs render as unstyled HTML in Times New Roman with no layout. They cannot serve as visual baselines for delta enumeration (Phase 4.3) or pngdiff comparison (Phase 4.5).
 
@@ -212,6 +212,8 @@ Phase 4 task 4.2 captures mockup screenshots via Playwright at `file://…/mocku
 **Actual:** unstyled HTML.
 
 **Fix guidance:** serve the mockups directory via a short-lived static HTTP server (e.g., `python3 -m http.server` rooted at `docs/1.0/001-IN-PROGRESS/akai-harmonization/mockups/`) and update `capture.mjs` to point at `http://localhost:<port>/<page>.html` instead of `file://…`. Re-run the capture; verify the resulting PNGs render with the canonical chrome. This unblocks Phase 4 tasks 4.3 and 4.5.
+
+**Closure (this commit):** rewrote the capture script to spawn `python3 -m http.server` on an OS-assigned free port rooted at the **repo root** (not the mockups directory — the mockups' `<link>` tags use absolute `/modules/...` paths, so the server has to be repo-rooted to satisfy both those and the relative `./akai-dialect.css` link). The server is started before the Playwright loop, polled via `fetch` until ready, and killed in a `finally` block so it can't leak. Mockup target URLs switched from `file://…` to `http://127.0.0.1:<port>/docs/1.0/001-IN-PROGRESS/akai-harmonization/mockups/<page>.html`. Verified by visual inspection of the regenerated `.tmp/visual-fidelity/mockup-{programs,keygroups,samples,library}-desktop.png` — each now renders with full canonical chrome: red accent rule + mono/display titles, AcRadioTabs strips (Common/MIDI/Effects/Output for programs; Zones/Pitch/Filter/Amp/LFO for keygroups; Wave/Loop/Trim/Misc for samples), `.ac-slider` 3-column rows (LABEL | bar | mono readout), bank-list chevron disclosures, and the rec-LED metric pill in the page header. Phase 4 tasks 4.3 (delta enumeration) and 4.5 (pngdiff baselines) are now unblocked. The script was also promoted from `.tmp/visual-fidelity/capture.mjs` (gitignored scratch) to `tools/visual-fidelity/capture.mjs` (tracked) so the fix survives a `.tmp/` clear; the output directory remains `.tmp/visual-fidelity/` (operator-local scratch). Run with `node tools/visual-fidelity/capture.mjs` from the repo root with the dev server running on `https://localhost:3300`.
 
 ---
 
