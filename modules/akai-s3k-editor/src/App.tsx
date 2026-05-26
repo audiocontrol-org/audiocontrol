@@ -10,6 +10,8 @@ import { TestProgramsPage } from '@/pages/TestProgramsPage';
 import { TestSamplesPage } from '@/pages/TestSamplesPage';
 import { TestLibraryPage } from '@/pages/TestLibraryPage';
 import { TestLibraryRealPage } from '@/pages/TestLibraryRealPage';
+import { TestKeygroupEditorPage } from '@/pages/TestKeygroupEditorPage';
+import { TestSampleEditorPage } from '@/pages/TestSampleEditorPage';
 
 export function App() {
   return (
@@ -44,6 +46,17 @@ export function App() {
         <Route path="/akai/s3000xl/editor/test/library" element={<TestLibraryPage />} />
         <Route path="/akai/s3000xl/editor/test/library-real" element={<TestLibraryRealPage />} />
         <Route path="/akai/s3000xl/editor/test/keygroups-shell" element={<TestKeygroupsShellPage />} />
+        {/*
+         * Editor-body visual-verification harnesses. Each mounts the
+         * REAL editor against factory data so screenshot review of the
+         * AUDIT-25/26 chrome (AcRadioTabs partition, .ac-detail-pane wrap,
+         * .ac-param-rows, pill-radio toggles, readout chrome) is reachable
+         * without a connected device. Distinct from the shell-contract
+         * harnesses above which mount stub detail content to keep the
+         * page-shell-contract measurements stable.
+         */}
+        <Route path="/akai/s3000xl/editor/test/keygroup-editor" element={<TestKeygroupEditorPage />} />
+        <Route path="/akai/s3000xl/editor/test/sample-editor" element={<TestSampleEditorPage />} />
         <Route path="*" element={<Navigate to="/akai/s3000xl/editor/programs" replace />} />
       </Routes>
     </Layout>

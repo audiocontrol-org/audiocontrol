@@ -92,6 +92,8 @@ try {
     // Live (using test-harness routes; same chrome as production, isolated from device)
     { label: 'live-programs', url: 'https://localhost:3300/akai/s3000xl/editor/test/programs', kind: 'live' },
     { label: 'live-keygroups-shell', url: 'https://localhost:3300/akai/s3000xl/editor/test/keygroups-shell', kind: 'live' },
+    { label: 'live-keygroup-editor', url: 'https://localhost:3300/akai/s3000xl/editor/test/keygroup-editor', kind: 'live' },
+    { label: 'live-sample-editor', url: 'https://localhost:3300/akai/s3000xl/editor/test/sample-editor', kind: 'live' },
     { label: 'live-samples', url: 'https://localhost:3300/akai/s3000xl/editor/test/samples', kind: 'live' },
     { label: 'live-library-real', url: 'https://localhost:3300/akai/s3000xl/editor/test/library-real', kind: 'live' },
     // Production routes (what the operator actually views when device is connected)

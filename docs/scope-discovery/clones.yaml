@@ -1,4 +1,4 @@
-generated_at: 2026-05-26T05:50:48.379Z
+generated_at: 2026-05-26T07:33:57.968Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -45,8 +45,8 @@ clones:
   - id: 369cc2965252
     lines: 7
     members:
-      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:68:74
-      - modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:58:62
+      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:43:49
+      - modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:38:42
     disposition: keep-with-reason
     reason: Intra-akai parallel-block duplication of the canonical editor-component prologue (props-destructure end + num/bool field-update helpers + opening <article className="ac-detail-pane" aria-label data-testid> wrapper) — same root cause as the prior id 41255eb6a8a0 that this id replaces after the AUDIT-20260525-26 chrome wrap shifted the line numbers. The .ac-detail-pane / .ac-detail-head / .ac-detail-body CSS recipe is already canonical in editor-core (modules/editor-core/src/design/detail-pane-primitives.css). A subsequent dispatch will extract a thin <AcDetailPane> JSX component (props for ariaLabel + testid + optional render-slots for slot/eyebrow/name-input children) that unifies all 5 consumers (akai ProgramEditor + KeygroupEditor + SampleEditor + roland ToneEditor + the PatchEditor head wrapper) — at which point this clone refactors to a single import per file. Roland is partially heterogeneous (PatchEditor wraps its head in a plain <div> while ToneEditor uses the article-class shell at the editor level and PatchesPage wraps the article externally) so the extraction requires its own audit before promotion. Flip to refactor when the AcDetailPane extraction lands.
   - id: 5f51abbeaf50
@@ -456,6 +456,13 @@ clones:
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:659:669
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
+  - id: 7b67609dbcc3
+    lines: 12
+    members:
+      - modules/akai-s3k-editor/src/pages/TestKeygroupEditorPage.tsx:41:52
+      - modules/akai-s3k-editor/src/pages/TestSampleEditorPage.tsx:29:40
+    disposition: keep-with-reason
+    reason: Test harness scaffolding (akai test/keygroup-editor + test/sample-editor) share the page-shell wrapper shape by design — both are visual-verification harnesses that mount one editor under .ac-detail-scroll. Extracting a 12-line wrapper would add indirection without readability benefit; test code.
   - id: 45b560994b13
     lines: 12
     members:
