@@ -28,7 +28,7 @@ causes. They are filed grouped so that one dispatch closes each.
 ### `.s3k-section-grid` packs `AcSlider` rows into ~6.5rem cells; the canonical 3-column slider grid (label | bar | readout) collapses with label and readout overlapping at the same x-coordinate
 
 Finding-ID: AUDIT-20260525-24
-Status:     verified-2026-05-25
+Status:     verified-e3c63747
 Severity:   high
 Surface:    `modules/akai-s3k-editor/src/index.css:233-242`, `modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:54`, `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:71,101`, `modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx:117`, `modules/akai-s3k-editor/src/components/samples/SampleEditor.tsx:34`
 
