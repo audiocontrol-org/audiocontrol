@@ -109,7 +109,7 @@ Build and test gates re-run independently by the controller after dispatch:
 ### `ProgramEditor`, `KeygroupEditor`, `SampleEditor` are missing `AcRadioTabs`; all sections render flat-stacked instead of behind tab navigation per mockup spec
 
 Finding-ID: AUDIT-20260525-25
-Status:     verified-PENDING-COMMIT-SHA
+Status:     verified-6d95001c
 Severity:   high
 Surface:    `modules/akai-s3k-editor/src/components/programs/ProgramEditor.tsx:69-159`, `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx`, `modules/akai-s3k-editor/src/components/samples/SampleEditor.tsx`
 
