@@ -34,6 +34,7 @@
     "./detail-pane-primitives.css": "./src/design/detail-pane-primitives.css",
     "./compact-grid-primitives.css": "./src/design/compact-grid-primitives.css",
     "./summary-table-primitives.css": "./src/design/summary-table-primitives.css",
+    "./tab-active-state.css": "./src/design/tab-active-state.css",
     "./vite": "./src/vite/vite.ts",
     "./tailwind-preset": "./src/tailwind.preset.ts",
     "./dev/styles.css": "./src/dev/styles.css",

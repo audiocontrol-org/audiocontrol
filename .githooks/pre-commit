@@ -84,7 +84,7 @@ HAS_TAB_GROUPS_REGISTRY_OR_CSS=0
 if printf '%s\n' "$STAGED_NAMES" | grep -qxF 'docs/scope-discovery/tab-groups.yaml'; then
   HAS_TAB_GROUPS_REGISTRY_OR_CSS=1
 fi
-if printf '%s\n' "$STAGED_NAMES" | grep -qxF 'modules/roland-sxx0-editor/src/styles/tab-active-state.css'; then
+if printf '%s\n' "$STAGED_NAMES" | grep -qxF 'modules/editor-core/src/design/tab-active-state.css'; then
   HAS_TAB_GROUPS_REGISTRY_OR_CSS=1
 fi
 # Source-side companion gate (Gate B). Fires when staged changes

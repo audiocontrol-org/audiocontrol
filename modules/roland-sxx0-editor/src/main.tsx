@@ -15,7 +15,9 @@ import '@/styles/export-dialog-primitives.css';
 import '@/styles/parameter-panel-primitives.css';
 import '@/styles/play-page-primitives.css';
 import '@/styles/preview-pane-primitives.css';
-import '@/styles/tab-active-state.css';
+// tab-active-state.css promoted to editor-core 2026-05-26 (auto-imported
+// via @audiocontrol/editor-core/styles.css). Removed the roland-local
+// import to avoid double-import / cascade ambiguity.
 import '@/styles/patches.css';
 import '@/styles/tones.css';
 

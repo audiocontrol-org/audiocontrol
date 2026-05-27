@@ -50,7 +50,12 @@ import {
 } from './scope-discovery/tab-groups-registry.js';
 
 const DEFAULT_REGISTRY_PATH = 'docs/scope-discovery/tab-groups.yaml';
-const DEFAULT_CSS_PATH = 'modules/roland-sxx0-editor/src/styles/tab-active-state.css';
+// Codegen target moved 2026-05-26 from roland-sxx0-editor to editor-core
+// so both editors (roland + akai) auto-import the per-tab-ID active-state
+// chains via editor-core/src/design/styles.css. Operator visual review
+// caught that akai's AcRadioTabs had no visible active treatment because
+// akai never imported the roland-scoped file.
+const DEFAULT_CSS_PATH = 'modules/editor-core/src/design/tab-active-state.css';
 
 // ────────────────────────────────────────────────────────────────────────────
 // CSS rendering
