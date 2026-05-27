@@ -12,6 +12,7 @@ import { TestLibraryPage } from '@/pages/TestLibraryPage';
 import { TestLibraryRealPage } from '@/pages/TestLibraryRealPage';
 import { TestKeygroupEditorPage } from '@/pages/TestKeygroupEditorPage';
 import { TestSampleEditorPage } from '@/pages/TestSampleEditorPage';
+import { TestLibraryMockedPage } from '@/pages/TestLibraryMockedPage';
 
 export function App() {
   return (
@@ -57,6 +58,7 @@ export function App() {
          */}
         <Route path="/akai/s3000xl/editor/test/keygroup-editor" element={<TestKeygroupEditorPage />} />
         <Route path="/akai/s3000xl/editor/test/sample-editor" element={<TestSampleEditorPage />} />
+        <Route path="/akai/s3000xl/editor/test/library-mocked" element={<TestLibraryMockedPage />} />
         <Route path="*" element={<Navigate to="/akai/s3000xl/editor/programs" replace />} />
       </Routes>
     </Layout>

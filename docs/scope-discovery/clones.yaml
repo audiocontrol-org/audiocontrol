@@ -1,4 +1,4 @@
-generated_at: 2026-05-26T07:33:57.968Z
+generated_at: 2026-05-27T04:22:34.805Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -94,22 +94,22 @@ clones:
   - id: 01b9824c2c7b
     lines: 8
     members:
-      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:130:137
-      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:244:251
+      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:176:183
+      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:296:303
     disposition: keep-with-reason
     reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: 7b39f4f46ba4
     lines: 12
     members:
-      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:477:488
-      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:512:523
+      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:535:546
+      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:570:581
     disposition: keep-with-reason
     reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: 6b63f4518fa0
     lines: 14
     members:
-      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:477:490
-      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:497:510
+      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:535:548
+      - modules/akai-s3k-editor/src/components/library/DiskBrowserPanel.tsx:555:568
     disposition: keep-with-reason
     reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: e96e7b4fd73c
@@ -403,28 +403,35 @@ clones:
   - id: 02412f22d1aa
     lines: 18
     members:
-      - modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:273:290
+      - modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:274:291
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:224:241
     disposition: keep-with-reason
     reason: Connect-not-connected guard panels across SamplesPage / ProgramsPage / KeygroupsPage. Each page is an independent functional context (routing, parent component, state) but shares the visual shell of the not-connected guard message + Connect link. Pre-existing structural similarity; clone-group ID was re-hashed by the akai-harmonization Phase 2 task 2.5 migration from .text-blue-400 hover:underline to .ac-link (12 pre-existing groups dropped, 2 re-formed). Consolidating into a shared NotConnectedGuard component is a separate refactor outside this task scope.
+  - id: 40c9eea60531
+    lines: 7
+    members:
+      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:132:138
+      - modules/akai-s3k-editor/src/pages/TestLibraryMockedPage.tsx:91:97
+    disposition: keep-with-reason
+    reason: Mirror copy of LibraryPage's libraryStore-state-import block in TestLibraryMockedPage. The mock harness MUST mirror the production page's state-handler shape exactly because that's the contract under test — extracting to a shared hook would let the harness drift from production. Acceptable test-side duplication; 7 lines, scope-bounded to two files.
   - id: 134ecd693c01
     lines: 12
     members:
-      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:473:484
-      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:492:503
+      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:518:529
+      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:537:548
     disposition: keep-with-reason
     reason: "Intra-file local-helper / parallel-block duplication where each repetition encodes a parallel domain shape (per-keygroup vs per-zone, programs vs samples, sysex vs disk-origin) and extracting a one-off local helper would create more file-cap pressure than it relieves. Each clone is < 18 lines and lives wholly inside its own file: KeygroupEditor's Section + num/bool setters are mirrored in ProgramEditor's Section + num/bool setters with slightly different prop shapes (headerContent vs wide); ZoneOverviewZone renders DragHandle blocks for keygroup row vs zone rect with parallel edge / field wiring; use-zone-overview-drags hooks two near-identical window.addEventListener('mousemove' + 'mouseup') wireups for creation-drag vs translate-drag; DeviceMemoryPanel mirrors its programs-drop vs samples-drop onDragOver/onDrop handlers with MIME-specific branches; DiskBrowserPanel mirrors its partition-table lookup pattern across useImperativeHandle vs scanFile vs FileNode render groups (Programs / Samples / other); LibraryPage mirrors its disk-drop sample vs program handler. Refactor candidate per clone: a domain-named local helper (e.g. <DragHandleQuad>, useMouseEventListeners(), renderFileNodeGroup(), buildDropHandlers()), but the value is small relative to the disturbance — each extraction would touch a stable file with active per-domain semantics. Flip individual entries to refactor when (a) the per-file file-cap pushes them out OR (b) a third caller appears that would benefit from the helper."
   - id: ac0330ff40c0
     lines: 25
     members:
-      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:715:739
+      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:762:786
       - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:635:659
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: a901ae04cedb
     lines: 18
     members:
-      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:739:756
+      - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:786:803
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:361:669
     disposition: keep-with-reason
     reason: "Editor-dialog mount JSX block parallelism between LibraryPage and SamplesPage. Both pages mount the same trio of editor dialogs (SampleChopperDialog with S3kKitOutputConfig render-prop, SampleEditorDialog, DrumKitEditorDialog) using the shared useEditorDialogs hook. The clone is the JSX render block (18 lines). Refactor candidate: extract an <S3kEditorDialogsMount editorDialogs={...} root={...} /> component that encapsulates the three Dialog mounts + the render-output-config wiring. Deferred because: (1) per-page differences exist — LibraryPage's chopper uses root for onSave gating (onSave={root ? editorDialogs.handleChopperSave : undefined}) while SamplesPage passes handleChopperSave unconditionally because the SamplesPage flow only runs when a sample is selected; the component lift needs to thread the per-page conditional through; (2) the akai-s3k-editor module is moving toward a per-page-shell pattern where each page composes its own dialogs explicitly; a premature lift would harden a pattern that's still being shaped. Flip to refactor when the page-shell layout has settled across both pages AND the per-page onSave-conditional has a consistent shape."
@@ -467,21 +474,14 @@ clones:
     lines: 12
     members:
       - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:100:111
-      - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:71:82
-    disposition: keep-with-reason
-    reason: "Test-harness page parallelism between TestKeygroupsPage and TestKeygroupsShellPage. Per the TestKeygroupsShellPage docstring at modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx, the two harnesses are intentionally SEPARATE: TestKeygroupsPage (/akai/s3000xl/editor/test/keygroups) is the inline-styled zone-overview interaction harness load-bearing for zone-overview.spec.ts; TestKeygroupsShellPage (/akai/s3000xl/editor/test/keygroups-shell) is the shell-compliant harness load-bearing for page-shell-contract.spec.ts (covering AUDIT-20260524-06 + AUDIT-20260524-08). Each harness has a load-bearing structural distinction (inline styles vs ac-page-shell wrapper; 4 keygroups vs 16; toolbar + overview shape) that the corresponding spec relies on. Unifying would defeat the point of having two independently-load-bearing fixtures — and the duplication is fixture data + handler setup, not production logic. Intentional duplication; the fixtures must stay separable so each spec can mount its harness without coupling."
-  - id: dffe86242d93
-    lines: 16
-    members:
-      - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:191:206
-      - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:90:106
+      - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:72:83
     disposition: keep-with-reason
     reason: "Test-harness page parallelism between TestKeygroupsPage and TestKeygroupsShellPage. Per the TestKeygroupsShellPage docstring at modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx, the two harnesses are intentionally SEPARATE: TestKeygroupsPage (/akai/s3000xl/editor/test/keygroups) is the inline-styled zone-overview interaction harness load-bearing for zone-overview.spec.ts; TestKeygroupsShellPage (/akai/s3000xl/editor/test/keygroups-shell) is the shell-compliant harness load-bearing for page-shell-contract.spec.ts (covering AUDIT-20260524-06 + AUDIT-20260524-08). Each harness has a load-bearing structural distinction (inline styles vs ac-page-shell wrapper; 4 keygroups vs 16; toolbar + overview shape) that the corresponding spec relies on. Unifying would defeat the point of having two independently-load-bearing fixtures — and the duplication is fixture data + handler setup, not production logic. Intentional duplication; the fixtures must stay separable so each spec can mount its harness without coupling."
   - id: 790e82a56886
     lines: 11
     members:
       - modules/akai-s3k-editor/src/pages/TestKeygroupsPage.tsx:90:100
-      - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:72:82
+      - modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx:73:83
     disposition: keep-with-reason
     reason: "Test-harness page parallelism between TestKeygroupsPage and TestKeygroupsShellPage. Per the TestKeygroupsShellPage docstring at modules/akai-s3k-editor/src/pages/TestKeygroupsShellPage.tsx, the two harnesses are intentionally SEPARATE: TestKeygroupsPage (/akai/s3000xl/editor/test/keygroups) is the inline-styled zone-overview interaction harness load-bearing for zone-overview.spec.ts; TestKeygroupsShellPage (/akai/s3000xl/editor/test/keygroups-shell) is the shell-compliant harness load-bearing for page-shell-contract.spec.ts (covering AUDIT-20260524-06 + AUDIT-20260524-08). Each harness has a load-bearing structural distinction (inline styles vs ac-page-shell wrapper; 4 keygroups vs 16; toolbar + overview shape) that the corresponding spec relies on. Unifying would defeat the point of having two independently-load-bearing fixtures — and the duplication is fixture data + handler setup, not production logic. Intentional duplication; the fixtures must stay separable so each spec can mount its harness without coupling."
   - id: 995ff9b62525

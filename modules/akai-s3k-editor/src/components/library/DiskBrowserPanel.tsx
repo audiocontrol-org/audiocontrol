@@ -80,10 +80,26 @@ export interface DiskDragPayload {
   volumeStartBlock: number;
 }
 
-interface VolumeWithFiles {
+export interface VolumeWithFiles {
   name: string;
   startBlock: number;
   files: AkaiDiskFileEntry[];
+}
+
+/**
+ * sessionStorage key + cache shape exported so test harnesses can seed
+ * the disk-browser cache before the panel mounts (see
+ * TestLibraryMockedPage). Bypasses the bridge entirely — the panel
+ * reads cached targets/volumes/files on mount via useMemo (the
+ * loadDiskCache function below) and renders the full disk tree without
+ * any HTTP/WebSocket calls. Sufficient for visual verification of
+ * selection chrome + single-selection contract.
+ */
+export const DISK_BROWSER_CACHE_KEY = DISK_CACHE_KEY;
+export interface DiskBrowserCacheShape {
+  targets: DiskTarget[];
+  volumes: Record<number, VolumeWithFiles[]>;
+  expandedTarget: number | null;
 }
 
 /** Imperative handle for resolving disk drag payloads to save context. */
@@ -300,7 +316,13 @@ export function DiskBrowserPanel({
     }
   }
 
-  if (!bridgeUrl) {
+  // No-bridge fallback only fires when the cache is ALSO empty. If the
+  // cache is populated (either from a prior real-scan or from a test
+  // harness seeding sessionStorage with DISK_BROWSER_CACHE_KEY), the
+  // panel renders the cached data — every user interaction the chrome
+  // exposes (select a file, expand a target) reads from local state,
+  // not the bridge, so no network call is needed to be useful.
+  if (!bridgeUrl && (!cachedDisk || cachedDisk.targets.length === 0)) {
     return (
       <div className="p-4">
         <h3 className="text-lg font-semibold text-gray-200 mb-2">
