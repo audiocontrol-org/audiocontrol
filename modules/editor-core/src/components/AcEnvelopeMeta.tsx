@@ -33,28 +33,44 @@ export interface AcEnvelopeMetaProps {
   disabled?: boolean;
 }
 
-export function AcEnvelopeMeta(props: AcEnvelopeMetaProps): JSX.Element {
+export function AcEnvelopeMeta(props: AcEnvelopeMetaProps): JSX.Element | null {
   const disabled = props.disabled === true;
+  // A row whose onChange callback is undefined is structurally fixed for
+  // this envelope (e.g., the Akai S3000XL TVF filter envelope's sustain
+  // and end segments are anchored by the device, not user-selectable).
+  // Render it as inert chrome would mislead — clicks do nothing, keyboard
+  // does nothing. Hide the row entirely instead; if neither is editable,
+  // skip the whole meta block. Operator review 2026-05-27: "why don't
+  // these buttons work? Are they fake?"
+  const showSustain = props.onSustainChange !== undefined;
+  const showEnd = props.onEndChange !== undefined;
+  if (!showSustain && !showEnd) {
+    return null;
+  }
   return (
     <div className="ac-envelope-meta" role="group" aria-label="Envelope shape">
-      <PipRow
-        rowLabel={'Sustain ▸'}
-        ariaLabel="Sustain segment"
-        total={props.totalSegments}
-        active={props.sustainSegment}
-        maxEnabled={props.endSegment}
-        onChange={props.onSustainChange}
-        disabled={disabled}
-      />
-      <PipRow
-        rowLabel={'End ▣'}
-        ariaLabel="Envelope length"
-        total={props.totalSegments}
-        active={props.endSegment}
-        maxEnabled={props.totalSegments}
-        onChange={props.onEndChange}
-        disabled={disabled}
-      />
+      {showSustain ? (
+        <PipRow
+          rowLabel={'Sustain ▸'}
+          ariaLabel="Sustain segment"
+          total={props.totalSegments}
+          active={props.sustainSegment}
+          maxEnabled={props.endSegment}
+          onChange={props.onSustainChange}
+          disabled={disabled}
+        />
+      ) : null}
+      {showEnd ? (
+        <PipRow
+          rowLabel={'End ▣'}
+          ariaLabel="Envelope length"
+          total={props.totalSegments}
+          active={props.endSegment}
+          maxEnabled={props.totalSegments}
+          onChange={props.onEndChange}
+          disabled={disabled}
+        />
+      ) : null}
     </div>
   );
 }

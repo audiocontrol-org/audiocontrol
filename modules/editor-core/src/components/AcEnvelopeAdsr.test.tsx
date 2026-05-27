@@ -256,6 +256,11 @@ describe('AcEnvelope discriminator', () => {
   });
 
   it('AcEnvelope without `kind` defaults to multi-segment (no `ac-envelope--adsr` class)', () => {
+    // Pass onSustainChange + onEndChange so the meta sub-surface renders.
+    // Per the AcEnvelopeMeta operator-review change (2026-05-27), rows
+    // with no callback are hidden so non-functional pips don't read as
+    // "fake buttons"; the meta block returns null when neither callback
+    // is supplied.
     const html = renderToStaticMarkup(
       <AcEnvelope
         label="TVF · 8-SEGMENT"
@@ -266,6 +271,8 @@ describe('AcEnvelope discriminator', () => {
         sustainSegment={5}
         endSegment={8}
         activeSegment={1}
+        onSustainChange={() => undefined}
+        onEndChange={() => undefined}
       />,
     );
     expect(html).not.toContain('ac-envelope--adsr');

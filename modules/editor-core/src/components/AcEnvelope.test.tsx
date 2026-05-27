@@ -49,6 +49,12 @@ function renderWithSustainPips(
 
 describe('AcEnvelope', () => {
   it('renders graph, meta, and table sub-surfaces', () => {
+    // The meta block hides per-row when the matching onChange callback
+    // is undefined and skips itself entirely when both are absent (an
+    // operator-review change: clickable-looking pips that did nothing
+    // read as "fake buttons" — see AcEnvelopeMeta.tsx). Pass both
+    // handlers here so the meta block stays visible and the assertion
+    // exercises all three sub-surfaces.
     const html = renderToStaticMarkup(
       <AcEnvelope
         label="TVF · 8-SEGMENT"
@@ -56,6 +62,8 @@ describe('AcEnvelope', () => {
         sustainSegment={5}
         endSegment={8}
         activeSegment={2}
+        onSustainChange={() => undefined}
+        onEndChange={() => undefined}
       />,
     );
     expect(html).toContain('ac-envelope');
@@ -80,6 +88,10 @@ describe('AcEnvelope', () => {
   });
 
   it('clamps activeSegment within bounds', () => {
+    // Pass onSustainChange so the sustain meta row renders with its
+    // active pip; the assertion expects multiple data-active markers
+    // (graph point + sustain pip). Per the operator-review change,
+    // the meta block returns null without callbacks.
     const html = renderToStaticMarkup(
       <AcEnvelope
         label="X"
@@ -87,6 +99,7 @@ describe('AcEnvelope', () => {
         sustainSegment={5}
         endSegment={8}
         activeSegment={999}
+        onSustainChange={() => undefined}
       />,
     );
     const activeCount = (html.match(/data-active="true"/g) ?? []).length;
@@ -282,8 +295,9 @@ describe('AcEnvelope', () => {
         onEndChange={onEndChange}
       />,
     );
+    // Only the End row renders because no onSustainChange. It's at [0].
     const pipGroups = container.querySelectorAll('.ac-envelope-meta__pips');
-    const endPips = pipGroups[1];
+    const endPips = pipGroups[0];
     if (endPips === undefined) {
       throw new Error('AcEnvelope did not render end pip row');
     }
@@ -334,6 +348,8 @@ describe('AcEnvelope', () => {
   });
 
   it('exactly one pip per row carries tabIndex=0 (roving tabindex)', () => {
+    // Both rows opted-in via callbacks so the chrome contract is exercised;
+    // per the operator-review change, rows without callbacks render nothing.
     const { container } = render(
       <AcEnvelope
         label="A"
@@ -341,6 +357,8 @@ describe('AcEnvelope', () => {
         sustainSegment={5}
         endSegment={8}
         activeSegment={1}
+        onSustainChange={vi.fn()}
+        onEndChange={vi.fn()}
       />,
     );
     const pipGroups = container.querySelectorAll('.ac-envelope-meta__pips');
@@ -358,6 +376,9 @@ describe('AcEnvelope', () => {
   });
 
   it('disables sustain pips beyond endSegment', () => {
+    // The sustain row is opted in via onSustainChange; without it, the row
+    // would be hidden per the operator-review change and there'd be no
+    // disabled-pip count to assert against.
     const html = renderToStaticMarkup(
       <AcEnvelope
         label="A"
@@ -365,6 +386,7 @@ describe('AcEnvelope', () => {
         sustainSegment={2}
         endSegment={4}
         activeSegment={2}
+        onSustainChange={() => undefined}
       />,
     );
     const disabledCount = (html.match(/data-disabled="true"/g) ?? []).length;
@@ -445,6 +467,8 @@ describe('AcEnvelope', () => {
   });
 
   it('disabled meta pips all carry tabIndex=-1 (no keyboard tab stop)', () => {
+    // Both rows opted-in via callbacks so we still get 16 pips to assert
+    // tabIndex on; without callbacks the rows would be hidden entirely.
     const { container } = render(
       <AcEnvelope
         label="A"
@@ -452,6 +476,8 @@ describe('AcEnvelope', () => {
         sustainSegment={5}
         endSegment={8}
         activeSegment={1}
+        onSustainChange={vi.fn()}
+        onEndChange={vi.fn()}
         disabled
       />,
     );
@@ -464,6 +490,8 @@ describe('AcEnvelope', () => {
   });
 
   it('disabled meta radiogroup carries aria-disabled', () => {
+    // Both rows opted-in via callbacks so both radiogroups render and
+    // both should carry aria-disabled when the envelope is disabled.
     const { container } = render(
       <AcEnvelope
         label="A"
@@ -471,6 +499,8 @@ describe('AcEnvelope', () => {
         sustainSegment={5}
         endSegment={8}
         activeSegment={1}
+        onSustainChange={vi.fn()}
+        onEndChange={vi.fn()}
         disabled
       />,
     );
@@ -511,8 +541,11 @@ describe('AcEnvelope', () => {
         disabled
       />,
     );
+    // Only the End row renders because onSustainChange is not provided
+    // (per the operator-review change: rows with no callback are hidden).
+    // The End row is therefore pipGroups[0], not [1].
     const pipGroups = container.querySelectorAll('.ac-envelope-meta__pips');
-    const endPips = pipGroups[1]?.querySelectorAll<HTMLSpanElement>(
+    const endPips = pipGroups[0]?.querySelectorAll<HTMLSpanElement>(
       '.ac-envelope-meta__pip',
     );
     if (endPips === undefined) {

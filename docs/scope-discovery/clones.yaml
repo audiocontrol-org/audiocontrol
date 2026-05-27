@@ -1,4 +1,4 @@
-generated_at: 2026-05-27T08:10:32.830Z
+generated_at: 2026-05-27T19:14:18.558Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -1579,45 +1579,59 @@ clones:
   - id: 8b56c7a5ddc1
     lines: 11
     members:
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:149:159
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:548:558
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:162:172
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:581:591
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 63ee3605026e
     lines: 13
     members:
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:149:161
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:171:183
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:196:208
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:397:409
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:162:174
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:184:196
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:209:221
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:419:431
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 67964e1ce808
     lines: 14
     members:
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:149:561
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:592:605
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:162:594
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:625:638
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 8ada731c55c8
     lines: 11
     members:
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:273:283
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:501:511
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:286:296
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:531:541
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: "216327924890"
     lines: 15
     members:
       - modules/editor-core/src/components/AcEnvelope.test.tsx:34:48
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:730:744
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:763:777
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
+  - id: 36de1f8d9035
+    lines: 10
+    members:
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:353:362
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:472:481
+    disposition: keep-with-reason
+    reason: test-setup blocks in AcEnvelope.test.tsx — each test asserts a different meta-chrome contract; sharing setup obscures intent.
+  - id: 36501857bc35
+    lines: 13
+    members:
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:353:484
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:495:507
+    disposition: keep-with-reason
+    reason: test-setup blocks in AcEnvelope.test.tsx — each test asserts a different meta-chrome contract; sharing setup obscures intent.
   - id: a58381417c28
     lines: 13
     members:
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:527:539
-      - modules/editor-core/src/components/AcEnvelope.test.tsx:571:583
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:560:572
+      - modules/editor-core/src/components/AcEnvelope.test.tsx:604:616
     disposition: keep-with-reason
     reason: Intra-test-file clones in vitest test suites under modules/editor-core/src/components/. Each it() block sets up its own fixture (render call + props + helper variables) so the test is independently readable, debuggable, and runnable without cross-test coupling via beforeEach helpers. Extracting shared renderXxx() helpers would dedupe bytes but force the reader to chase indirection to understand any single test, hurting test debuggability and run-isolation. Project testing philosophy prefers self-contained tests over shared fixtures except where fixture cost is truly heavy.
   - id: 73cd218e167c
