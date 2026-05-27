@@ -1,4 +1,4 @@
-generated_at: 2026-05-23T18:56:13.248Z
+generated_at: 2026-05-27T20:01:16.043Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -510,14 +510,14 @@ clones:
     lines: 25
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:709:733
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:635:659
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:662:686
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: a901ae04cedb
     lines: 18
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:733:750
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:342:669
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:342:696
     disposition: pending
     reason: null
   - id: 3045e6b4adbc
@@ -538,14 +538,14 @@ clones:
     lines: 28
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:315:342
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:633:659
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:660:686
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 423f58d97969
     lines: 11
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:349:359
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:659:669
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:686:696
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 7df4383b5cc3
@@ -2175,6 +2175,13 @@ clones:
       - modules/roland-sxx0-editor/playwright.sample-editor.config.ts:25:50
     disposition: keep-with-reason
     reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
+  - id: 18d5fe25b24e
+    lines: 6
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:162:167
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:55:60
+    disposition: keep-with-reason
+    reason: Probe script intentionally self-contained per the probe-wave-*.ts precedent (workplan 2026-05-22 batch row). The 6-line RQD-building block repeats between discoverPort and rawRead so the script stays drop-in-runnable against hardware without test-apparatus coupling.
   - id: ee1d1bbe4b61
     lines: 10
     members:

@@ -123,10 +123,95 @@ function buildAdapter(input: easymidi.Input, output: easymidi.Output): SSeriesMi
     };
 }
 
+function denibblize(nibbles: number[]): number[] {
+    const bytes: number[] = [];
+    for (let i = 0; i + 1 < nibbles.length; i += 2) {
+        bytes.push(((nibbles[i] & 0x0f) << 4) | (nibbles[i + 1] & 0x0f));
+    }
+    return bytes;
+}
+
+async function rawRead(
+    input: easymidi.Input,
+    output: easymidi.Output,
+    deviceId: number,
+    address: number[],
+    sizeBytes: number,
+): Promise<number[]> {
+    const sizeNibbles = sizeBytes * 2;
+    const size = [
+        (sizeNibbles >> 21) & 0x7f,
+        (sizeNibbles >> 14) & 0x7f,
+        (sizeNibbles >> 7) & 0x7f,
+        sizeNibbles & 0x7f,
+    ];
+    const sum = address.reduce((a, b) => a + b, 0) + size.reduce((a, b) => a + b, 0);
+    const cs = (128 - (sum & 0x7f)) % 128;
+    const rqd = [0xf0, ROLAND_ID, deviceId, MODEL_ID, RQD, ...address, ...size, cs, 0xf7];
+
+    return new Promise((resolve, reject) => {
+        const allNibbles: number[] = [];
+        let timer: ReturnType<typeof setTimeout>;
+        const resetTimer = () => {
+            if (timer) clearTimeout(timer);
+            timer = setTimeout(() => {
+                input.removeListener('sysex', handler);
+                if (allNibbles.length > 0) resolve(denibblize(allNibbles));
+                else reject(new Error('rawRead timeout — no data'));
+            }, 4000);
+        };
+        const handler = (msg: { bytes: number[] }) => {
+            const b = msg.bytes;
+            if (b.length < 5 || b[1] !== ROLAND_ID || b[3] !== MODEL_ID) return;
+            const cmd = b[4];
+            if (cmd === DAT) {
+                resetTimer();
+                const payload = b.slice(9, b.length - 2);
+                allNibbles.push(...payload);
+                output.send('sysex' as never, [0xf0, ROLAND_ID, deviceId, MODEL_ID, ACK, 0xf7] as never);
+            } else if (cmd === EOD) {
+                clearTimeout(timer);
+                input.removeListener('sysex', handler);
+                output.send('sysex' as never, [0xf0, ROLAND_ID, deviceId, MODEL_ID, ACK, 0xf7] as never);
+                resolve(denibblize(allNibbles));
+            } else if (cmd === RJC) {
+                resetTimer();
+            }
+        };
+        input.on('sysex', handler);
+        resetTimer();
+        output.send('sysex' as never, rqd as never);
+    });
+}
+
+function findPattern(bytes: number[], pattern: number[]): number[] {
+    const hits: number[] = [];
+    for (let i = 0; i + pattern.length <= bytes.length; i++) {
+        let match = true;
+        for (let j = 0; j < pattern.length; j++) {
+            if (bytes[i + j] !== pattern[j]) { match = false; break; }
+        }
+        if (match) hits.push(i);
+    }
+    return hits;
+}
+
+function hexDump(bytes: number[], baseOffset: number, perRow: number = 16): string {
+    const lines: string[] = [];
+    for (let i = 0; i < bytes.length; i += perRow) {
+        const offset = (baseOffset + i).toString(16).padStart(4, '0');
+        const row = bytes.slice(i, i + perRow);
+        const hex = row.map(b => b.toString(16).padStart(2, '0')).join(' ');
+        lines.push(`  ${offset}: ${hex}`);
+    }
+    return lines.join('\n');
+}
+
 async function main() {
     const deviceId = parseInt(process.argv[2] || '0', 10);
     const deviceType = (process.argv[3] || 's550').toLowerCase();
-    console.log(`Multi-mode probe (device ID ${deviceId}, type ${deviceType})`);
+    const mode = (process.argv[4] || 'client').toLowerCase();
+    console.log(`Multi-mode probe (device ID ${deviceId}, type ${deviceType}, mode ${mode})`);
 
     const pair = await discoverPort(deviceId);
     if (!pair) {
@@ -137,12 +222,46 @@ async function main() {
 
     const input = new easymidi.Input(pair.inputName);
     const output = new easymidi.Output(pair.outputName);
-    const adapter = buildAdapter(input, output);
-    const client = deviceType === 's330'
-        ? createS330Client(adapter, { deviceId })
-        : createS550Client(adapter, { deviceId });
 
     try {
+        if (mode === 'raw' || mode === 'scan') {
+            const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
+
+            const offsetsToProbe = [0x00, 0x20, 0x40, 0x60, 0x80, 0xa0, 0xc0, 0xe0];
+            const window = 32;
+            const collected: { offset: number; bytes: number[] }[] = [];
+            for (const off of offsetsToProbe) {
+                await sleep(300);
+                const addr = [0x00, 0x01, 0x00, off];
+                try {
+                    const bytes = await rawRead(input, output, deviceId, addr, window);
+                    console.log(`  ${addr.map(a => a.toString(16).padStart(2, '0')).join(' ')}  →  ${bytes.length} bytes`);
+                    if (bytes.length > 0) {
+                        console.log(hexDump(bytes, off));
+                        collected.push({ offset: off, bytes });
+                    }
+                } catch (err) {
+                    console.log(`  ${addr.map(a => a.toString(16).padStart(2, '0')).join(' ')}  →  ${err instanceof Error ? err.message : err}`);
+                }
+            }
+
+            const targetPattern = [1, 1, 3, 3, 3, 1, 1, 1];
+            const ascendingPatch = [0, 1, 2, 3, 4, 5, 6, 7];
+            console.log('\n=== Pattern search across all collected bytes ===');
+            for (const chunk of collected) {
+                const tHits = findPattern(chunk.bytes, targetPattern);
+                tHits.forEach(o => console.log(`  VFD outputs pattern at 0x${(chunk.offset + o).toString(16).padStart(2, '0')}`));
+                const pHits = findPattern(chunk.bytes, ascendingPatch);
+                pHits.forEach(o => console.log(`  Patches 0-7 pattern at 0x${(chunk.offset + o).toString(16).padStart(2, '0')}`));
+            }
+            return;
+        }
+
+        const adapter = buildAdapter(input, output);
+        const client = deviceType === 's330'
+            ? createS330Client(adapter, { deviceId })
+            : createS550Client(adapter, { deviceId });
+
         console.log('Calling requestFunctionParameters()...');
         const parts = await client.requestFunctionParameters();
         console.log('Success — multi-mode part configs:');
