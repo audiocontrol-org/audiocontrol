@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en" data-editor="s3000xl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=1280" />
+  <title>Akai S3000XL — Library contrast/selection options</title>
+  <link rel="stylesheet" href="/modules/editor-core/src/design/styles.css" />
+  <link rel="stylesheet" href="/modules/roland-sxx0-editor/src/styles/_shared.css" />
+  <link rel="stylesheet" href="./akai-dialect.css" />
+  <style>
+    /*
+      Mockup-only scaffold. The three variants below show the SAME library
+      panel chrome (disk tree + memory list) with different muted-text
+      tones + selection treatments. Each variant is a self-contained
+      block with its own `[data-variant]` selector; the CSS rules below
+      override the production design tokens scoped to that variant only,
+      so all three palettes render on one page side-by-side and the
+      operator can compare them in context.
+     */
+    body {
+      margin: 0;
+      padding: 2rem;
+      background: var(--ac-color-surface-canvas);
+      color: var(--ac-color-text-primary);
+      font-family: var(--ac-font-body);
+    }
+    .mockup-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1.5rem;
+      max-width: 100%;
+    }
+    .mockup-variant {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .mockup-variant-label {
+      font-family: var(--ac-font-display);
+      font-size: 1.1rem;
+      color: var(--ac-color-accent);
+      letter-spacing: 0.02em;
+      padding-bottom: 0.25rem;
+      border-bottom: 2px solid var(--ac-color-accent);
+    }
+    .mockup-variant-desc {
+      font-family: var(--ac-font-body);
+      font-size: 0.85rem;
+      color: var(--ac-color-text-muted);
+      line-height: 1.5;
+      min-height: 4rem;
+    }
+    .mockup-panel {
+      border: 1px solid var(--ac-color-border-subtle);
+      border-radius: 0.25rem;
+      background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .mockup-panel-title {
+      font-family: var(--ac-font-display);
+      font-size: var(--ac-text-eyebrow);
+      text-transform: uppercase;
+      letter-spacing: var(--ac-tracking-eyebrow);
+      color: var(--ac-color-text-primary);
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid var(--ac-color-border-subtle);
+    }
+    .mockup-tree-row,
+    .mockup-mem-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+      padding: 0.25rem 0.5rem;
+      font-family: var(--ac-font-mono);
+      font-size: 0.85rem;
+      cursor: pointer;
+      border-left: 2px solid transparent;
+    }
+    .mockup-tree-row__caret {
+      color: var(--ac-color-accent);
+      flex-shrink: 0;
+    }
+    .mockup-tree-row__label {
+      color: var(--mockup-secondary, var(--ac-color-text-muted));
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .mockup-tree-row__meta {
+      color: var(--mockup-secondary, var(--ac-color-text-muted));
+      font-size: 0.75rem;
+    }
+    .mockup-mem-row__index {
+      color: var(--mockup-secondary, var(--ac-color-text-muted));
+      width: 1.75rem;
+      text-align: right;
+    }
+    .mockup-mem-row__name {
+      color: var(--mockup-secondary, var(--ac-color-text-muted));
+      flex: 1;
+    }
+    .mockup-eyebrow {
+      font-family: var(--ac-font-display);
+      font-size: var(--ac-text-eyebrow);
+      text-transform: uppercase;
+      letter-spacing: var(--ac-tracking-eyebrow);
+      color: var(--mockup-secondary, var(--ac-color-text-muted));
+      padding: 0.5rem 0 0.25rem;
+    }
+    .mockup-active-marker {
+      margin-top: 0.5rem;
+      font-family: var(--ac-font-body);
+      font-size: 0.75rem;
+      color: var(--mockup-secondary, var(--ac-color-text-muted));
+      font-style: italic;
+    }
+    .mockup-contrast-callout {
+      margin-top: 0.5rem;
+      font-family: var(--ac-font-mono);
+      font-size: 0.7rem;
+      color: var(--mockup-secondary, var(--ac-color-text-muted));
+      line-height: 1.4;
+      padding: 0.4rem 0.6rem;
+      border-left: 2px solid var(--ac-color-accent);
+      background: color-mix(in srgb, var(--ac-color-accent) 5%, transparent);
+    }
+
+    /* ----------------------------------------------------------------
+       VARIANT A — "AA-grade muted + accent-tint selection"
+       Strategy: bump muted text to a deeper warm-olive that
+       comfortably passes WCAG AA (target ≥6:1). Selection state =
+       10% accent-tint background fill + 3px accent left-border
+       (matches the .ac-list-row[aria-current] pattern used on the
+       Programs/Samples list rows). Normal text stays readable inside
+       the selected row.
+       ---------------------------------------------------------------- */
+    [data-variant="a"] {
+      --mockup-secondary: #3a3528; /* deeper warm-olive, ~7.5:1 vs cream */
+    }
+    [data-variant="a"] .mockup-tree-row[data-selected],
+    [data-variant="a"] .mockup-mem-row[data-selected] {
+      background: color-mix(in srgb, var(--ac-color-accent) 14%, transparent);
+      border-left-color: var(--ac-color-accent);
+      color: var(--ac-color-text-primary);
+    }
+    [data-variant="a"] .mockup-tree-row[data-selected] .mockup-tree-row__label,
+    [data-variant="a"] .mockup-tree-row[data-selected] .mockup-tree-row__meta,
+    [data-variant="a"] .mockup-mem-row[data-selected] .mockup-mem-row__name,
+    [data-variant="a"] .mockup-mem-row[data-selected] .mockup-mem-row__index {
+      color: var(--ac-color-text-primary);
+    }
+    [data-variant="a"] .mockup-tree-row[data-disabled-by-other-selection] {
+      opacity: 0.55;
+    }
+
+    /* ----------------------------------------------------------------
+       VARIANT B — "Inverted selection band"
+       Strategy: selection = inverse-video — dark band (~text-primary)
+       with cream text. Mimics classic Mac OS / akai S3000XL LCD
+       reverse-highlight. High contrast intentionally inverted to
+       signal "this row is the active target." Muted text gets a
+       slightly cooler tone for tonal variety (sepia → desaturated
+       brown).
+       ---------------------------------------------------------------- */
+    [data-variant="b"] {
+      --mockup-secondary: #3f3a2e; /* desaturated brown, ~6.8:1 vs cream */
+    }
+    [data-variant="b"] .mockup-tree-row[data-selected],
+    [data-variant="b"] .mockup-mem-row[data-selected] {
+      background: var(--ac-color-text-primary);
+      color: var(--ac-color-surface-canvas);
+      border-left-color: transparent;
+    }
+    [data-variant="b"] .mockup-tree-row[data-selected] .mockup-tree-row__label,
+    [data-variant="b"] .mockup-tree-row[data-selected] .mockup-tree-row__meta,
+    [data-variant="b"] .mockup-mem-row[data-selected] .mockup-mem-row__name,
+    [data-variant="b"] .mockup-mem-row[data-selected] .mockup-mem-row__index {
+      color: var(--ac-color-surface-canvas);
+    }
+    [data-variant="b"] .mockup-tree-row[data-selected] .mockup-tree-row__caret {
+      color: var(--ac-color-surface-canvas);
+    }
+    [data-variant="b"] .mockup-tree-row[data-disabled-by-other-selection] {
+      opacity: 0.55;
+    }
+
+    /* ----------------------------------------------------------------
+       VARIANT C — "Accent-rule + ghost-state secondary"
+       Strategy: selection = 3px accent left-border ONLY (no background
+       fill); normal text becomes bold within the selected row. Muted
+       text stays sepia-warm but darker than the current
+       --ac-color-text-muted (the cream's muted token at #524c3a passes
+       AA but only barely; this variant nudges it to a deeper warm-
+       brown for more comfortable reading). Most subtle of the three.
+       ---------------------------------------------------------------- */
+    [data-variant="c"] {
+      --mockup-secondary: #2f2a20; /* deep warm-brown, ~9.1:1 vs cream */
+    }
+    [data-variant="c"] .mockup-tree-row[data-selected],
+    [data-variant="c"] .mockup-mem-row[data-selected] {
+      border-left: 3px solid var(--ac-color-accent);
+      padding-left: calc(0.5rem - 1px);
+    }
+    [data-variant="c"] .mockup-tree-row[data-selected] .mockup-tree-row__label,
+    [data-variant="c"] .mockup-mem-row[data-selected] .mockup-mem-row__name {
+      color: var(--ac-color-text-primary);
+      font-weight: 700;
+    }
+    [data-variant="c"] .mockup-tree-row[data-disabled-by-other-selection] {
+      opacity: 0.4;
+    }
+
+    /* ----------------------------------------------------------------
+       VARIANT D — "Inverted band + accent rule" (B + C hybrid)
+       Strategy: B's inverse-video band (dark fill, cream text — high
+       contrast "this is selected") PLUS C's 3px accent-red left
+       border. The red rule anchors the row to akai's accent palette
+       without the band having to also be red (which would clash with
+       the rest of the editor's red-as-accent-only convention). Muted
+       text borrows C's deeper warm-brown for AAA reading comfort.
+       ---------------------------------------------------------------- */
+    [data-variant="d"] {
+      --mockup-secondary: #2f2a20; /* AAA muted (~9.1:1 on cream) */
+    }
+    [data-variant="d"] .mockup-tree-row[data-selected],
+    [data-variant="d"] .mockup-mem-row[data-selected] {
+      background: var(--ac-color-text-primary);
+      color: var(--ac-color-surface-canvas);
+      border-left: 3px solid var(--ac-color-accent);
+      padding-left: calc(0.5rem - 1px);
+    }
+    [data-variant="d"] .mockup-tree-row[data-selected] .mockup-tree-row__label,
+    [data-variant="d"] .mockup-tree-row[data-selected] .mockup-tree-row__meta,
+    [data-variant="d"] .mockup-mem-row[data-selected] .mockup-mem-row__name,
+    [data-variant="d"] .mockup-mem-row[data-selected] .mockup-mem-row__index {
+      color: var(--ac-color-surface-canvas);
+    }
+    [data-variant="d"] .mockup-tree-row[data-selected] .mockup-tree-row__caret {
+      color: var(--ac-color-accent);
+    }
+    [data-variant="d"] .mockup-tree-row[data-disabled-by-other-selection] {
+      opacity: 0.55;
+    }
+  </style>
+</head>
+<body>
+  <h1 style="margin: 0 0 1.5rem; font-family: var(--ac-font-display); font-size: 1.5rem; color: var(--ac-color-text-primary);">
+    Library contrast + selection — three directions
+  </h1>
+  <p style="margin: 0 0 2rem; font-family: var(--ac-font-body); font-size: 0.95rem; color: var(--ac-color-text-muted); max-width: 60rem;">
+    Each variant shows the same disk-tree + device-memory panel pair, with one item selected in the DISK view only (the memory view shows its previous selection ghosted out to demonstrate the single-selection-across-panels contract). Operator picks one; the chosen variant becomes the production palette + selection treatment.
+  </p>
+
+  <div class="mockup-grid">
+    <!-- ==================== VARIANT A ==================== -->
+    <section class="mockup-variant" data-variant="a">
+      <div class="mockup-variant-label">A · AA-grade muted + accent-tint selection</div>
+      <div class="mockup-variant-desc">
+        Muted text deepened to <code>#3a3528</code> (~7.5:1 on cream — comfortably above WCAG AA). Selection = accent-tinted background fill + 3px accent left-border. Matches the <code>.ac-list-row[aria-current]</code> pattern already used on Programs / Samples / Keygroups lists, so the library page becomes consistent with the rest of the editor.
+      </div>
+
+      <div class="mockup-panel">
+        <div class="mockup-panel-title">Disks</div>
+        <div class="mockup-tree-row">
+          <span class="mockup-tree-row__caret">▸</span>
+          <span class="mockup-tree-row__label">3  SCSI HD</span>
+          <span class="mockup-tree-row__meta">540 MB</span>
+        </div>
+        <div class="mockup-tree-row">
+          <span class="mockup-tree-row__caret">▾</span>
+          <span class="mockup-tree-row__label">5  SCSI HD</span>
+          <span class="mockup-tree-row__meta">500 MB</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 1.25rem;">
+          <span class="mockup-tree-row__caret">▾</span>
+          <span class="mockup-tree-row__label">VOLUME 005</span>
+          <span class="mockup-tree-row__meta">6 files</span>
+        </div>
+        <div class="mockup-eyebrow" style="padding-left: 2rem;">PROGRAMS (6)</div>
+        <div class="mockup-tree-row" data-selected style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">BAGUETTES</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">LMK</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">SHIB.01</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+      </div>
+
+      <div class="mockup-panel">
+        <div class="mockup-panel-title">Device Memory</div>
+        <div class="mockup-eyebrow">PROGRAMS (2)</div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">0:</span>
+          <span class="mockup-mem-row__name">TEST PRO CPY</span>
+        </div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">1:</span>
+          <span class="mockup-mem-row__name">TEST PRO CPY</span>
+        </div>
+        <div class="mockup-eyebrow">SAMPLES (4)</div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">0:</span>
+          <span class="mockup-mem-row__name">SINE</span>
+        </div>
+      </div>
+      <div class="mockup-active-marker">Disk view owns selection. Memory rows ghosted (opacity 0.55) to signal "no active selection here."</div>
+      <div class="mockup-contrast-callout">Muted contrast 7.5:1 (AA pass, comfortable)<br>Selected row contrast 12.1:1 (AAA)</div>
+    </section>
+
+    <!-- ==================== VARIANT B ==================== -->
+    <section class="mockup-variant" data-variant="b">
+      <div class="mockup-variant-label">B · Inverted-band selection</div>
+      <div class="mockup-variant-desc">
+        Muted text at <code>#3f3a2e</code> (~6.8:1, AA). Selection = inverse-video band — dark fill, cream text. References classic Mac OS reverse-highlight + the S3000XL's own LCD active-row treatment. High contrast intentionally inverted to make "active" unmistakable.
+      </div>
+
+      <div class="mockup-panel">
+        <div class="mockup-panel-title">Disks</div>
+        <div class="mockup-tree-row">
+          <span class="mockup-tree-row__caret">▸</span>
+          <span class="mockup-tree-row__label">3  SCSI HD</span>
+          <span class="mockup-tree-row__meta">540 MB</span>
+        </div>
+        <div class="mockup-tree-row">
+          <span class="mockup-tree-row__caret">▾</span>
+          <span class="mockup-tree-row__label">5  SCSI HD</span>
+          <span class="mockup-tree-row__meta">500 MB</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 1.25rem;">
+          <span class="mockup-tree-row__caret">▾</span>
+          <span class="mockup-tree-row__label">VOLUME 005</span>
+          <span class="mockup-tree-row__meta">6 files</span>
+        </div>
+        <div class="mockup-eyebrow" style="padding-left: 2rem;">PROGRAMS (6)</div>
+        <div class="mockup-tree-row" data-selected style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">BAGUETTES</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">LMK</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">SHIB.01</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+      </div>
+
+      <div class="mockup-panel">
+        <div class="mockup-panel-title">Device Memory</div>
+        <div class="mockup-eyebrow">PROGRAMS (2)</div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">0:</span>
+          <span class="mockup-mem-row__name">TEST PRO CPY</span>
+        </div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">1:</span>
+          <span class="mockup-mem-row__name">TEST PRO CPY</span>
+        </div>
+        <div class="mockup-eyebrow">SAMPLES (4)</div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">0:</span>
+          <span class="mockup-mem-row__name">SINE</span>
+        </div>
+      </div>
+      <div class="mockup-active-marker">Disk view owns selection (inverse-video band). Memory rows ghosted (opacity 0.55).</div>
+      <div class="mockup-contrast-callout">Muted contrast 6.8:1 (AA pass)<br>Inverted-band contrast 12.1:1 (AAA)</div>
+    </section>
+
+    <!-- ==================== VARIANT C ==================== -->
+    <section class="mockup-variant" data-variant="c">
+      <div class="mockup-variant-label">C · Accent-rule + bold selection</div>
+      <div class="mockup-variant-desc">
+        Muted text at <code>#2f2a20</code> (~9.1:1, AAA — most comfortable reading). Selection = 3px accent left-border ONLY, with the selected row's label going bold + primary-color. No background fill. The most restrained / typography-driven of the three; closest to LCD/manual aesthetic.
+      </div>
+
+      <div class="mockup-panel">
+        <div class="mockup-panel-title">Disks</div>
+        <div class="mockup-tree-row">
+          <span class="mockup-tree-row__caret">▸</span>
+          <span class="mockup-tree-row__label">3  SCSI HD</span>
+          <span class="mockup-tree-row__meta">540 MB</span>
+        </div>
+        <div class="mockup-tree-row">
+          <span class="mockup-tree-row__caret">▾</span>
+          <span class="mockup-tree-row__label">5  SCSI HD</span>
+          <span class="mockup-tree-row__meta">500 MB</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 1.25rem;">
+          <span class="mockup-tree-row__caret">▾</span>
+          <span class="mockup-tree-row__label">VOLUME 005</span>
+          <span class="mockup-tree-row__meta">6 files</span>
+        </div>
+        <div class="mockup-eyebrow" style="padding-left: 2rem;">PROGRAMS (6)</div>
+        <div class="mockup-tree-row" data-selected style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">BAGUETTES</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">LMK</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">SHIB.01</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+      </div>
+
+      <div class="mockup-panel">
+        <div class="mockup-panel-title">Device Memory</div>
+        <div class="mockup-eyebrow">PROGRAMS (2)</div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">0:</span>
+          <span class="mockup-mem-row__name">TEST PRO CPY</span>
+        </div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">1:</span>
+          <span class="mockup-mem-row__name">TEST PRO CPY</span>
+        </div>
+        <div class="mockup-eyebrow">SAMPLES (4)</div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">0:</span>
+          <span class="mockup-mem-row__name">SINE</span>
+        </div>
+      </div>
+      <div class="mockup-active-marker">Disk view owns selection (accent rule + bold). Memory rows ghosted (opacity 0.4 — more aggressive de-emphasis to make the active panel pop).</div>
+      <div class="mockup-contrast-callout">Muted contrast 9.1:1 (AAA — most comfortable)<br>Selected row contrast 12.1:1 + bold</div>
+    </section>
+
+    <!-- ==================== VARIANT D ==================== -->
+    <section class="mockup-variant" data-variant="d">
+      <div class="mockup-variant-label">D · Inverted band + accent rule (B + C hybrid)</div>
+      <div class="mockup-variant-desc">
+        B's inverse-video selection band (dark fill, cream text) anchored by C's 3px accent-red left rule. Muted text at <code>#2f2a20</code> (~9.1:1 AAA). The red rule grounds the selection in akai's accent palette without making the whole band red. Caret on the selected row stays red for color continuity with the rule.
+      </div>
+
+      <div class="mockup-panel">
+        <div class="mockup-panel-title">Disks</div>
+        <div class="mockup-tree-row">
+          <span class="mockup-tree-row__caret">▸</span>
+          <span class="mockup-tree-row__label">3  SCSI HD</span>
+          <span class="mockup-tree-row__meta">540 MB</span>
+        </div>
+        <div class="mockup-tree-row">
+          <span class="mockup-tree-row__caret">▾</span>
+          <span class="mockup-tree-row__label">5  SCSI HD</span>
+          <span class="mockup-tree-row__meta">500 MB</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 1.25rem;">
+          <span class="mockup-tree-row__caret">▾</span>
+          <span class="mockup-tree-row__label">VOLUME 005</span>
+          <span class="mockup-tree-row__meta">6 files</span>
+        </div>
+        <div class="mockup-eyebrow" style="padding-left: 2rem;">PROGRAMS (6)</div>
+        <div class="mockup-tree-row" data-selected style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">BAGUETTES</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">LMK</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+        <div class="mockup-tree-row" style="padding-left: 2rem;">
+          <span class="mockup-tree-row__label">SHIB.01</span>
+          <span class="mockup-tree-row__meta">2K</span>
+        </div>
+      </div>
+
+      <div class="mockup-panel">
+        <div class="mockup-panel-title">Device Memory</div>
+        <div class="mockup-eyebrow">PROGRAMS (2)</div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">0:</span>
+          <span class="mockup-mem-row__name">TEST PRO CPY</span>
+        </div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">1:</span>
+          <span class="mockup-mem-row__name">TEST PRO CPY</span>
+        </div>
+        <div class="mockup-eyebrow">SAMPLES (4)</div>
+        <div class="mockup-mem-row" data-disabled-by-other-selection>
+          <span class="mockup-mem-row__index">0:</span>
+          <span class="mockup-mem-row__name">SINE</span>
+        </div>
+      </div>
+      <div class="mockup-active-marker">Disk view owns selection (inverse band + red rule). Memory rows ghosted (opacity 0.55).</div>
+      <div class="mockup-contrast-callout">Muted contrast 9.1:1 (AAA)<br>Inverted-band contrast 12.1:1 (AAA)<br>+ red rule anchors selection to accent palette</div>
+    </section>
+  </div>
+</body>
+</html>

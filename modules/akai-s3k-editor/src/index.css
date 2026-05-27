@@ -279,6 +279,134 @@
   }
 
   /* ================================================================
+   * Akai-scope remap of Tailwind dark-mode color utilities.
+   *
+   * Operator visual review 2026-05-26 caught two issues on the
+   * library page (cream canvas):
+   *   1. Tailwind utility classes like `text-gray-400` (= #9ca3af)
+   *      and `text-gray-500` (= #6b7280) render at ~2.2:1 / ~2.9:1
+   *      contrast on cream — fail WCAG AA (4.5:1 minimum). The akai
+   *      design tokens DO pass AA when used, but the library
+   *      sub-components (DiskBrowserPanel, DeviceMemoryPanel,
+   *      S3kItemPreviewPanel) inherit pre-design-system Tailwind
+   *      classes that bypass them.
+   *   2. The blue-600 selection chrome (`bg-blue-600 text-white`)
+   *      clashes with akai's red-accent palette.
+   *
+   * Operator picked Variant D from
+   * docs/.../mockups/library-contrast-options.html — inverted-band
+   * dark fill + cream text + 3px accent left rule.
+   *
+   * Long-term fix: remove the Tailwind utility classes from the
+   * library TSX (regime-holdout cleanup). Short-term: scoped CSS
+   * remap below makes those classes resolve to the akai palette in
+   * akai context only, so contrast + selection treatment immediately
+   * pass WCAG AA + match Variant D without touching 60+ call sites.
+   * Roland (which still WANTS the dark-mode Tailwind colors) is
+   * unaffected because `[data-editor='s3000xl']` doesn't match its
+   * `[data-editor='roland']` root.
+   *
+   * Specificity: `[data-editor='s3000xl'] .text-gray-400` is 0,2,0;
+   * Tailwind's `.text-gray-400` is 0,1,0. The remap wins cleanly
+   * without `!important`.
+   * ================================================================ */
+
+  /* Muted-text band: every Tailwind class that previously rendered as
+     "secondary / metadata" gray gets remapped to the akai muted token
+     (which is now AAA after the tokens.css update). Covers the entire
+     text-gray-400/500/600 range that library components use for
+     eyebrows, slot numbers, italic placeholders, etc. */
+  [data-editor='s3000xl'] .text-gray-400,
+  [data-editor='s3000xl'] .text-gray-500,
+  [data-editor='s3000xl'] .text-gray-600 {
+    color: var(--ac-color-text-muted);
+  }
+
+  /* Primary-text band: the lighter Tailwind grays were meant to be
+     "primary readable text on dark bg." On the akai cream canvas,
+     they map to the akai primary text color. */
+  [data-editor='s3000xl'] .text-gray-100,
+  [data-editor='s3000xl'] .text-gray-200,
+  [data-editor='s3000xl'] .text-gray-300 {
+    color: var(--ac-color-text-primary);
+  }
+
+  /* Inline input background (e.g., the inline-rename input at
+     DeviceMemoryPanel.tsx:97). The Tailwind `bg-gray-800` reads as a
+     dark editor field; remap to a subtle inset surface that reads as
+     "input on the cream panel". */
+  [data-editor='s3000xl'] .bg-gray-700,
+  [data-editor='s3000xl'] .bg-gray-800,
+  [data-editor='s3000xl'] .bg-gray-900 {
+    background: color-mix(in srgb, var(--ac-color-surface-panel) 70%, transparent);
+  }
+
+  /* Selection treatment — Variant D. Tailwind's `bg-blue-600 text-white`
+     was the previous "this row is selected" chrome. Remap to:
+       - inverted band: --ac-color-text-primary background + cream text
+       - 3px accent-red left border
+     This is the SELECTED-ROW visual contract for ANY akai context that
+     uses Tailwind's blue. Hover state (`bg-gray-700` for non-selected
+     row hover) inherits the muted-bg remap above — subtle warm tint. */
+  [data-editor='s3000xl'] .bg-blue-600 {
+    background: var(--ac-color-text-primary);
+    border-left: 3px solid var(--ac-color-accent);
+    padding-left: calc(0.5rem - 1px);
+  }
+  [data-editor='s3000xl'] .text-white,
+  [data-editor='s3000xl'] .bg-blue-600.text-white,
+  [data-editor='s3000xl'] .bg-blue-600 .text-blue-200,
+  [data-editor='s3000xl'] .text-blue-200 {
+    color: var(--ac-color-surface-canvas);
+  }
+
+  /* Drag-over hover affordance (currently Tailwind blue-tinted ring).
+     Remap to a subtle accent-tinted ring so drop targets still feel
+     "active" without the blue clash. Used by DeviceMemoryPanel.tsx
+     drop zones (lines 383, 443) + DiskBrowserPanel drop-target rows. */
+  [data-editor='s3000xl'] .bg-blue-900\/30 {
+    background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
+  }
+  [data-editor='s3000xl'] .ring-blue-500\/50 {
+    --tw-ring-color: color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  }
+  [data-editor='s3000xl'] .border-blue-500\/50,
+  [data-editor='s3000xl'] .border-blue-500 {
+    border-color: color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  }
+  [data-editor='s3000xl'] .text-blue-400 {
+    color: var(--ac-color-accent);
+  }
+
+  /* TreeView selection — same Variant D treatment as the .bg-blue-600
+     override above. The library TreeView (editor-core/src/components/
+     library/TreeView.tsx) doesn't use Tailwind blue; it uses its own
+     `.ac-tree-node--selected` class which defaults to Variant A
+     (12% accent tint background + accent-color text + accent-color
+     left border). Akai context overrides to inverted band + cream text
+     + 3px accent left border so the chrome stays consistent with the
+     DeviceMemoryPanel selection treatment. */
+  [data-editor='s3000xl'] .ac-tree-node--selected {
+    background: var(--ac-color-text-primary);
+    border-left-color: var(--ac-color-accent);
+    color: var(--ac-color-surface-canvas);
+  }
+  [data-editor='s3000xl'] .ac-tree-node--selected .ac-tree-icon,
+  [data-editor='s3000xl'] .ac-tree-node--selected .ac-tree-item-tag,
+  [data-editor='s3000xl'] .ac-tree-node--selected .ac-tree-node-name,
+  [data-editor='s3000xl'] .ac-tree-node--selected .ac-tree-node-meta {
+    color: var(--ac-color-surface-canvas);
+  }
+  [data-editor='s3000xl'] .ac-tree-node--selected .ac-tree-delete-btn {
+    color: var(--ac-color-surface-canvas);
+    opacity: 0.7;
+  }
+  [data-editor='s3000xl'] .ac-tree-node--selected .ac-tree-delete-btn:hover {
+    opacity: 1;
+    color: var(--ac-color-accent);
+  }
+
+  /* ================================================================
    * Zone Overview disclosure (chevron toggle in the toolbar) +
    * collapsed summary stripe (shown when the chart is collapsed).
    *

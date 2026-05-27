@@ -241,7 +241,12 @@
   --ac-color-surface-panel: #c8c0a4;
   --ac-color-border-subtle: #8c8460;
   --ac-color-text-primary: #1a1812;
-  --ac-color-text-muted: #524c3a;
+  /* Muted text deepened 2026-05-26 from #524c3a (~5.5:1 — bare AA) to
+     #2f2a20 (~9.1:1 AAA) per operator visual review. The prior value
+     technically passed AA but was hard to read on cream at small sizes
+     (eyebrows, slot numbers, secondary metadata). The new value
+     matches Variant D from docs/.../mockups/library-contrast-options.html. */
+  --ac-color-text-muted: #2f2a20;
   --ac-color-text: #1a1812;
   --ac-color-fg: #1a1812;
 
