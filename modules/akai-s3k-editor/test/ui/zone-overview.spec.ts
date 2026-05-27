@@ -233,10 +233,12 @@ test.describe('Zone Overview Test Harness', () => {
     // Already at full range (default state), so notes 85-127 are empty space.
 
     // The viz area is the div that contains the zone rects.
-    // It is inside the overview container (bg-gray-900/70) and positioned after
-    // the left label area. We find the zone rects' parent container.
+    // It is inside the overview container (`.ac-zone-overview-chart` —
+    // formerly Tailwind `bg-gray-900/70` before the chart full-bleed
+    // refactor) and positioned after the left label area. We find the
+    // zone rects' parent container.
     const vizArea = page
-      .locator('.bg-gray-900\\/70')
+      .locator('.ac-zone-overview-chart')
       .first()
       .locator('> div')
       .nth(1); // second child is the viz area (first is velocity labels)

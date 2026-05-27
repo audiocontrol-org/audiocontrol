@@ -485,6 +485,34 @@
     outline: none;
   }
 
+  /* Zone overview chart frame — full-bleed dark band that fills the
+     .ac-detail-scroll content width edge-to-edge. The chart itself
+     uses a dark canvas (chart is a data-viz surface; reads best on
+     dark) so the wrapper gets a hairline border ABOVE+BELOW only to
+     bracket the band without re-introducing the indented-island look
+     the operator caught 2026-05-27. */
+  .ac-zone-overview-chart-frame {
+    margin: 0 0 var(--ac-space-3);
+  }
+
+  .ac-zone-overview-chart {
+    position: relative;
+    overflow: hidden;
+    background: rgba(17, 24, 39, 0.7);
+    border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+    border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  }
+
+  .ac-zone-overview-chart-frame--empty {
+    padding: var(--ac-space-4);
+    color: var(--ac-color-text-muted);
+    font-size: var(--ac-text-sm);
+    text-align: center;
+    background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+    border-top: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+    border-bottom: var(--ac-rule-hairline) solid var(--ac-color-border-subtle);
+  }
+
   .ac-zone-summary-stripe {
     display: flex;
     flex-direction: row;

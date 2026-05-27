@@ -253,7 +253,7 @@ function ZoneOverviewExpanded({
 
   if (keygroupCount === 0) {
     return (
-      <div className="mx-4 mb-3 p-4 rounded bg-gray-800/50 text-gray-500 text-sm text-center">
+      <div className="ac-zone-overview-chart-frame ac-zone-overview-chart-frame--empty">
         No keygroups to display.
       </div>
     );
@@ -270,9 +270,15 @@ function ZoneOverviewExpanded({
   const visibleMarkers = getVisibleOctaveMarkers(noteRange);
 
   return (
-    <div className="mx-4 mb-3">
+    // Full-bleed: chart fills .ac-detail-scroll's content width edge-to-edge,
+    // bottom margin only. Operator visual review 2026-05-27: the prior
+    // `mx-4` horizontal margin made the chart look indented from the
+    // container without a visible enclosing border to justify the gap —
+    // weird in-between state. Edge-to-edge bleed reads as "chart band",
+    // matching how a video player or LCD strip would sit in its surface.
+    <div className="ac-zone-overview-chart-frame">
       <div
-        className="relative rounded bg-gray-900/70 border border-gray-700 overflow-hidden"
+        className="ac-zone-overview-chart"
         style={{ height: '240px' }}
       >
         {/* Velocity axis labels */}
