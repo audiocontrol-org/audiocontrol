@@ -30,6 +30,7 @@ import { tmpdir } from 'node:os';
 import { errorMessage } from './util/typeguards.js';
 import { runScannerSubprocess, type ScannerRun } from './util/run-scanner.js';
 import { EXCLUDES_PATHS_SCENARIOS } from './anti-patterns.excludes-scenarios.js';
+import { CANONICAL_FILE_SCENARIOS } from './anti-patterns.canonical-file-scenarios.js';
 
 const SCANNER_ENTRY = 'tools/scope-discovery/check-anti-patterns.ts';
 
@@ -351,6 +352,9 @@ async function runAll(): Promise<readonly ScenarioResult[]> {
     scenarioMalformedRegistry,
     // AUDIT-20260522-04 — `excludes_paths:` field (sibling scenarios file).
     ...EXCLUDES_PATHS_SCENARIOS,
+    // AUDIT-20260524-08 Part B — `canonical_implementation_file:` field
+    // + auto-exclude + missing-file fail-loud.
+    ...CANONICAL_FILE_SCENARIOS,
     scenarioGuttedStub,
   ];
   const results: ScenarioResult[] = [];

@@ -102,7 +102,12 @@ function renderTable(matrix: SymmetryMatrix): string {
 }
 
 function renderRow(row: MatrixRow): string[] {
-  const label = `${row.entry.id} (\`${row.entry.from}\`)`;
+  // `entry.from` is a non-empty array (AUDIT-08). `from[0]` is the
+  // primary / current canonical path; any additional aliases are
+  // transitional and not surfaced in the matrix label to keep cells
+  // narrow. The detail block below renders the full list for entries
+  // that have multiple paths.
+  const label = `${row.entry.id} (\`${row.entry.from[0]}\`)`;
   return [label, ...row.cells.map(renderCell)];
 }
 
@@ -144,7 +149,10 @@ function renderSuggestions(matrix: SymmetryMatrix): readonly string[] {
       .filter(({ cell }) => cell.status === 'missing' || cell.status === 'partial');
     if (missing.length === 0) continue;
     const lines: string[] = [];
-    lines.push(`### ${row.entry.id} — \`${row.entry.from}\``);
+    // `entry.from` is a non-empty array (AUDIT-08). Render only the
+    // primary canonical path in the suggestions heading; the gate's
+    // per-file output names the full list when alias paths matter.
+    lines.push(`### ${row.entry.id} — \`${row.entry.from[0]}\``);
     lines.push('');
     for (const { cell, editor } of missing) {
       const glyph = STATUS_GLYPH[cell.status];

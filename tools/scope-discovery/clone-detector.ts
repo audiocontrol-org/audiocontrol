@@ -55,9 +55,10 @@ import {
   type CloneDiff,
   type CloneGroup,
   type ClonesYaml,
+  ClonesYamlParseError,
   diffClones,
   mergeDispositions,
-  parseClonesYaml,
+  parseClonesYamlStrict,
   serializeClonesYaml,
 } from './clones-yaml.js';
 import { JSCPD_REPORT_PATH, parseJscpdReport, runJscpd } from './jscpd-runner.js';
@@ -101,21 +102,29 @@ function parseCli(argv: readonly string[]): Cli {
   return { root, quiet, json, baselinePath, refreshBaseline, diff };
 }
 
+/**
+ * Read the baseline file.
+ *
+ * Returns null ONLY when the file is truly absent (ENOENT). When the file
+ * exists but parses to a shape error, throws `ClonesYamlParseError` so
+ * the detector exits 2 with an actionable diagnostic — silently treating
+ * a malformed-but-present baseline as null would let the subsequent
+ * `--refresh-baseline` write wipe every operator disposition without a
+ * visible diff (AUDIT-20260524-14).
+ *
+ * `RefactorPreconditionError` from `parseClonesYamlStrict` also
+ * propagates — refactor-only field errors were already loud and the
+ * strict path preserves that contract.
+ */
 async function readBaseline(path: string): Promise<ClonesYaml | null> {
+  let text: string;
   try {
-    const text = await readFile(path, 'utf8');
-    const parsed = parseClonesYaml(text);
-    if (parsed === null) {
-      console.error(
-        `warning: ${path} did not parse as a clones.yaml document; treating as empty baseline.`,
-      );
-      return null;
-    }
-    return parsed;
+    text = await readFile(path, 'utf8');
   } catch (err) {
     if (isEnoent(err)) return null;
     throw err;
   }
+  return parseClonesYamlStrict(text);
 }
 
 async function writeBaseline(path: string, doc: ClonesYaml): Promise<void> {
@@ -145,6 +154,45 @@ function summaryLine(diff: CloneDiff): string {
 }
 
 /**
+ * Per-NEW-group operator hint: a pre-filled `batch-dispose.ts` command
+ * the operator can paste-and-edit instead of hand-writing a YAML entry
+ * at the right insertion point in docs/scope-discovery/clones.yaml.
+ *
+ * Closes AUDIT-20260524-09 (TF-003 from akai-harmonization): the prior
+ * NEW-group output named the id and member files but never cited the
+ * existing `tools/scope-discovery/batch-dispose.ts` automation, so
+ * operators reinvented the manual workflow each time.
+ *
+ * Emitted ADDITIVELY — every existing NEW-group line is preserved so
+ * downstream consumers grepping for `NEW    <id>` or member paths
+ * continue to work. DROPPED groups intentionally do NOT get this hint:
+ * they are removed via the clones-yaml refresh (`make refresh-clones-baseline`),
+ * not via batch-dispose.
+ *
+ * The `indent` parameter matches each caller's existing per-group
+ * indentation: `reportHuman` indents NEW lines by 2 spaces (default
+ * mode); `reportDiff` does not indent (--diff mode is the strict
+ * subset). The hint is indented one level deeper than the `NEW` line
+ * itself so the visual hierarchy stays consistent within each caller.
+ */
+function batchDisposeHintLines(id: string, indent: string): readonly string[] {
+  const lead = `${indent}  Run:  `;
+  const cont = `${indent}          `;
+  return [
+    `${lead}tsx tools/scope-discovery/batch-dispose.ts \\\n`,
+    `${cont}--ids ${id} \\\n`,
+    `${cont}--disposition <refactor|keep-with-reason|ignore-with-justification> \\\n`,
+    `${cont}--reason "<one-line rationale>"\n`,
+  ];
+}
+
+function writeBatchDisposeHint(id: string, indent: string): void {
+  for (const line of batchDisposeHintLines(id, indent)) {
+    process.stdout.write(line);
+  }
+}
+
+/**
  * Emit only NEW + DROPPED group sections plus the summary line. Subset
  * of the default-mode output; the full per-group listing is omitted.
  */
@@ -152,6 +200,7 @@ function reportDiff(diff: CloneDiff): void {
   for (const g of diff.newGroups) {
     process.stdout.write(`NEW    ${g.id} (${g.lines} lines)\n`);
     for (const m of g.members) process.stdout.write(`         ${m}\n`);
+    writeBatchDisposeHint(g.id, '');
   }
   for (const g of diff.droppedGroups) {
     process.stdout.write(`DROPPED ${g.id} (${g.lines} lines)\n`);
@@ -185,6 +234,7 @@ function reportHuman(opts: ReportOpts): void {
   for (const g of diff.newGroups) {
     process.stdout.write(`  NEW    ${g.id} (${g.lines} lines)\n`);
     for (const m of g.members) process.stdout.write(`           ${m}\n`);
+    writeBatchDisposeHint(g.id, '  ');
   }
 }
 
@@ -210,7 +260,26 @@ async function main(): Promise<number> {
   const detectedGroups = parseJscpdReport(reportText);
 
   const baselineAbs = resolve(REPO_ROOT, cli.baselinePath);
-  const baseline = await readBaseline(baselineAbs);
+  let baseline: ClonesYaml | null;
+  try {
+    baseline = await readBaseline(baselineAbs);
+  } catch (err) {
+    if (err instanceof ClonesYamlParseError) {
+      // AUDIT-20260524-14: refuse to silently overwrite an existing-but-
+      // malformed baseline. The previous lenient behavior treated this
+      // as `null` and the subsequent refresh-write erased every operator
+      // disposition without a diff. Fail loud with the structured reason
+      // so the operator can hand-fix the YAML.
+      console.error(
+        `baseline ${baselineAbs} exists but is malformed:\n  ${err.reason}\n` +
+          `\nRefusing to silently overwrite operator-curated dispositions. ` +
+          `Hand-fix the YAML and re-run, OR explicitly remove the file to ` +
+          `regenerate from scratch.`,
+      );
+      return 2;
+    }
+    throw err;
+  }
   const baselineExisted = baseline !== null;
   const diff = diffClones(detectedGroups, baseline);
 

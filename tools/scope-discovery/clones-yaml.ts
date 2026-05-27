@@ -45,8 +45,7 @@
  * T5.3's pre-commit gate.
  */
 
-import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import { isPlainObject } from './util/typeguards.js';
+import { stringify as stringifyYaml } from 'yaml';
 import {
   RefactorPreconditionError,
   type RefactorPreconditions,
@@ -107,17 +106,6 @@ export type CloneGroup = NonRefactorCloneGroup | RefactorCloneGroup;
 export interface ClonesYaml {
   readonly generated_at: string;
   readonly clones: CloneGroup[];
-}
-
-const DISPOSITIONS: readonly Disposition[] = [
-  'pending',
-  'keep-with-reason',
-  'ignore-with-justification',
-  'refactor',
-];
-
-function isDisposition(v: unknown): v is Disposition {
-  return typeof v === 'string' && (DISPOSITIONS as readonly string[]).includes(v);
 }
 
 /**
@@ -236,111 +224,17 @@ export function hasRefactorDisposition(g: CloneGroup): g is RefactorCloneGroup {
   return g.disposition === 'refactor';
 }
 
-/**
- * Parse a previously-written clones.yaml. Returns null when the file
- * shape is fundamentally wrong (top-level keys missing, members not a
- * string array, etc.) — we treat malformed yaml as "no baseline" so the
- * next run can rewrite it cleanly via --refresh-baseline.
- *
- * EXCEPTION: when an entry has `disposition: refactor` but is missing
- * any of the five required precondition fields (canonical_side,
- * canonical_reason, tests, tests_proof, and new_shape_summary when
- * canonical_side: "new"), we THROW a `RefactorPreconditionError`. The
- * refactor disposition is operator-authored — silently dropping a
- * malformed refactor entry would let an incomplete declaration ship
- * past the gate. The throw surfaces the missing fields by entry id so
- * the operator can fix the declaration explicitly.
- */
-export function parseClonesYaml(yamlText: string): ClonesYaml | null {
-  const parsed: unknown = parseYaml(yamlText);
-  if (!isPlainObject(parsed)) return null;
-  const generatedAt = parsed['generated_at'];
-  const clones = parsed['clones'];
-  if (typeof generatedAt !== 'string') return null;
-  if (!Array.isArray(clones)) return null;
-  const out: CloneGroup[] = [];
-  const refactorErrors: string[] = [];
-  for (const entry of clones) {
-    const result = entryToGroup(entry);
-    if (result.kind === 'shape-error') return null;
-    if (result.kind === 'refactor-error') {
-      refactorErrors.push(...result.errors);
-      continue;
-    }
-    out.push(result.group);
-  }
-  if (refactorErrors.length > 0) {
-    throw new RefactorPreconditionError(refactorErrors);
-  }
-  return { generated_at: generatedAt, clones: out };
-}
-
-type EntryResult =
-  | { kind: 'ok'; group: CloneGroup }
-  | { kind: 'shape-error' }
-  | { kind: 'refactor-error'; errors: readonly string[] };
-
-function entryToGroup(entry: unknown): EntryResult {
-  if (!isPlainObject(entry)) return { kind: 'shape-error' };
-  const id = entry['id'];
-  const lines = entry['lines'];
-  const members = entry['members'];
-  const disposition = entry['disposition'];
-  const reason = entry['reason'];
-  // Legacy `tokens` field (pre-fix) is silently ignored if present.
-  // jscpd's per-pair JSON did not surface token counts, so historical
-  // entries had `tokens: 0` — a fabricated default. The field was
-  // removed; we tolerate it on read for back-compat with old baselines.
-  if (typeof id !== 'string') return { kind: 'shape-error' };
-  if (typeof lines !== 'number') return { kind: 'shape-error' };
-  if (!Array.isArray(members)) return { kind: 'shape-error' };
-  const memberStrs: string[] = [];
-  for (const m of members) {
-    if (typeof m !== 'string') return { kind: 'shape-error' };
-    memberStrs.push(m);
-  }
-  if (!isDisposition(disposition)) return { kind: 'shape-error' };
-  const reasonValue: string | null =
-    reason === null || reason === undefined
-      ? null
-      : typeof reason === 'string'
-        ? reason
-        : null;
-  // We intentionally do NOT re-derive the id from members here — we
-  // trust the on-disk value so operators can hand-edit groups without
-  // the tool clobbering their work on the next refresh.
-  if (disposition === 'refactor') {
-    const preconds = validateRefactorPreconditions(entry, id);
-    if (!preconds.ok) {
-      return { kind: 'refactor-error', errors: preconds.errors };
-    }
-    const group: RefactorCloneGroup = {
-      id,
-      lines,
-      members: memberStrs,
-      disposition: 'refactor',
-      reason: reasonValue,
-      canonical_side: preconds.value.canonical_side,
-      canonical_reason: preconds.value.canonical_reason,
-      tests: preconds.value.tests,
-      tests_proof: preconds.value.tests_proof,
-      ...(preconds.value.new_shape_summary !== undefined
-        ? { new_shape_summary: preconds.value.new_shape_summary }
-        : {}),
-    };
-    return { kind: 'ok', group };
-  }
-  return {
-    kind: 'ok',
-    group: {
-      id,
-      lines,
-      members: memberStrs,
-      disposition,
-      reason: reasonValue,
-    },
-  };
-}
+// Parse surface re-exports (AUDIT-20260524-14). The actual parse layer
+// lives in clones-yaml.parse.ts so this host file stays under the
+// 300-500 line cap. Consumers continue to import from clones-yaml.js
+// — the split is transparent at every callsite.
+export {
+  ClonesYamlParseError,
+  parseClonesYaml,
+  parseClonesYamlDetailed,
+  parseClonesYamlStrict,
+} from './clones-yaml.parse.js';
+export type { ParseClonesYamlResult } from './clones-yaml.parse.js';
 
 /** Serialize a ClonesYaml to deterministic YAML text. */
 export function serializeClonesYaml(doc: ClonesYaml): string {

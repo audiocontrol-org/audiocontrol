@@ -29,9 +29,11 @@
  *     --feature <slug> --prd-path <path> [--repo-root <path>]
  */
 
+import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type {
   DiscoveryAgentInput,
+  PrdModuleRelevanceEntry,
   PrdThemedFindings,
   ThemeFinding,
   ThemeOccurrence,
@@ -47,6 +49,7 @@ import {
   runIfMain,
   walkSourceFiles,
 } from './shared.js';
+import { parseModuleRelevance } from './prd-relevance.js';
 import { errorMessage } from '../util/typeguards.js';
 
 /** Tunables for keyword extraction. */
@@ -194,6 +197,55 @@ async function gatherInScopeFiles(
 }
 
 /**
+ * Enumerate the workspace's actual module names (the `modules/<name>/`
+ * directories at the repo root). Passed to `parseModuleRelevance` so
+ * bare module-name mentions in the PRD's scope sections (e.g.,
+ * "d110-editor" without the `modules/` prefix) resolve correctly.
+ *
+ * Returns an empty array when the `modules/` directory is missing —
+ * the relevance parser then degrades to `modules/<name>` path-only
+ * detection (still useful for PRDs that always use the path form).
+ */
+async function listWorkspaceModules(
+  repoRoot: string,
+): Promise<ReadonlyArray<string>> {
+  const modulesAbs = repoAbs(repoRoot, MODULES_DIR);
+  if (!(await isDirectory(modulesAbs))) return [];
+  const entries = await readdir(modulesAbs, { withFileTypes: true });
+  return entries
+    .filter((e) => e.isDirectory() && !e.name.startsWith('.'))
+    .map((e) => e.name)
+    .sort();
+}
+
+/**
+ * Compute the per-module relevance entries from the PRD's scope
+ * sections (AUDIT-20260524-11). Returns undefined when the PRD has
+ * neither "In Scope" nor "Out of Scope" sections so the synthesis
+ * layer's no-signal path (default-medium for every module) kicks in.
+ */
+async function computeModuleRelevance(
+  prdText: string,
+  repoRoot: string,
+): Promise<ReadonlyArray<PrdModuleRelevanceEntry> | undefined> {
+  const workspaceModules = await listWorkspaceModules(repoRoot);
+  const parsed = parseModuleRelevance(prdText, workspaceModules);
+  if (parsed.scores.size === 0) return undefined;
+  const entries: PrdModuleRelevanceEntry[] = [];
+  for (const [module, relevance] of parsed.scores) {
+    entries.push({
+      module,
+      relevance,
+      section: parsed.sections.get(module) ?? '',
+    });
+  }
+  entries.sort((a, b) =>
+    a.module < b.module ? -1 : a.module > b.module ? 1 : 0,
+  );
+  return entries;
+}
+
+/**
  * Public agent entrypoint. Imported by the synthesis layer + `/scope-
  * inventory` skill.
  */
@@ -212,10 +264,12 @@ export async function huntPrdThemes(
     const occurrences = gatherOccurrences({ term: rank.term, scans });
     themes.push({ term: rank.term, occurrences });
   }
+  const moduleRelevance = await computeModuleRelevance(prdText, input.repoRoot);
   return {
     agent: 'prd-themed-pattern-hunter',
     featureSlug: input.featureSlug,
     themes,
+    ...(moduleRelevance !== undefined ? { moduleRelevance } : {}),
   };
 }
 

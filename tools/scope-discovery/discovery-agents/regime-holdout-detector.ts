@@ -123,8 +123,12 @@ async function collectAdopterManifestFindings(
         source: 'adopter-manifest',
         id: manifest.entry.id,
         file: holdout,
-        shape: `expected adopter of '${manifest.entry.from}' (manifest '${manifest.entry.id}') — no canonical import found`,
-        replacement: `import from '${manifest.entry.from}' — ${oneLine(manifest.entry.message)}`,
+        // `entry.from` is a non-empty array (AUDIT-08). Use the
+        // primary canonical path (index 0) in finding-narrative
+        // text; alias paths are transitional and don't add signal
+        // here.
+        shape: `expected adopter of '${manifest.entry.from[0]}' (manifest '${manifest.entry.id}') — no canonical import found`,
+        replacement: `import from '${manifest.entry.from[0]}' — ${oneLine(manifest.entry.message)}`,
         evidence: {
           registryPath: ADOPTER_MANIFESTS_REGISTRY,
           registryId: manifest.entry.id,
@@ -166,7 +170,9 @@ async function collectEditorSymmetryFindings(
         id: composite,
         file: `modules/${editor}/`,
         shape,
-        replacement: `import '${row.entry.from}' across the editor's adopter set — ${oneLine(row.entry.message)}`,
+        // `row.entry.from` is a non-empty array (AUDIT-08); use the
+        // primary canonical path for the replacement narrative.
+        replacement: `import '${row.entry.from[0]}' across the editor's adopter set — ${oneLine(row.entry.message)}`,
         evidence: {
           registryPath: ADOPTER_MANIFESTS_REGISTRY,
           registryId: row.entry.id,

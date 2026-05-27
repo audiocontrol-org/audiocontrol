@@ -63,6 +63,13 @@ import {
   scenarioDiffFlagSubsetOnly,
   scenarioRefreshBaselineSummaryLine,
 } from './clone-detector.polish-scenarios.js';
+import {
+  cleanupBatchDisposeHintFixtures,
+  scenarioDroppedGroupNoCitation,
+  scenarioNewGroupCitesBatchDispose,
+  scenarioNewGroupCitesBatchDisposeDefaultMode,
+  scenarioNoChangesNoCitation,
+} from './clone-detector.batch-dispose-hint-scenarios.js';
 import { runScannerSubprocess, type ScannerRun } from './util/run-scanner.js';
 import { errorMessage } from './util/typeguards.js';
 
@@ -416,6 +423,8 @@ async function cleanupTmp(): Promise<void> {
   // The polish-scenarios file uses its own prefix; delegate cleanup so
   // the symmetric concern stays co-located with the scenarios.
   await cleanupPolishFixtures();
+  // Same shape for AUDIT-20260524-09 batch-dispose-hint scenarios.
+  await cleanupBatchDisposeHintFixtures();
 }
 
 /**
@@ -447,6 +456,10 @@ async function main(): Promise<number> {
     adapt(scenarioMissingCanonicalReason),
     scenarioDiffFlagSubsetOnly,
     scenarioRefreshBaselineSummaryLine,
+    scenarioNewGroupCitesBatchDispose,
+    scenarioNewGroupCitesBatchDisposeDefaultMode,
+    scenarioDroppedGroupNoCitation,
+    scenarioNoChangesNoCitation,
   ];
   const results: ScenarioResult[] = [];
   try {
