@@ -407,6 +407,47 @@
   }
 
   /* ================================================================
+   * Top-nav active-tab visibility — akai-scoped override.
+   *
+   * Operator visual review 2026-05-26: "It's not obvious which tab is
+   * currently selected. There seems to be a missing highlighted
+   * affordance."
+   *
+   * Root cause: shared `.ac-site-nav-link` (layout-primitives.css:377)
+   * uses `--ac-color-text-muted` for inactive tabs and
+   * `--ac-color-text-primary` for active. After the 2026-05-26 AAA
+   * contrast bump (text-muted #2f2a20 vs text-primary #1a1812) the
+   * two colors read nearly identically at a glance — the contrast
+   * gap inactive→active is ~3pp luminance, not enough to feel active
+   * by color change alone. The thin 2px red underline + glow IS the
+   * only real affordance, easy to miss in a 4-tab row.
+   *
+   * Akai-scope fix (roland's dark theme leaves the gap wide enough
+   * to not need this):
+   *   - Inactive tabs use a lighter, lower-contrast color
+   *     (~55% muted = still AA for large eyebrow-size caps text but
+   *      readably "secondary")
+   *   - Active tab bumps to medium weight
+   *   - Underline rule bumps from 2px to 3px + brighter glow
+   *
+   * Roland unaffected.
+   * ================================================================ */
+  [data-editor='s3000xl'] .ac-site-nav-link {
+    color: color-mix(in srgb, var(--ac-color-text-muted) 55%, transparent);
+  }
+  [data-editor='s3000xl'] .ac-site-nav-link:hover {
+    color: var(--ac-color-text-muted);
+  }
+  [data-editor='s3000xl'] .ac-site-nav-link > [data-active='true'] {
+    color: var(--ac-color-text-primary);
+    font-weight: var(--ac-font-weight-medium);
+  }
+  [data-editor='s3000xl'] .ac-site-nav-link > [data-active='true']::after {
+    height: 3px;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--ac-color-accent) 75%, transparent);
+  }
+
+  /* ================================================================
    * Zone Overview disclosure (chevron toggle in the toolbar) +
    * collapsed summary stripe (shown when the chart is collapsed).
    *
