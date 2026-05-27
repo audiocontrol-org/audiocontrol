@@ -6,6 +6,7 @@ import { App } from '@/App';
 import { initLogCapture } from '@audiocontrol/editor-core';
 import '@audiocontrol/editor-core/styles.css';
 import '@/index.css';
+import '@/styles/envelope-lcd-overrides.css';
 
 initLogCapture();
 
