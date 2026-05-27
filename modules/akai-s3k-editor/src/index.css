@@ -252,6 +252,33 @@
    * ================================================================ */
 
   /* ================================================================
+   * Akai list-row name rendering — mono font + tracking.
+   *
+   * S3000XL program / sample / keygroup names are 12-char fixed-width
+   * fields (PRNAME / SHNAME / SNAME1). The device's own LCD displays
+   * them in mono. The default `.ac-list-name` rule uses
+   * `--ac-font-body` which is proportional — in body bold a 12-char
+   * name like "TEST PROGRAM" needs more horizontal space than the
+   * 16rem app-shell list column allows, so the name truncates to
+   * "TEST PRO …" with an ellipsis.
+   *
+   * Override to mono for akai list rows: mono 12ch ≈ 7.2em which fits
+   * comfortably in the column AND visually matches the device's own
+   * display origin. Slight letter-spacing keeps the mono caps
+   * legible at 14px without crowding.
+   *
+   * Operator visual review 2026-05-26 — "Since we know the max length
+   * of program and sample names, why don't we create enough room to
+   * show them in their respective lists?"
+   * ================================================================ */
+
+  .ac-akai-list-row .ac-list-name {
+    font-family: var(--ac-font-mono);
+    font-weight: var(--ac-font-weight-normal);
+    letter-spacing: 0.02em;
+  }
+
+  /* ================================================================
    * Zone Overview disclosure (chevron toggle in the toolbar) +
    * collapsed summary stripe (shown when the chart is collapsed).
    *

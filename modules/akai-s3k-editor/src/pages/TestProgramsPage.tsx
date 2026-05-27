@@ -25,10 +25,15 @@ import type { ProgramHeader, KeygroupHeader } from '@audiocontrol/sampler-device
 
 function buildProgramNames(): string[] {
   // 32 program slots — enough to make the list scroll inside its
-  // bounded column, which is the point of the harness.
-  return Array.from({ length: 32 }, (_, i) =>
-    `TEST PRG ${String(i + 1).padStart(2, '0')}`.padEnd(12),
-  );
+  // bounded column. Names exercise the full 12-char PRNAME max:
+  // "TEST PROGRAM" (12) for slot 1, then a mix of shorter + max-length
+  // names so the visual capture covers both the ellipsis-risk worst
+  // case and the typical case.
+  const names: string[] = ['TEST PROGRAM'];
+  for (let i = 1; i < 32; i++) {
+    names.push(`TEST PRG ${String(i + 1).padStart(2, '0')}`.padEnd(12));
+  }
+  return names;
 }
 
 function buildKeygroupHeaders(): KeygroupHeader[] {
