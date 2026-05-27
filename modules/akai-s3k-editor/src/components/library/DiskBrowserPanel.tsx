@@ -6,7 +6,7 @@
  * Programs display their keygroup structure on selection.
  */
 
-import { useEffect, useState, useImperativeHandle, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, useImperativeHandle, type MouseEvent } from 'react';
 import type { AkaiDiskFileEntry, AkaiDiskVolumeEntry } from '@audiocontrol/sampler-devices/s3k';
 import {
   useDiskBrowser,
@@ -53,7 +53,11 @@ function saveDiskCache(targets: DiskTarget[], volumes: Map<number, VolumeWithFil
   }
 }
 
-const cachedDisk = loadDiskCache();
+// `cachedDisk` is read INSIDE the component (via useMemo) rather than at
+// module-load time so a test harness can seed `sessionStorage` BEFORE
+// mounting the panel — see TestLibraryFullPage for the mock-bridge
+// pattern. Module-level reads are captured once when the JS module
+// evaluates, which races any harness-level seeding.
 
 /** SCSI disk icon */
 function DiskIcon(): JSX.Element {
@@ -134,6 +138,11 @@ export function DiskBrowserPanel({
   selectedFile: controlledSelectedFile,
   onSelectFile: controlledOnSelectFile,
 }: Props) {
+  // Read the disk cache via useMemo so a test harness can seed
+  // sessionStorage before this panel mounts (see TestLibraryFullPage).
+  // Module-level capture would race the harness's useEffect-driven
+  // seeding because the module evaluates once at import time.
+  const cachedDisk = useMemo(() => loadDiskCache(), []);
   const {
     loading,
     error,
