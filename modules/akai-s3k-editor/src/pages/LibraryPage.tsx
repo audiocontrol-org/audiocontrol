@@ -133,6 +133,7 @@ export function LibraryPage(): JSX.Element {
   const selectedDeviceIndex = useLibraryStore((s) => s.selectedDeviceIndex);
   const selectedDeviceType = useLibraryStore((s) => s.selectedDeviceType);
   const setSelectedDevice = useLibraryStore((s) => s.setSelectedDevice);
+  const clearSelectedDevice = useLibraryStore((s) => s.clearSelectedDevice);
 
   const [selection, setSelection] = useState<ItemSelection | null>(null);
   const [sendDialog, setSendDialog] = useState<SendToDeviceDialogState>(SEND_DIALOG_CLOSED);
@@ -140,6 +141,47 @@ export function LibraryPage(): JSX.Element {
   const [diskToLibrary, setDiskToLibrary] = useState<DiskToLibraryDialogState>(DISK_TO_LIBRARY_CLOSED);
   const diskBrowserRef = useRef<DiskBrowserHandle>(null);
   const [dropTransfer, setDropTransfer] = useState<DropTransferState>(DROP_TRANSFER_IDLE);
+
+  /**
+   * Single-selection contract across the library page.
+   *
+   * The disk browser, device memory panel, and library tree each show
+   * their own "selected item" highlight. Prior behavior: each panel
+   * tracked its own selection independently, so the user could see
+   * TWO simultaneous active highlights (e.g., a disk file AND a device
+   * program). Operator 2026-05-26: "there should only be one selected
+   * item (or item group) at a time."
+   *
+   * This page lifts the disk-browser selection out of DiskBrowserPanel
+   * (which now supports controlled mode) and pairs the setters with
+   * cross-clearing logic: any selection in panel A clears panel B's
+   * selection AND vice versa.
+   *
+   * Library tree (driven by `selection` above) stays coupled to the
+   * preview pane and is out of scope for this contract — its semantics
+   * are "what is being previewed" rather than "what is selected per
+   * se", and clearing it on every disk/device click would erase the
+   * preview content the user just opened.
+   */
+  const [selectedDiskFile, setSelectedDiskFileLocal] = useState<AkaiDiskFileEntry | null>(null);
+
+  const selectDiskFile = useCallback(
+    (file: AkaiDiskFileEntry | null) => {
+      setSelectedDiskFileLocal(file);
+      if (file !== null) {
+        clearSelectedDevice();
+      }
+    },
+    [clearSelectedDevice],
+  );
+
+  const selectDeviceItem = useCallback(
+    (type: 'program' | 'sample', index: number) => {
+      setSelectedDevice(type, index);
+      setSelectedDiskFileLocal(null);
+    },
+    [setSelectedDevice],
+  );
 
   /**
    * Ref to the latest transfer callbacks. Used inside handleExternalDrop so
@@ -306,7 +348,10 @@ export function LibraryPage(): JSX.Element {
   const { handleDeviceSelectProgram, handleDeviceSelectSample } = useS3kSelectionHandlers({
     deviceProgramNames,
     deviceSampleNames,
-    setSelectedDevice,
+    // Route device selection through `selectDeviceItem` so the disk
+    // panel's selection clears whenever a device row is clicked
+    // (single-selection contract — see comment on selectDiskFile above).
+    setSelectedDevice: selectDeviceItem,
     setSelection,
     client,
   });
@@ -597,6 +642,8 @@ export function LibraryPage(): JSX.Element {
               <DiskBrowserPanel
                 browserRef={diskBrowserRef}
                 bridgeUrl={getActiveScsiUrl()}
+                selectedFile={selectedDiskFile}
+                onSelectFile={selectDiskFile}
                 onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
                   setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock, ensureFileBlocks });
                 } : undefined}

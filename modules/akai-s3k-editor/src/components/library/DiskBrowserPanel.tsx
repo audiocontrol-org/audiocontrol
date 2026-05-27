@@ -110,9 +110,30 @@ interface Props {
   ) => void;
   /** Ref for imperative access to disk browser state (for drag-drop). */
   browserRef?: React.Ref<DiskBrowserHandle>;
+  /**
+   * Controlled-mode selected-file. When provided, the panel uses this
+   * value instead of its internal selection state — lets a parent
+   * (LibraryPage) coordinate single-selection across panels. When
+   * `undefined`, the panel falls back to its own `useState`.
+   */
+  selectedFile?: AkaiDiskFileEntry | null;
+  /**
+   * Controlled-mode selection callback. Fires on every selection
+   * change (user click on a FileNode). Pair with `selectedFile` for
+   * fully controlled mode. When `undefined`, internal `setSelectedFile`
+   * (uncontrolled) runs instead.
+   */
+  onSelectFile?: (file: AkaiDiskFileEntry | null) => void;
 }
 
-export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, onSendToDevice, browserRef }: Props) {
+export function DiskBrowserPanel({
+  bridgeUrl,
+  onSaveToLibrary,
+  onSendToDevice,
+  browserRef,
+  selectedFile: controlledSelectedFile,
+  onSelectFile: controlledOnSelectFile,
+}: Props) {
   const {
     loading,
     error,
@@ -145,7 +166,13 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, onSendToDevice, b
 
   const [expandedTarget, setExpandedTarget] = useState<number | null>(cachedDisk?.expandedTarget ?? null);
   const [loadingTarget, setLoadingTarget] = useState<number | null>(null);
-  const [selectedFile, setSelectedFile] = useState<AkaiDiskFileEntry | null>(null);
+  // Controlled/uncontrolled selection state. If the parent passes
+  // `selectedFile` + `onSelectFile`, this panel becomes controlled
+  // (parent coordinates single-selection across the library page).
+  // Otherwise the panel manages its own state.
+  const [internalSelectedFile, setInternalSelectedFile] = useState<AkaiDiskFileEntry | null>(null);
+  const selectedFile = controlledSelectedFile !== undefined ? controlledSelectedFile : internalSelectedFile;
+  const setSelectedFile = controlledOnSelectFile ?? setInternalSelectedFile;
   const [savingFile, setSavingFile] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [volumes, setVolumes] = useState<Map<number, VolumeWithFiles[]>>(() => {
