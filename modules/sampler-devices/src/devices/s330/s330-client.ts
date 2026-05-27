@@ -1737,53 +1737,34 @@ export function createS330Client(
          */
         async requestFunctionParameters(): Promise<MultiPartConfig[]> {
             return serialize(async () => {
-                try {
-                    // Read each parameter group separately
-                    const channelData = await requestDataWithAddress(
-                        [0x00, 0x01, 0x00, 0x22],
-                        8
-                    );
-                    const patchData = await requestDataWithAddress(
-                        [0x00, 0x01, 0x00, 0x32],
-                        8
-                    );
+                const channelData = await requestDataWithAddress(
+                    [0x00, 0x01, 0x00, 0x22],
+                    8
+                );
+                const patchData = await requestDataWithAddress(
+                    [0x00, 0x01, 0x00, 0x32],
+                    8
+                );
+                const outputData = await requestDataWithAddress(
+                    [0x00, 0x01, 0x00, 0x42],
+                    8
+                );
+                const levelData = await requestDataWithAddress(
+                    [0x00, 0x01, 0x00, 0x56],
+                    8
+                );
 
-                    let outputData: number[];
-                    try {
-                        outputData = await requestDataWithAddress(
-                            [0x00, 0x01, 0x00, 0x42],
-                            8
-                        );
-                    } catch (err) {
-                        // Output parameters may not exist on all firmware versions
-                        outputData = [1, 1, 1, 1, 1, 1, 1, 1];
-                    }
-
-                    const levelData = await requestDataWithAddress(
-                        [0x00, 0x01, 0x00, 0x56],
-                        8
-                    );
-
-                    const parts: MultiPartConfig[] = [];
-                    for (let i = 0; i < 8; i++) {
-                        parts.push({
-                            channel: channelData[i] ?? 0,
-                            patchIndex: patchData[i] ?? 0,
-                            output: outputData[i] ?? 1,
-                            level: levelData[i] ?? 127,
-                        });
-                    }
-
-                    return parts;
-                } catch (err) {
-                    // Return default configuration
-                    return Array.from({ length: 8 }, (_, i) => ({
-                        channel: i,
-                        patchIndex: 0,
-                        output: 1,
-                        level: 127,
-                    }));
+                const parts: MultiPartConfig[] = [];
+                for (let i = 0; i < 8; i++) {
+                    parts.push({
+                        channel: channelData[i] ?? 0,
+                        patchIndex: patchData[i] ?? 0,
+                        output: outputData[i] ?? 1,
+                        level: levelData[i] ?? 127,
+                    });
                 }
+
+                return parts;
             });
         },
 
@@ -1847,15 +1828,10 @@ export function createS330Client(
             }
 
             return serialize(async () => {
-                let allOutputData: number[];
-                try {
-                    allOutputData = await requestDataWithAddress(
-                        [0x00, 0x01, 0x00, 0x42],
-                        8
-                    );
-                } catch (err) {
-                    allOutputData = [1, 1, 1, 1, 1, 1, 1, 1];
-                }
+                const allOutputData = await requestDataWithAddress(
+                    [0x00, 0x01, 0x00, 0x42],
+                    8
+                );
                 const newOutputData = [...allOutputData];
                 newOutputData[part] = output;
                 await sendData([0x00, 0x01, 0x00, 0x42], newOutputData);

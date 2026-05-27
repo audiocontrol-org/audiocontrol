@@ -1119,52 +1119,34 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
         async requestFunctionParameters(): Promise<MultiPartConfig[]> {
             return serialize(async () => {
-                try {
-                    const channelData = await requestDataWithAddress(
-                        MULTI_CHANNELS_ADDRESS,
-                        MULTI_PART_COUNT
-                    );
-                    const patchData = await requestDataWithAddress(
-                        MULTI_PATCHES_ADDRESS,
-                        MULTI_PART_COUNT
-                    );
+                const channelData = await requestDataWithAddress(
+                    MULTI_CHANNELS_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const patchData = await requestDataWithAddress(
+                    MULTI_PATCHES_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const outputData = await requestDataWithAddress(
+                    MULTI_OUTPUTS_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const levelData = await requestDataWithAddress(
+                    MULTI_LEVELS_ADDRESS,
+                    MULTI_PART_COUNT
+                );
 
-                    let outputData: number[];
-                    try {
-                        outputData = await requestDataWithAddress(
-                            MULTI_OUTPUTS_ADDRESS,
-                            MULTI_PART_COUNT
-                        );
-                    } catch {
-                        // Output parameters may not exist on all firmware versions
-                        outputData = [1, 1, 1, 1, 1, 1, 1, 1];
-                    }
-
-                    const levelData = await requestDataWithAddress(
-                        MULTI_LEVELS_ADDRESS,
-                        MULTI_PART_COUNT
-                    );
-
-                    const parts: MultiPartConfig[] = [];
-                    for (let i = 0; i < MULTI_PART_COUNT; i++) {
-                        parts.push({
-                            channel: channelData[i] ?? 0,
-                            patchIndex: patchData[i] ?? 0,
-                            output: outputData[i] ?? 1,
-                            level: levelData[i] ?? 127,
-                        });
-                    }
-
-                    return parts;
-                } catch {
-                    // Return default configuration
-                    return Array.from({ length: MULTI_PART_COUNT }, (_, i) => ({
-                        channel: i,
-                        patchIndex: 0,
-                        output: 1,
-                        level: 127,
-                    }));
+                const parts: MultiPartConfig[] = [];
+                for (let i = 0; i < MULTI_PART_COUNT; i++) {
+                    parts.push({
+                        channel: channelData[i] ?? 0,
+                        patchIndex: patchData[i] ?? 0,
+                        output: outputData[i] ?? 1,
+                        level: levelData[i] ?? 127,
+                    });
                 }
+
+                return parts;
             });
         },
 
@@ -1228,15 +1210,10 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             }
 
             return serialize(async () => {
-                let allOutputData: number[];
-                try {
-                    allOutputData = await requestDataWithAddress(
-                        MULTI_OUTPUTS_ADDRESS,
-                        MULTI_PART_COUNT
-                    );
-                } catch {
-                    allOutputData = [1, 1, 1, 1, 1, 1, 1, 1];
-                }
+                const allOutputData = await requestDataWithAddress(
+                    MULTI_OUTPUTS_ADDRESS,
+                    MULTI_PART_COUNT
+                );
                 const newOutputData = [...allOutputData];
                 newOutputData[part] = output;
                 await sendData(MULTI_OUTPUTS_ADDRESS, newOutputData);
