@@ -67,6 +67,15 @@ export interface EnvelopeDragPointProps {
   readonly disabled: boolean;
   readonly dragEnabled: boolean;
   readonly ariaLabel: string;
+  /**
+   * Drag axis hint — controls the cursor + hover-scale presentation so a
+   * vertical-only handle (e.g. the ADSR sustain-end point, which only
+   * adjusts sustain LEVEL) doesn't read as a free 2D-drag target. The
+   * actual pointer-event math is still the consumer's responsibility;
+   * the consumer's onPointerMove can simply ignore the constrained axis.
+   * Defaults to `'xy'` (free drag).
+   */
+  readonly axis?: 'x' | 'y' | 'xy';
   readonly onPointerDown: (e: ReactPointerEvent<HTMLButtonElement>) => void;
   readonly onPointerMove?: (e: ReactPointerEvent<HTMLButtonElement>) => void;
   readonly onPointerUp?: (e: ReactPointerEvent<HTMLButtonElement>) => void;
@@ -84,9 +93,15 @@ export interface EnvelopeDragPointProps {
  * Pointer-move / pointer-up only wire when `dragEnabled === true`.
  */
 export function EnvelopeDragPoint(props: EnvelopeDragPointProps): JSX.Element {
+  const axisClass =
+    props.axis === 'y'
+      ? ' ac-envelope-point--axis-y'
+      : props.axis === 'x'
+        ? ' ac-envelope-point--axis-x'
+        : '';
   const className = props.isActive
-    ? 'ac-envelope-point ac-envelope-point--active'
-    : 'ac-envelope-point';
+    ? `ac-envelope-point ac-envelope-point--active${axisClass}`
+    : `ac-envelope-point${axisClass}`;
   return (
     <button
       type="button"

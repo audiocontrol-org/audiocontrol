@@ -19,12 +19,16 @@ function getEnvelopeCanvas(container: HTMLElement): HTMLDivElement {
 }
 
 function getDragButtons(container: HTMLElement): NodeListOf<HTMLButtonElement> {
+  // 4 draggable buttons: attack, decay, sustain (vertical-only, axis='y'),
+  // release. Operator review 2026-05-27 turned the formerly-inert
+  // sustain-end anchor into a real handle so the chrome stopped lying
+  // about being draggable.
   const buttons = container.querySelectorAll<HTMLButtonElement>(
     '.ac-envelope-points button',
   );
-  if (buttons.length !== 3) {
+  if (buttons.length !== 4) {
     throw new Error(
-      `expected 3 ADSR drag buttons (attack/decay/release); got ${buttons.length}`,
+      `expected 4 ADSR drag buttons (attack/decay/sustain/release); got ${buttons.length}`,
     );
   }
   return buttons;
@@ -147,7 +151,9 @@ describe('AcEnvelopeAdsr', () => {
     ).toThrow(/non-finite/);
   });
 
-  it('renders the attack/decay/release buttons as <button>s; origin + sustain-end as inert spans', () => {
+  it('renders the attack/decay/sustain/release buttons as <button>s; origin as an inert span', () => {
+    // 4 draggable buttons (sustain handle added in the operator-review
+    // change). Only the origin point remains an inert span.
     const { container } = render(
       <AcEnvelopeAdsr
         kind="adsr"
@@ -160,9 +166,9 @@ describe('AcEnvelopeAdsr', () => {
       />,
     );
     const buttons = container.querySelectorAll('.ac-envelope-points button');
-    expect(buttons.length).toBe(3);
+    expect(buttons.length).toBe(4);
     const spans = container.querySelectorAll('.ac-envelope-points span');
-    expect(spans.length).toBe(2);
+    expect(spans.length).toBe(1);
   });
 
   it('renders disabled buttons when disabled=true', () => {
@@ -181,7 +187,7 @@ describe('AcEnvelopeAdsr', () => {
     const buttons = container.querySelectorAll<HTMLButtonElement>(
       '.ac-envelope-points button',
     );
-    expect(buttons.length).toBe(3);
+    expect(buttons.length).toBe(4);
     for (const btn of Array.from(buttons)) {
       expect(btn.disabled).toBe(true);
     }
@@ -205,7 +211,7 @@ describe('AcEnvelopeAdsr', () => {
     const buttons = container.querySelectorAll<HTMLButtonElement>(
       '.ac-envelope-points button',
     );
-    expect(buttons.length).toBe(3);
+    expect(buttons.length).toBe(4);
   });
 
   it('drag on the attack point emits onChange({ attack }) per move and onCommit on release', () => {
@@ -229,10 +235,26 @@ describe('AcEnvelopeAdsr', () => {
     expect(typeof lastCall.sustain).toBe('number');
   });
 
+  it('drag on the sustain point emits onChange({ sustain }) only (no horizontal change)', () => {
+    // Sustain handle is vertical-only (axis="y" hint). Pointer drag from
+    // the handle's spawn point UP the canvas decreases pointer.yPct, which
+    // pushes sustain LEVEL up. Decay must NOT appear in the change set.
+    const onChange = vi.fn();
+    const { buttons } = mountAdsrForDrag({ onChange });
+    pointerSequence(buttons[2], 0, 0, 0, -150);
+    expect(onChange).toHaveBeenCalled();
+    const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+    expect(typeof lastCall.sustain).toBe('number');
+    expect(lastCall.decay).toBeUndefined();
+    expect(lastCall.attack).toBeUndefined();
+    expect(lastCall.release).toBeUndefined();
+  });
+
   it('drag on the release point emits onChange({ release })', () => {
     const onChange = vi.fn();
     const { buttons } = mountAdsrForDrag({ onChange });
-    pointerSequence(buttons[2], 0, 0, 380, 200);
+    // Release is now button index 3 (sustain inserted at index 2).
+    pointerSequence(buttons[3], 0, 0, 380, 200);
     const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1][0];
     expect(typeof lastCall.release).toBe('number');
   });

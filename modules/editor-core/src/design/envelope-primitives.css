@@ -224,6 +224,23 @@
     0 0 4px color-mix(in srgb, var(--ac-color-accent) 90%, transparent) inset;
 }
 
+/* Axis-locked drag handles — when a point only adjusts one dimension
+   (e.g. the AcEnvelopeAdsr sustain-end point only changes sustain
+   level), the cursor + hover transform communicate the constraint so
+   the operator doesn't read it as a free 2D-drag target. */
+.ac-envelope-point--axis-y {
+  cursor: ns-resize;
+}
+.ac-envelope-point--axis-y:hover {
+  transform: translate(-50%, -50%) scaleY(1.2);
+}
+.ac-envelope-point--axis-x {
+  cursor: ew-resize;
+}
+.ac-envelope-point--axis-x:hover {
+  transform: translate(-50%, -50%) scaleX(1.2);
+}
+
 .ac-envelope-axis {
   position: absolute;
   left: 1rem;

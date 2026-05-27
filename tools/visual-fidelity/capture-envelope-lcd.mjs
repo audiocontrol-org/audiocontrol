@@ -34,5 +34,11 @@ await page.screenshot({
   path: resolve(OUT_DIR, 'envelope-lcd-filter-tab.png'),
   fullPage: true,
 });
+await page.locator('label.ac-radio-tab', { hasText: /^Amp$/i }).first().click();
+await page.waitForTimeout(600);
+await page.screenshot({
+  path: resolve(OUT_DIR, 'envelope-lcd-amp-tab.png'),
+  fullPage: true,
+});
 await browser.close();
 console.log('OK envelope-lcd-filter-tab');

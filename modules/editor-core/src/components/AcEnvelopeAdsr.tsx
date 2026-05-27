@@ -93,7 +93,7 @@ interface PointXY {
   y: number;
 }
 
-type DragKey = 'attack' | 'decay' | 'release';
+type DragKey = 'attack' | 'decay' | 'sustain' | 'release';
 
 interface DragState {
   key: DragKey;
@@ -137,11 +137,18 @@ export function AcEnvelopeAdsr(props: AcEnvelopeAdsrProps): JSX.Element {
 
   const susY = 100 - (s / maxValue) * 100;
 
-  const points: Array<{ x: number; y: number; key: DragKey | 'origin' | 'sustain-end' }> = [
+  const points: Array<{ x: number; y: number; key: DragKey | 'origin' }> = [
     { x: x0, y: 100, key: 'origin' },
     { x: x1, y: 0, key: 'attack' },
     { x: x2, y: susY, key: 'decay' },
-    { x: x3, y: susY, key: 'sustain-end' },
+    // Sustain-end point: x is fixed at the 75% split, but Y is
+    // draggable to adjust sustain LEVEL. Pre-2026-05-27 this rendered
+    // as an inert anchor that visually mimicked the draggable points;
+    // operator review: "the sustain node on the amp should allow
+    // vertical dragging (not horizontal) -- or, it should not look
+    // draggable." Going with the first option — vertical drag adjusts
+    // sustain level — so the chrome's visual affordance becomes truthful.
+    { x: x3, y: susY, key: 'sustain' },
     { x: x4, y: 100, key: 'release' },
   ];
 
@@ -192,6 +199,18 @@ export function AcEnvelopeAdsr(props: AcEnvelopeAdsrProps): JSX.Element {
         maxValue,
       );
       props.onChange({ decay: newDecay, sustain: newSustain });
+      return;
+    }
+    if (state.key === 'sustain') {
+      // Vertical-only drag: x is fixed at the 75% split; only update
+      // the sustain LEVEL from the pointer Y. The decay point's Y
+      // tracks the same susY value derived from `props.sustain`, so
+      // both handles move in lock-step when the consumer re-renders.
+      const newSustain = clampParam(
+        ((100 - pointer.yPct) / 100) * maxValue,
+        maxValue,
+      );
+      props.onChange({ sustain: newSustain });
       return;
     }
     if (state.key === 'release') {
@@ -245,7 +264,7 @@ export function AcEnvelopeAdsr(props: AcEnvelopeAdsrProps): JSX.Element {
           <div className="ac-envelope-points">
             {points.map((p, i) => {
               const isActive = p.key === dragKey;
-              if (p.key === 'origin' || p.key === 'sustain-end') {
+              if (p.key === 'origin') {
                 return (
                   <EnvelopeAnchorPoint
                     key={i}
@@ -257,6 +276,11 @@ export function AcEnvelopeAdsr(props: AcEnvelopeAdsrProps): JSX.Element {
               }
               const labelText = describePointLabel(p.key, { a, d, s, r });
               const key: DragKey = p.key;
+              // Sustain-end handle is vertically locked (x fixed at the
+              // 75% split). The `axis="y"` hint paints `cursor: ns-resize`
+              // + a vertical-only hover scale so the chrome reads as
+              // "drag me up/down" not "drag me anywhere."
+              const axis: 'x' | 'y' | 'xy' | undefined = key === 'sustain' ? 'y' : undefined;
               return (
                 <EnvelopeDragPoint
                   key={i}
@@ -266,6 +290,7 @@ export function AcEnvelopeAdsr(props: AcEnvelopeAdsrProps): JSX.Element {
                   disabled={disabled}
                   dragEnabled={dragEnabled}
                   ariaLabel={labelText}
+                  axis={axis}
                   onPointerDown={(e) => handlePointerDown(key, e)}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
@@ -309,6 +334,8 @@ function describePointLabel(
       return `Attack ${values.a}`;
     case 'decay':
       return `Decay ${values.d} / Sustain ${values.s}`;
+    case 'sustain':
+      return `Sustain ${values.s}`;
     case 'release':
       return `Release ${values.r}`;
   }
