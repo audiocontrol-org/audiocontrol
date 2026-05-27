@@ -23,6 +23,15 @@ export interface AcEnvelopeTableProps {
   maxTime: number;
   maxLevel: number;
   /**
+   * Header text + aria-label noun for the first value column. Default
+   * 'Time' for legacy callers. Consumers whose device-field is a RATE
+   * (high value = fast = short visible extent — e.g. Akai ENV2R1..R4,
+   * Roland tone rates) should pass `'Rate'` so the column matches the
+   * cumulative-advance graph semantics. Mismatched labels caused the
+   * operator to read the chart as "backwards" (2026-05-27 review).
+   */
+  dimensionLabel?: string;
+  /**
    * 1-based active segment index, or `null` for "no row is active".
    * Pass `null` when the consumer has no segment-selection model (e.g.
    * the akai filter envelope) — every row will render with
@@ -53,6 +62,7 @@ interface FillStyle extends CSSProperties {
 }
 
 export function AcEnvelopeTable(props: AcEnvelopeTableProps): JSX.Element {
+  const dimensionLabel = props.dimensionLabel ?? 'Time';
   return (
     <div
       className="ac-envelope-table"
@@ -64,13 +74,13 @@ export function AcEnvelopeTable(props: AcEnvelopeTableProps): JSX.Element {
           Seg
         </span>
         <span className="ac-envelope-table__head" role="columnheader">
-          {`Time · 0–${props.maxTime}`}
+          {`${dimensionLabel} · 0–${props.maxTime}`}
         </span>
         <span className="ac-envelope-table__head" role="columnheader">
           {`Level · 0–${props.maxLevel}`}
         </span>
       </div>
-      {props.segments.map((seg, i) => renderRow(i + 1, seg, props))}
+      {props.segments.map((seg, i) => renderRow(i + 1, seg, props, dimensionLabel))}
     </div>
   );
 }
@@ -79,6 +89,7 @@ function renderRow(
   index: number,
   seg: AcEnvelopeTableSegment,
   props: AcEnvelopeTableProps,
+  dimensionLabel: string,
 ): JSX.Element {
   const active = index === props.activeSegment;
   const sustain = index === props.sustainSegment;
@@ -118,7 +129,7 @@ function renderRow(
           className="ac-envelope-mini"
           {...(timeInteractive
             ? {}
-            : { role: 'img', 'aria-label': `Time ${seg.time} of ${props.maxTime}` })}
+            : { role: 'img', 'aria-label': `${dimensionLabel} ${seg.time} of ${props.maxTime}` })}
         >
           <div className="ac-envelope-mini__fill" style={timeStyle} />
           {timeInteractive ? (
@@ -130,7 +141,7 @@ function renderRow(
               step={1}
               value={seg.time}
               disabled={rowDisabled}
-              aria-label={`Segment ${index} time`}
+              aria-label={`Segment ${index} ${dimensionLabel.toLowerCase()}`}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 props.onTimeChange?.(index, Number(e.target.value))
               }

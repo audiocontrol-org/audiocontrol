@@ -125,6 +125,7 @@ export function ToneEnvelopeEditor({
       <AcEnvelope
         label={`${label} · 8-SEGMENT`}
         segments={segments}
+        dimensionLabel="Rate"
         sustainSegment={sustainPoint + 1}
         endSegment={endPoint}
         activeSegment={sustainPoint + 1}

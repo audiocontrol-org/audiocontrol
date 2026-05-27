@@ -61,6 +61,17 @@ export interface AcEnvelopeMultiSegmentProps {
   activeSegment: number | null;
   /** Maximum time value; defaults to 127. */
   maxTime?: number;
+  /**
+   * Header text for the per-segment value column in the table + the
+   * aria-label noun. Defaults to `'Time'` for backwards compatibility.
+   * Consumers whose device parameter is a RATE (high value = faster
+   * = shorter visible segment in the cumulative-advance graph model)
+   * should pass `'Rate'`. Akai filter envelope (ENV2R1..R4) and Roland
+   * tone rates both pass `'Rate'`; the column label otherwise reads
+   * "Time · 0–99" while the chart inverts that semantic, which the
+   * operator flagged as the visualization being "backwards" (2026-05-27).
+   */
+  dimensionLabel?: string;
   /** Maximum level value; defaults to 127. */
   maxLevel?: number;
   /** Number of segments the envelope supports total; defaults to 8. */
@@ -155,6 +166,7 @@ function AcEnvelopeMultiSegment(props: AcEnvelopeMultiSegmentProps): JSX.Element
         segments={segments}
         maxTime={maxTime}
         maxLevel={maxLevel}
+        dimensionLabel={props.dimensionLabel}
         activeSegment={activeSegment}
         sustainSegment={sustainSegment}
         onPointSelect={props.onPointSelect}

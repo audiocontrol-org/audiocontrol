@@ -72,6 +72,7 @@ export function KeygroupFilterPanel({
         segments={akaiFilterEnvSegments(header)}
         maxTime={99}
         maxLevel={99}
+        dimensionLabel="Rate"
         sustainSegment={4}
         endSegment={4}
         activeSegment={null}

@@ -26,7 +26,7 @@
  *
  *   2. Slider-primitive wiring defects on the production page — the
  *      AcEnvelopeTable's segment-1 Time slider must expose `role="slider"`
- *      with `aria-label="Segment 1 time"`, must accept a real pointer
+ *      with `aria-label="Segment 1 rate"`, must accept a real pointer
  *      drag, and the drag must propagate through `ToneEnvelopeEditor.
  *      updateRate(0, ...)` to the underlying SamplerEnvelope's `rates[0]`
  *      and back into the rendered slider value. The Tier 2 contract
@@ -174,11 +174,11 @@ test.describe('TonesPage TVF envelope segment-1 Time — Tier 3 in-context (D-TO
 
     // ── CLAIM 1: the slider exists at its published accessible name. ───
     // AcEnvelopeTable renders each segment row's time bar as an
-    // `<input type="range">` with `aria-label="Segment N time"`. We
+    // `<input type="range">` with `aria-label="Segment N rate"`. We
     // narrow to segment 1 (the bug-targeted segment per D-TONE-ENV-02).
     //
     // Disambiguation: both the Filter (TVF) and Amp (TVA) panels host
-    // an envelope with a "Segment 1 time" slider. The inactive panel
+    // an envelope with a "Segment 1 rate" slider. The inactive panel
     // is `display: none` (see `src/styles/tones.css`: the `.tones__panel
     // { display: none }` rule with the `:checked ~` cascade re-enabling
     // only the active panel). Elements under `display: none` are
@@ -190,7 +190,7 @@ test.describe('TonesPage TVF envelope segment-1 Time — Tier 3 in-context (D-TO
     // `visibility: hidden`, which DOES keep the element in the AX
     // tree), the spec fails loudly here rather than quietly matching
     // the wrong slider.
-    const slider = page.getByRole('slider', { name: 'Segment 1 time' });
+    const slider = page.getByRole('slider', { name: 'Segment 1 rate' });
     await expect(slider).toHaveCount(1, { timeout: 5_000 });
     await expect(slider).toBeVisible({ timeout: 5_000 });
 
