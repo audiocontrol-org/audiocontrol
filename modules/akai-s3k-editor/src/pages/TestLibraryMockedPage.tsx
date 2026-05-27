@@ -25,9 +25,9 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { PageTitleRow } from '@audiocontrol/editor-core';
+import { PageTitleRow, type ItemSelection } from '@audiocontrol/editor-core';
 import type { AkaiDiskFileEntry } from '@audiocontrol/sampler-devices/s3k';
-import { FILE_TYPE_PROGRAM } from '@audiocontrol/sampler-devices/s3k';
+import { FILE_TYPE_PROGRAM, isAkaiProgram, isAkaiSample } from '@audiocontrol/sampler-devices/s3k';
 import {
   DiskBrowserPanel,
   DISK_BROWSER_CACHE_KEY,
@@ -35,6 +35,7 @@ import {
   type DiskBrowserHandle,
 } from '@/components/library/DiskBrowserPanel';
 import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
+import { S3kPreviewPanelAdapter } from '@/components/library/S3kItemPreviewPanel';
 import { useLibraryStore } from '@/stores/libraryStore';
 
 /**
@@ -100,14 +101,36 @@ export function TestLibraryMockedPage(): JSX.Element {
   }, [setDeviceProgramNames, setDeviceSampleNames]);
 
   // Single-selection state — disk side lifted to this page so it can
-  // cross-clear the device side, and vice versa. Same shape LibraryPage
-  // uses; this harness exists to verify the contract visually.
+  // cross-clear the device side, and vice versa. Plus a `selection`
+  // state (mirrors LibraryPage's prop to PluginLibraryBrowser) that
+  // drives the preview pane on the right. selectDiskFile synthesizes
+  // a `disk-file`-typed ItemSelection so the preview shows file meta
+  // when a disk file is selected (operator visual review 2026-05-26
+  // "stale preview" bug closure).
   const [selectedDiskFile, setSelectedDiskFileLocal] = useState<AkaiDiskFileEntry | null>(null);
+  const [selection, setSelection] = useState<ItemSelection | null>(null);
 
   const selectDiskFile = useCallback(
     (file: AkaiDiskFileEntry | null) => {
       setSelectedDiskFileLocal(file);
-      if (file !== null) clearSelectedDevice();
+      if (file === null) {
+        setSelection(null);
+        return;
+      }
+      clearSelectedDevice();
+      const isProgram = isAkaiProgram(file.type);
+      const isSample = isAkaiSample(file.type);
+      const fileType = isProgram ? 'Akai Program' : isSample ? 'Akai Sample' : 'Akai disk file';
+      setSelection({
+        categoryId: 'disk',
+        node: {
+          id: `disk-file:${file.entryIndex}:${file.name}`,
+          name: file.name.trim(),
+          type: 'disk-file',
+          meta: { fileType, size: file.size },
+        },
+        meta: { fileType, size: file.size },
+      });
     },
     [clearSelectedDevice],
   );
@@ -116,6 +139,21 @@ export function TestLibraryMockedPage(): JSX.Element {
     (type: 'program' | 'sample', index: number) => {
       setSelectedDevice(type, index);
       setSelectedDiskFileLocal(null);
+      // Mirror production: device-side selection populates the preview
+      // via a synthetic 'device-program' / 'device-sample' node.
+      const names = type === 'program' ? FAKE_DEVICE_PROGRAMS : FAKE_DEVICE_SAMPLES;
+      const name = (names[index] ?? '').trim() || `(slot ${index})`;
+      setSelection({
+        categoryId: type === 'program' ? 'device-programs' : 'device-samples',
+        node: {
+          id: `device-${type}:${index}`,
+          name,
+          type: type === 'program' ? 'device-program' : 'device-sample',
+          meta: { deviceIndex: index },
+        },
+        // Production's S3kPreviewPanelAdapter reads meta.deviceIndex.
+        meta: { deviceIndex: index },
+      });
     },
     [setSelectedDevice],
   );
@@ -131,7 +169,7 @@ export function TestLibraryMockedPage(): JSX.Element {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: '1fr 1fr 1fr',
           gap: '1rem',
           padding: '1rem',
           flex: 1,
@@ -161,6 +199,15 @@ export function TestLibraryMockedPage(): JSX.Element {
             onRefresh={() => { /* no-op in harness */ }}
             isConnected={true}
             isLoading={false}
+          />
+        </div>
+        <div
+          className="ac-plugin-library-browser-preview"
+          style={{ minHeight: 0, overflow: 'hidden' }}
+        >
+          <S3kPreviewPanelAdapter
+            selection={selection}
+            context={{ isLoading: false }}
           />
         </div>
       </div>

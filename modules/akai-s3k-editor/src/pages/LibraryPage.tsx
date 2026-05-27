@@ -165,12 +165,42 @@ export function LibraryPage(): JSX.Element {
    */
   const [selectedDiskFile, setSelectedDiskFileLocal] = useState<AkaiDiskFileEntry | null>(null);
 
+  /**
+   * Selecting a disk file also populates the preview pane with the
+   * file's metadata so the right-hand pane stays useful regardless of
+   * which panel sourced the selection (operator visual review
+   * 2026-05-26: the prior behavior left stale device/library info in
+   * the preview while a disk file was selected). The synthetic
+   * ItemSelection uses `node.type === 'disk-file'`; S3kItemPreviewPanel
+   * has a matching switch branch that reads the meta fields below.
+   */
   const selectDiskFile = useCallback(
     (file: AkaiDiskFileEntry | null) => {
       setSelectedDiskFileLocal(file);
-      if (file !== null) {
-        clearSelectedDevice();
+      if (file === null) {
+        setSelection(null);
+        return;
       }
+      clearSelectedDevice();
+      const isProgram = isAkaiProgram(file.type);
+      const isSample = isAkaiSample(file.type);
+      const fileType = isProgram ? 'Akai Program' : isSample ? 'Akai Sample' : 'Akai disk file';
+      setSelection({
+        categoryId: 'disk',
+        node: {
+          id: `disk-file:${file.entryIndex}:${file.name}`,
+          name: file.name.trim(),
+          type: 'disk-file',
+          meta: {
+            fileType,
+            size: file.size,
+          },
+        },
+        meta: {
+          fileType,
+          size: file.size,
+        },
+      });
     },
     [clearSelectedDevice],
   );

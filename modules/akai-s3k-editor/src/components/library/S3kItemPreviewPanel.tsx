@@ -108,6 +108,44 @@ function DirectoryPreview({ selection }: { selection: ItemSelection }): JSX.Elem
   );
 }
 
+/**
+ * Preview pane content for a SCSI disk file selection. The disk panel
+ * is the third source of "selected item" on the library page (alongside
+ * device memory + library tree); when an item is selected there, the
+ * preview pane should populate just like the other two sources so the
+ * user gets a consistent "what's selected" signal across panels.
+ *
+ * Metadata source: the LibraryPage wraps `selectDiskFile` to synthesize
+ * an `ItemSelection` with `node.type === 'disk-file'` + meta carrying
+ * fileType ("Akai Program" / "Akai Sample"), size, source-disk id, and
+ * source-volume name. This component renders that meta — no live
+ * interaction with the bridge.
+ */
+interface DiskFileMeta {
+  fileType?: string;
+  size?: number;
+  sourceDisk?: string;
+  sourceVolume?: string;
+}
+
+function DiskFilePreview({ selection }: { selection: ItemSelection }): JSX.Element {
+  const meta = (selection.meta ?? {}) as DiskFileMeta;
+  const sizeLabel = meta.size !== undefined
+    ? meta.size < 1024
+      ? `${meta.size} B`
+      : `${Math.round(meta.size / 1024)} K`
+    : undefined;
+  return (
+    <div className="p-4">
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
+      <MetaRow label="Type" value={meta.fileType ?? 'Akai disk file'} />
+      <MetaRow label="Size" value={sizeLabel} />
+      <MetaRow label="Source disk" value={meta.sourceDisk} />
+      <MetaRow label="Source volume" value={meta.sourceVolume} />
+    </div>
+  );
+}
+
 /** Labeled group of action buttons in the preview panel. */
 function ActionGroup({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
   return (
@@ -526,6 +564,10 @@ export function S3kPreviewPanelAdapter({
 
   if (selection.node.type === 'directory') {
     return <DirectoryPreview selection={selection} />;
+  }
+
+  if (selection.node.type === 'disk-file') {
+    return <DiskFilePreview selection={selection} />;
   }
 
   if (selection.node.type === 'device-sample') {
