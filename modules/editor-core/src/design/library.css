@@ -991,6 +991,32 @@
   overflow: hidden;
 }
 
+/* Responsive — below 1024px the 4-panel flex row crushes each panel to
+   ~95px on a 414px viewport (operator visual review 2026-05-26 caught
+   this on iPhone). Switch to a vertical stack: each panel takes the
+   full container width and gets a bounded height so its internal
+   scroll still works (otherwise tall panels make the page-shell scroll
+   instead of the panel itself, which loses the sticky list headers
+   and the preview-panel action affordances). 50vh per panel keeps
+   ~half a viewport per panel — large enough to be useful, small enough
+   that 4 panels fit two viewport heights. */
+@media (max-width: 1023px) {
+  .ac-plugin-library-browser {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .ac-plugin-library-browser-device-left,
+  .ac-plugin-library-browser-device,
+  .ac-plugin-library-browser-library,
+  .ac-plugin-library-browser-preview {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 16rem;
+    max-height: 50vh;
+  }
+}
+
 .ac-plugin-library-browser-connection {
   padding: var(--ac-space-2) var(--ac-space-3);
   border-bottom: 1px solid var(--ac-color-border-subtle);
