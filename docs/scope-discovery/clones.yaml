@@ -1,4 +1,4 @@
-generated_at: 2026-05-27T20:01:16.043Z
+generated_at: 2026-05-27T20:43:10.190Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -2175,6 +2175,97 @@ clones:
       - modules/roland-sxx0-editor/playwright.sample-editor.config.ts:25:50
     disposition: keep-with-reason
     reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
+  - id: 9fe6ba270471
+    lines: 8
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:122:129
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:55:168
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: d34a39705772
+    lines: 10
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:144:153
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:131:140
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: dd0dbe37e40d
+    lines: 14
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:153:166
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:140:153
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: b5bd718d20ac
+    lines: 13
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:205:217
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:239:292
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 3292e5960df6
+    lines: 12
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:83:94
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:140:152
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: aa8bff4ae3f4
+    lines: 68
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:9:76
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:12:134
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: d81e50604fbe
+    lines: 16
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:109:124
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:161:176
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 2d852fbfaf14
+    lines: 60
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:12:71
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:21:80
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 2128f36f53f1
+    lines: 7
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:191:197
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:233:239
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 5473f837cb4d
+    lines: 6
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:204:209
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:216:221
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 8f07a781001d
+    lines: 11
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:241:251
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:282:292
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 7a2699a9c568
+    lines: 18
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:68:85
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:123:140
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 64529be553dc
+    lines: 20
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:85:104
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:140:159
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
   - id: 18d5fe25b24e
     lines: 6
     members:

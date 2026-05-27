@@ -118,6 +118,20 @@ Total size: 00 00 04 00H
 | 00 22H-31H | MULTI MIDI RX-CH 1-8 | 0-15 | |
 | 00 32H-41H | MULTI PATCH NUMBER 1-8 | 0-31 | |
 
+**Note**: MULTI OUTPUT ASSIGN and MULTI LEVEL are NOT stored in the function parameter
+region.  Empirical probe of a live S-550 (BUG-006, 2026-05-27) confirmed that addresses
+00 01 00 42H and 00 01 00 56H return garbage data.  Per-part output routing and level
+are instead stored in each part's assigned **patch** block:
+
+| Patch parameter | Address within patch | Meaning |
+|----------------|---------------------|---------|
+| OUTPUT ASSIGN | 03 66H | 0=OUTPUT 1, ..., 7=OUTPUT 8, 8=TONE |
+| OUTPUT LEVEL  | 03 5AH | 0-127 |
+
+To read the output routing for multi-mode part N: read `MULTI PATCH NUMBER[N]` from
+function parameters, then read `OUTPUT ASSIGN` from that patch's parameter block.
+The address for patch P's OUTPUT ASSIGN is `[0x00, 0x00, (P*4 + 0x03) & 0x7F, 0x66]`.
+
 ### Voice Mode Values
 
 | Value | Mode |

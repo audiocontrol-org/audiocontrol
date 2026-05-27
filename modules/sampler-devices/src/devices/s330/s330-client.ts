@@ -129,7 +129,10 @@ export const S330_FUNCTION_ADDRESSES = {
     MULTI_PATCH_G: 0x38,
     MULTI_PATCH_H: 0x39,
 
-    // MULTI OUTPUT ASSIGN (output 1-8, 0=mix)
+    // INCORRECT — these addresses do not exist in function parameters.
+    // OUTPUT ASSIGN and OUTPUT LEVEL are stored per-patch at PATCH_PARAMS.outputAssign
+    // and PATCH_PARAMS.level respectively.  These constants are retained only for
+    // API compatibility; do not use them.  See BUG-006.
     MULTI_OUTPUT_A: 0x42,
     MULTI_OUTPUT_B: 0x43,
     MULTI_OUTPUT_C: 0x44,
@@ -139,7 +142,7 @@ export const S330_FUNCTION_ADDRESSES = {
     MULTI_OUTPUT_G: 0x48,
     MULTI_OUTPUT_H: 0x49,
 
-    // MULTI LEVEL (level 0-127)
+    // INCORRECT — see note above for MULTI_OUTPUT_* constants.
     MULTI_LEVEL_A: 0x56,
     MULTI_LEVEL_B: 0x57,
     MULTI_LEVEL_C: 0x58,
@@ -1745,22 +1748,33 @@ export function createS330Client(
                     [0x00, 0x01, 0x00, 0x32],
                     8
                 );
-                const outputData = await requestDataWithAddress(
-                    [0x00, 0x01, 0x00, 0x42],
-                    8
-                );
-                const levelData = await requestDataWithAddress(
-                    [0x00, 0x01, 0x00, 0x56],
-                    8
-                );
 
+                // OUTPUT ASSIGN and OUTPUT LEVEL are stored per-patch, not in function
+                // parameters.  Read them from each part's assigned patch block.
+                //
+                // Device encoding: 0=OUTPUT 1, 1=OUTPUT 2, ..., 7=OUTPUT 8, 8=TONE.
+                // MultiPartConfig.output uses 1-indexed convention (1=OUTPUT 1) to
+                // match the PlayPage select values, so we add 1 on read.
+                //
+                // OUTPUT LEVEL is stored directly as 0-127; no conversion needed.
                 const parts: MultiPartConfig[] = [];
                 for (let i = 0; i < 8; i++) {
+                    const patchIndex = patchData[i] ?? 0;
+
+                    const outputAddr = buildPatchParamAddress(patchIndex, PATCH_PARAMS.outputAssign);
+                    const outputRaw = await requestDataWithAddress(outputAddr, 1);
+                    // Device value 0 = OUTPUT 1; add 1 so output=1 means OUTPUT 1.
+                    const output = (outputRaw[0] ?? 0) + 1;
+
+                    const levelAddr = buildPatchParamAddress(patchIndex, PATCH_PARAMS.level);
+                    const levelRaw = await requestDataWithAddress(levelAddr, 1);
+                    const level = levelRaw[0] ?? 127;
+
                     parts.push({
                         channel: channelData[i] ?? 0,
-                        patchIndex: patchData[i] ?? 0,
-                        output: outputData[i] ?? 1,
-                        level: levelData[i] ?? 127,
+                        patchIndex,
+                        output,
+                        level,
                     });
                 }
 
@@ -1816,31 +1830,45 @@ export function createS330Client(
         },
 
         /**
-         * Set output assignment for a multi mode part
-         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters)
+         * Set output assignment for a multi mode part.
+         *
+         * OUTPUT ASSIGN is stored in the part's assigned patch block (not in function
+         * parameters — confirmed by empirical probe, BUG-006).  This method reads the
+         * current patch assignment for the part, then writes the new output value to
+         * that patch's OUTPUT ASSIGN parameter.
+         *
+         * output uses 1-indexed convention (1=OUTPUT 1, ..., 8=OUTPUT 8).  The device
+         * stores 0-indexed (0=OUTPUT 1), so we subtract 1 before writing.
          */
         async setMultiOutput(part: number, output: number): Promise<void> {
             if (part < 0 || part > 7) {
                 throw new Error(`Invalid part number: ${part} (must be 0-7)`);
             }
-            if (output < 0 || output > 8) {
-                throw new Error(`Invalid output: ${output} (must be 0-8)`);
+            if (output < 1 || output > 8) {
+                throw new Error(`Invalid output: ${output} (must be 1-8)`);
             }
 
             return serialize(async () => {
-                const allOutputData = await requestDataWithAddress(
-                    [0x00, 0x01, 0x00, 0x42],
+                const patchData = await requestDataWithAddress(
+                    [0x00, 0x01, 0x00, 0x32],
                     8
                 );
-                const newOutputData = [...allOutputData];
-                newOutputData[part] = output;
-                await sendData([0x00, 0x01, 0x00, 0x42], newOutputData);
+                const patchIndex = patchData[part] ?? 0;
+                const outputAddr = buildPatchParamAddress(patchIndex, PATCH_PARAMS.outputAssign);
+                // Convert from 1-indexed (PlayPage convention) to 0-indexed (device storage).
+                await sendData(outputAddr, [output - 1]);
             });
         },
 
         /**
-         * Set level for a multi mode part
-         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters)
+         * Set level for a multi mode part.
+         *
+         * OUTPUT LEVEL is stored in the part's assigned patch block (not in function
+         * parameters — confirmed by empirical probe, BUG-006).  This method reads the
+         * current patch assignment for the part, then writes the new level to that
+         * patch's OUTPUT LEVEL parameter.
+         *
+         * Level is stored directly as 0-127; no encoding conversion needed.
          */
         async setMultiLevel(part: number, level: number): Promise<void> {
             if (part < 0 || part > 7) {
@@ -1851,13 +1879,13 @@ export function createS330Client(
             }
 
             return serialize(async () => {
-                const allLevelData = await requestDataWithAddress(
-                    [0x00, 0x01, 0x00, 0x56],
+                const patchData = await requestDataWithAddress(
+                    [0x00, 0x01, 0x00, 0x32],
                     8
                 );
-                const newLevelData = [...allLevelData];
-                newLevelData[part] = level;
-                await sendData([0x00, 0x01, 0x00, 0x56], newLevelData);
+                const patchIndex = patchData[part] ?? 0;
+                const levelAddr = buildPatchParamAddress(patchIndex, PATCH_PARAMS.level);
+                await sendData(levelAddr, [level]);
             });
         },
 
