@@ -1,4 +1,4 @@
-generated_at: 2026-05-27T04:57:33.407Z
+generated_at: 2026-05-27T08:10:32.830Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -393,13 +393,13 @@ clones:
       - modules/akai-s3k-editor/src/lib/program-serialization.ts:285:296
     disposition: keep-with-reason
     reason: "Intra-file parallel format-handler duplication in program-serialization.ts between sysex-origin (s3000xl-program) and disk-origin (s3000xl-disk-program) serialize/deserialize helpers. The deserialize boilerplate (parseYaml + format check + version check + field-presence checks + return object literal) is structurally parallel because the two formats encode genuinely different data (SerializedProgram has programRaw + keygroupsRaw; SerializedDiskProgram has fileRaw). Refactor candidate: extract a generic parseSerializedYaml<T>(yaml, expectedFormat, fieldChecks, build) helper that runs the common parse + version-check + field-presence pipeline. Deferred because: (1) the per-format field validation diverges (programRaw is a string, keygroupsRaw is a string array, fileRaw is a single string) and the generic helper either needs per-call validators (which moves the duplication, doesn't remove it) or runtime schema (zod / valibot) which is a larger dependency decision; (2) the file is at 350+ lines and a generic deserializer would itself bloat to 50-80 lines — the savings are marginal. Flip to refactor if a third serialized format (e.g. s3000xl-multi-program-bundle) lands; that's the trigger for the generic deserializer."
-  - id: 6c20c006e3ac
-    lines: 6
+  - id: 2814cc0ef38a
+    lines: 8
     members:
-      - modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:26:31
-      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:26:32
+      - modules/akai-s3k-editor/src/pages/KeygroupsPage.tsx:26:33
+      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:26:33
     disposition: keep-with-reason
-    reason: Page-level store selector boilerplate between KeygroupsPage and ProgramsPage. Each page wires its own selector calls into useS3000xlClient + useEditorStore + per-page store (keygroup vs program). The 6-line clone is the useEditorStore selector cluster (isLoading / loadingMessage / loadingProgress / error / setError). Extracting a shared usePageEditorState() hook is possible but would obscure per-page selector intent at the page top — each page reads slightly different selector subsets depending on whether it writes errors (KeygroupsPage does, ProgramsPage reads only). The duplication is small (6 lines) and the per-page locality is more readable than a partially-applied hook. Refactor candidate only if a future page-shell harmonization dispatch lifts the entire fixed-viewport page chrome (selectors + footer + drawer wiring) into a useAkaiPageChrome() hook.
+    reason: ProgramsPage + KeygroupsPage parallel store-binding block surfaced after my addition of setError to ProgramsPage made them token-identical to KeygroupsPage's existing 8-line useEditorStore selectors block. Both pages legitimately bind the same editor-store slots; extracting a shared hook would be premature abstraction (SamplesPage's parallel block differs slightly). Acceptable cross-page duplication for now; revisit when a third callsite triggers the rule-of-three.
   - id: 02412f22d1aa
     lines: 18
     members:
@@ -445,14 +445,14 @@ clones:
   - id: 2af001e22e7f
     lines: 26
     members:
-      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:302:327
+      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:303:328
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:224:245
     disposition: keep-with-reason
     reason: Connect-not-connected guard panels across SamplesPage / ProgramsPage / KeygroupsPage. Each page is an independent functional context (routing, parent component, state) but shares the visual shell of the not-connected guard message + Connect link. Pre-existing structural similarity; clone-group ID was re-hashed by the akai-harmonization Phase 2 task 2.5 migration from .text-blue-400 hover:underline to .ac-link (12 pre-existing groups dropped, 2 re-formed). Consolidating into a shared NotConnectedGuard component is a separate refactor outside this task scope.
   - id: b6cf68c9b528
     lines: 13
     members:
-      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:38:50
+      - modules/akai-s3k-editor/src/pages/ProgramsPage.tsx:39:51
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:43:55
     disposition: keep-with-reason
     reason: "Clone-flow state machine boilerplate between ProgramsPage and SamplesPage. Each page hosts a clone operation that drives SteppedProgressDrawer state: deletingIndex + deleteInProgress + cloneSteps + cloneDrawerOpen + cloneComplete + cloneError + lastEditAt. The clone is the useState declarations cluster (13 lines). Refactor candidate: extract useCloneFlow() hook returning { steps, drawerOpen, isComplete, hasError, beginClone, completeClone, errorClone, closeDrawer }. Deferred because: (1) the clone-step ORCHESTRATION differs per page (program-clone reads source program + writes to slot; sample-clone reads sample header + sends via SDS) — the hook would only abstract the state slot, not the work, so the savings are modest; (2) a future cross-page footer-state lift (the lastEditAt timestamp is also needed for the AcLiveStatusFooter) is the more compelling refactor candidate. Flip to refactor when (a) the editor-store gains a centralized clone-flow slice OR (b) a useAkaiPageChrome() lift is scoped."

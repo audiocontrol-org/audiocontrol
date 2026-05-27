@@ -327,7 +327,7 @@ export function KeygroupsPage(): JSX.Element {
         loadingProgress={loadingProgress}
       />
 
-      {error && <ErrorBanner message={error} />}
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {/* Layout: list on the LEFT extends full-height like Programs/Samples
           pages; ZoneOverviewToolbar + ZoneOverview live INSIDE

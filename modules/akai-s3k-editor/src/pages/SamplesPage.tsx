@@ -251,7 +251,7 @@ export function SamplesPage(): JSX.Element {
         isLoading={isLoading}
       />
 
-      {error && <ErrorBanner message={error} />}
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       <div className="ac-app-shell" aria-labelledby="samples-page-heading">
         <SampleList

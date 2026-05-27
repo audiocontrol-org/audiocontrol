@@ -313,3 +313,79 @@
 @keyframes ac-spin {
   to { transform: rotate(360deg); }
 }
+
+/*
+ * Error / status banner — inline messaging surface that sits at the top
+ * of a page when an operation fails or a long-running task surfaces a
+ * blocking condition. Replaces ad-hoc Tailwind `bg-red-900/30 text-red-300`
+ * compositions which produced light-pink-on-muddy-red contrast (~2:1) —
+ * fails WCAG AA. Operator 2026-05-26: "errors are hard to read … no way
+ * to dismiss errors."
+ *
+ * Design tokens (resolves correctly on both light + dark editor themes
+ * via --ac-color-* indirection): tinted-danger background + danger
+ * border + primary text color. Optional dismiss button is part of the
+ * canonical chrome — every consumer should pass `onDismiss` so the
+ * banner doesn't stick around past its useful life.
+ */
+.ac-error-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-3);
+  margin: 0 var(--ac-space-4) var(--ac-space-3);
+  padding: var(--ac-space-2) var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-danger) 14%, transparent);
+  border: var(--ac-rule-hairline) solid color-mix(in srgb, var(--ac-color-danger) 65%, transparent);
+  border-radius: var(--ac-radius-sm);
+  color: var(--ac-color-text-primary);
+  font-size: var(--ac-text-sm);
+}
+
+.ac-error-banner__glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--ac-color-danger);
+  color: var(--ac-color-text-on-accent, #ffffff);
+  font-family: var(--ac-font-display);
+  font-weight: var(--ac-font-weight-medium);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.ac-error-banner__message {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.ac-error-banner__dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--ac-radius-sm);
+  color: var(--ac-color-text-primary);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  transition:
+    opacity var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-error-banner__dismiss:hover,
+.ac-error-banner__dismiss:focus-visible {
+  opacity: 1;
+  background: color-mix(in srgb, var(--ac-color-danger) 18%, transparent);
+  outline: none;
+}

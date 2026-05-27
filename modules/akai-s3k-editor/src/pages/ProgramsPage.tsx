@@ -28,6 +28,7 @@ export function ProgramsPage(): JSX.Element {
   const loadingMessage = useEditorStore((s) => s.loadingMessage);
   const loadingProgress = useEditorStore((s) => s.loadingProgress);
   const error = useEditorStore((s) => s.error);
+  const setError = useEditorStore((s) => s.setError);
 
   const keygroups = useKeygroupStore((s) => s.keygroups);
   const keygroupCount = useKeygroupStore((s) => s.keygroupCount);
@@ -334,7 +335,7 @@ export function ProgramsPage(): JSX.Element {
         loadingProgress={loadingProgress}
       />
 
-      {error && <ErrorBanner message={error} />}
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
       {/* List + detail — fills the remaining vertical space. The
           `.ac-app-shell` 2-col grid lets its children scroll

@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { PageTitleRow } from '@audiocontrol/editor-core';
 import { ProgramList, KeygroupSummary } from '@/components/programs';
 import { ProgramEditor } from '@/components/programs/ProgramEditor';
+import { ErrorBanner } from '@/components/ui';
 import { makeProgramHeader } from '@/test-helpers/program-factory';
 import { makeKeygroupHeader } from '@/test-helpers/keygroup-factory';
 import type { ProgramHeader, KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
@@ -65,6 +66,10 @@ export function TestProgramsPage(): JSX.Element {
     makeProgramHeader({ PRNAME: 'TEST PROGRAM' }),
   );
   const [keygroups, setKeygroups] = useState<KeygroupHeader[]>(buildKeygroupHeaders);
+  // Sample error so the ErrorBanner chrome is visible in this harness.
+  // Click the × to dismiss; real production wires `setError(null)` from
+  // editorStore via the same `onDismiss` prop.
+  const [errorMessage, setErrorMessage] = useState<string | null>('S3000XL response timeout');
 
   function handleParameterChange(field: string, value: number | string): void {
     setHeader((prev) => ({ ...prev, [field]: value }));
@@ -104,6 +109,13 @@ export function TestProgramsPage(): JSX.Element {
         headingId="test-programs-page-heading"
         headingText="Test Programs (harness)"
       />
+
+      {errorMessage !== null ? (
+        <ErrorBanner
+          message={errorMessage}
+          onDismiss={() => setErrorMessage(null)}
+        />
+      ) : null}
 
       <div className="ac-app-shell" aria-labelledby="test-programs-page-heading">
         <ProgramList
