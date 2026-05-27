@@ -130,3 +130,18 @@ tab_groups:
       - as-loop
       - as-trim
       - as-misc
+
+  - id: vz
+    owner_editor: akai-s3k-editor
+    consumer: modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx
+    # AcRadioTabs controlled-mode consumer — React owns activeId state but
+    # still renders real `<input type="radio" checked={...}>` elements, so
+    # the `:checked` sibling-selector chains emitted from this entry fire
+    # correctly. Registered as `uncontrolled` for the codegen because the
+    # mechanical CSS path is the same as an uncontrolled tab group.
+    mode: uncontrolled
+    tab_ids:
+      - vz-zone-1
+      - vz-zone-2
+      - vz-zone-3
+      - vz-zone-4

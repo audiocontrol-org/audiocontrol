@@ -49,7 +49,11 @@
 #as-wave:checked       ~ .ac-radio-tab-strip [for="as-wave"],
 #as-loop:checked       ~ .ac-radio-tab-strip [for="as-loop"],
 #as-trim:checked       ~ .ac-radio-tab-strip [for="as-trim"],
-#as-misc:checked       ~ .ac-radio-tab-strip [for="as-misc"] {
+#as-misc:checked       ~ .ac-radio-tab-strip [for="as-misc"],
+#vz-zone-1:checked     ~ .ac-radio-tab-strip [for="vz-zone-1"],
+#vz-zone-2:checked     ~ .ac-radio-tab-strip [for="vz-zone-2"],
+#vz-zone-3:checked     ~ .ac-radio-tab-strip [for="vz-zone-3"],
+#vz-zone-4:checked     ~ .ac-radio-tab-strip [for="vz-zone-4"] {
   color: var(--ac-color-accent);
   background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
 }
@@ -72,7 +76,11 @@
 #as-wave:checked       ~ .ac-radio-tab-strip [for="as-wave"]::after,
 #as-loop:checked       ~ .ac-radio-tab-strip [for="as-loop"]::after,
 #as-trim:checked       ~ .ac-radio-tab-strip [for="as-trim"]::after,
-#as-misc:checked       ~ .ac-radio-tab-strip [for="as-misc"]::after {
+#as-misc:checked       ~ .ac-radio-tab-strip [for="as-misc"]::after,
+#vz-zone-1:checked     ~ .ac-radio-tab-strip [for="vz-zone-1"]::after,
+#vz-zone-2:checked     ~ .ac-radio-tab-strip [for="vz-zone-2"]::after,
+#vz-zone-3:checked     ~ .ac-radio-tab-strip [for="vz-zone-3"]::after,
+#vz-zone-4:checked     ~ .ac-radio-tab-strip [for="vz-zone-4"]::after {
   background: var(--ac-color-accent);
   box-shadow: 0 0 8px color-mix(in srgb, var(--ac-color-accent) 55%, transparent);
 }
@@ -95,7 +103,11 @@
 #as-wave:checked       ~ .ac-radio-panels > [data-tab="as-wave"],
 #as-loop:checked       ~ .ac-radio-panels > [data-tab="as-loop"],
 #as-trim:checked       ~ .ac-radio-panels > [data-tab="as-trim"],
-#as-misc:checked       ~ .ac-radio-panels > [data-tab="as-misc"] {
+#as-misc:checked       ~ .ac-radio-panels > [data-tab="as-misc"],
+#vz-zone-1:checked     ~ .ac-radio-panels > [data-tab="vz-zone-1"],
+#vz-zone-2:checked     ~ .ac-radio-panels > [data-tab="vz-zone-2"],
+#vz-zone-3:checked     ~ .ac-radio-panels > [data-tab="vz-zone-3"],
+#vz-zone-4:checked     ~ .ac-radio-panels > [data-tab="vz-zone-4"] {
   display: block;
   animation: ac-tab-fade-in 180ms var(--ac-easing-default);
 }
@@ -119,7 +131,11 @@
   #as-wave:checked       ~ .ac-radio-panels > [data-tab="as-wave"],
   #as-loop:checked       ~ .ac-radio-panels > [data-tab="as-loop"],
   #as-trim:checked       ~ .ac-radio-panels > [data-tab="as-trim"],
-  #as-misc:checked       ~ .ac-radio-panels > [data-tab="as-misc"] {
+  #as-misc:checked       ~ .ac-radio-panels > [data-tab="as-misc"],
+  #vz-zone-1:checked     ~ .ac-radio-panels > [data-tab="vz-zone-1"],
+  #vz-zone-2:checked     ~ .ac-radio-panels > [data-tab="vz-zone-2"],
+  #vz-zone-3:checked     ~ .ac-radio-panels > [data-tab="vz-zone-3"],
+  #vz-zone-4:checked     ~ .ac-radio-panels > [data-tab="vz-zone-4"] {
     animation: none;
   }
 }
