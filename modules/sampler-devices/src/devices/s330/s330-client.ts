@@ -128,29 +128,6 @@ export const S330_FUNCTION_ADDRESSES = {
     MULTI_PATCH_F: 0x37,
     MULTI_PATCH_G: 0x38,
     MULTI_PATCH_H: 0x39,
-
-    // INCORRECT — these addresses do not exist in function parameters.
-    // OUTPUT ASSIGN and OUTPUT LEVEL are stored per-patch at PATCH_PARAMS.outputAssign
-    // and PATCH_PARAMS.level respectively.  These constants are retained only for
-    // API compatibility; do not use them.  See BUG-006.
-    MULTI_OUTPUT_A: 0x42,
-    MULTI_OUTPUT_B: 0x43,
-    MULTI_OUTPUT_C: 0x44,
-    MULTI_OUTPUT_D: 0x45,
-    MULTI_OUTPUT_E: 0x46,
-    MULTI_OUTPUT_F: 0x47,
-    MULTI_OUTPUT_G: 0x48,
-    MULTI_OUTPUT_H: 0x49,
-
-    // INCORRECT — see note above for MULTI_OUTPUT_* constants.
-    MULTI_LEVEL_A: 0x56,
-    MULTI_LEVEL_B: 0x57,
-    MULTI_LEVEL_C: 0x58,
-    MULTI_LEVEL_D: 0x59,
-    MULTI_LEVEL_E: 0x5a,
-    MULTI_LEVEL_F: 0x5b,
-    MULTI_LEVEL_G: 0x5c,
-    MULTI_LEVEL_H: 0x5d,
 } as const;
 
 /**
