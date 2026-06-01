@@ -90,6 +90,112 @@ Anything surfaced becomes either an additional T8.x sub-task (migrate now) or a 
 - **Curve visual style:** The Akai curve uses `s3k-adsr-line` (single accent color); the promoted version inherits that. Roland adoption keeps the same visual unless operator wants a brand-specific tweak (e.g., rec-LED red is per-editor branding).
 - **Drag gesture:** Akai's vertical drag spans only the area above the 0 dB passband line. Same mapping should feel right for Roland's TVF resonance, but worth a visual check after T8.3.
 
+---
+
+## Phase 2: Device-free render & capture engine
+
+*Added 2026-06-01 per the approved design doc [`design-mockup-pipeline.md`](./design-mockup-pipeline.md) (deskwork id `22d01eb5…`, Final). Foundation for Phases 3–4 and for promotional screenshots.*
+
+**Goal:** One engine that launches a real editor route with **no hardware attached**, feeds it **real-device-captured** data via the existing simulated-MIDI fixtures, and captures a **deterministic** PNG. Serves three consumers: promotional screenshots (website/blog/social), in-loop visual review of real built UI, and the Phase 3 living styleguide gallery. DRY: generalizes the existing `scripts/run-test-harness-e2e.sh` launch pattern; home in `modules/e2e-infra/`.
+
+**Modules affected:**
+- `modules/e2e-infra/` (engine: launcher generalization, scene-manifest loader, capture step)
+- root `Makefile` (`promo-shots` target)
+- `.gitignore` (`out/promo/`)
+- `docs/promo/` (committed gallery dir for operator-promoted shots)
+- captured fixtures under `modules/sampler-devices/test/fixtures/<device>/` (selection only; new captures are a sub-task, never fabrication)
+
+### Tasks
+
+- **P2.1 — Generalize the harness launcher into a reusable device-free render launcher.** Extract the OS-assigned-port → Vite-dev-server → ready-wait → hand-off-URL flow shared by `modules/akai-s3k-editor/scripts/run-test-harness-e2e.sh` and the Roland equivalent into a single launcher in `modules/e2e-infra/`. The existing `make test-ui-s3k` / `make test-ui-roland` must consume the extracted launcher (no parallel copy). **Proven complete when:** one launcher API brings up either editor's dev server device-free and reports the URL; `make test-ui-roland` + `make test-ui-s3k` both green via the controller's independent re-run; `make check-clone-duplication` clean (the extraction de-duplicates, doesn't add a clone).
+
+- **P2.2 — Scene-manifest schema + initial manifest.** A version-controlled declarative list of shots: `{ id, editor, route, scenario (captured-fixture name), viewport }`. Initial scenes: Roland tones **FILTER tab**, Roland patches, Roland play, Akai keygroups. **Proven complete when:** the manifest parses under a typed schema (no `any`); a validator asserts every entry resolves to a real route AND an existing captured fixture, and **throws** (no fabrication) when a referenced fixture is absent — shipped validator-paired with a scenario that fails against a manifest pointing at a missing fixture.
+
+- **P2.3 — Deterministic capture step.** Playwright navigates `route?midi=simulated&scenario=<capture>`, awaits an explicit page **ready hook + `document.fonts.ready`** (no `sleep`/defensive delays, per `feedback_no_delays`), and shoots at the pinned **1280×800 logical @2x (2560×1600)**, full app-shell, no browser chrome. **Proven complete when:** two consecutive captures of the same scene are perceptually identical (a determinism test asserts this); no arbitrary timeouts appear in the capture path.
+
+- **P2.4 — Output + invocation.** `make promo-shots` renders the manifest to a gitignored `out/promo/`; operator promotes chosen shots into a committed `docs/promo/` gallery. **Proven complete when:** `make promo-shots` emits one PNG per manifest scene; `out/promo/` is gitignored; `docs/promo/` exists as the curated gallery home.
+
+- **P2.5 — Captured-fixture audit + capture-gap handling.** Verify each initial scene maps to a real, visually-adequate captured fixture. Any scene without one becomes an explicit `capture-from-hardware` sub-task (tracked, with operator acceptance per `agent-discipline.md`) — never a fabricated fixture. **Proven complete when:** every initial scene maps to a real captured fixture OR has a tracked capture task; zero fabricated data introduced (grep-clean of new fixtures).
+
+- **P2.6 — Phase 1 T8.8 consumes the engine.** The Roland FILTER-tab above-the-fold verification screenshot (Phase 1 §T8.8) is produced as a `promo-shots` scene rather than an ad-hoc Playwright call. **Proven complete when:** T8.8's deliverable PNG is produced by `make promo-shots` from the manifest.
+
+### Phase 2 acceptance criteria
+
+- `make promo-shots` renders the full initial manifest device-free, deterministically, with no hardware attached.
+- The launcher is shared with the test harness (no duplicated launch script); clone + CSS duplication gates clean.
+- All on-screen content originates from real-device-captured fixtures; no mock/synthetic data outside the blessed test-fixture category.
+- Engine home is `modules/e2e-infra/`; output contract (`out/promo/` gitignored, `docs/promo/` committed) holds.
+- Operator confirms the screenshot quality on at least the four initial scenes.
+
+---
+
+## Phase 3: Per-editor design-language specification
+
+*Added 2026-06-01 per the approved design doc. The "backfilled leg": cleaving visual design out of mockups leaves it needing a formal home.*
+
+**Goal:** A durable per-editor specification of visual identity (palette, typography, signature/branded components and their rationale), plus a **living styleguide gallery rendered from real components** (so the canonical pixels cannot drift from as-built). Consolidates today's scattered identity (the old `01-design-language.html` mockup, the rec-LED / VFD-glow / CRT / virtual-front-panel conventions).
+
+**Modules affected:**
+- `docs/design-language/roland.md`, `docs/design-language/akai.md` (new specs)
+- `docs/design-language/jv1080.md`, `docs/design-language/d110.md` (one-line scope-pointer stubs)
+- a device-free living-gallery route per editor (depends on Phase 2 engine to shoot it)
+- cross-links into `DESIGN-SYSTEM.md`
+
+### Tasks
+
+- **P3.1 — Author `docs/design-language/roland.md`.** Palette, typography, signature components (rec-LED red as the S-550 PLAY-LED homage, VFD glow, CRT, virtual front panel) each with *rationale* and a reference to the real `DESIGN-SYSTEM.md` token / `.ac-*` primitive that implements it, plus do's/don'ts. **Proven complete when:** every visual claim cites a token or `.ac-*`/`.sk-*` primitive that actually exists (grep-verified at author time); zero fabricated tokens; no temporal/projection language per docs standards.
+
+- **P3.2 — Author `docs/design-language/akai.md`.** Same shape for the Akai S3000XL editor's realized identity. **Proven complete when:** same gate as P3.1 for the Akai surface.
+
+- **P3.3 — Scope-pointer stubs for JV-1080 / D-110.** `docs/design-language/jv1080.md` + `d110.md` each carry a single line: "design language TBD when this editor gets visual work" — defining their language now would be fabrication. **Proven complete when:** both files exist with only the scope-pointer; no invented design language.
+
+- **P3.4 — Living styleguide gallery (depends on Phase 2).** A device-free route per spec'd editor (Roland, Akai) that catalogues the real signature components; added as `promo-shots` manifest scenes. The markdown specs link to the gallery shots as their canonical-pixels reference. **Proven complete when:** the gallery route renders the real components (not re-implementations); `make promo-shots` produces the gallery PNGs; P3.1/P3.2 specs link to them.
+
+- **P3.5 — Retire the old hi-fi design-language mockup's authority.** Note in the consolidated specs that `…/explorations/01-design-language.html` is grandfathered/historical and the per-editor spec + living gallery are now canonical. **Proven complete when:** the specs state the canonical source explicitly; no two artifacts claim to be the design-language source of truth.
+
+### Phase 3 acceptance criteria
+
+- Roland + Akai each have a formal design-language spec whose every visual claim resolves to a real token/primitive.
+- The living gallery renders from real components and is shot by the Phase 2 engine; specs cite it for canonical pixels.
+- JV-1080 / D-110 carry honest scope-pointers, not fabricated language.
+- A single canonical design-language source per editor (no competing artifacts).
+- Operator confirms the specs match the editors' realized identity.
+
+---
+
+## Phase 4: Lo-fi sketch mockup kit + wireframe-only gate
+
+*Added 2026-06-01 per the approved design doc. Independent of the Phase 2 engine. Replaces hi-fi mockups; points the "teeth" at guaranteeing lo-fi-ness.*
+
+**Goal:** Replace hi-fi mockups with deliberately **hand-drawn (Sharpie-illustrator) sketches** that carry only UX (layout/flow/hierarchy) and are structurally incapable of impersonating the product. Inverted teeth: a gate that exploration HTML imports **only** the shared sketch kit — never design-system tokens, `.ac-*` classes, or brand colors.
+
+**Modules affected:**
+- `docs/wireframe-kit/sketch-kit.css` + a bundled hand-drawn webfont (local, not CDN)
+- `tools/check-mockup-lofi.*` + `Makefile` (`check-mockup-lofi` target) wired into the pre-commit chain
+- the scope-discovery validator suite (a new adversarial scenario + gutted-stub self-check)
+- the `brief.md` template + `.claude/rules/workflow-playbooks.md`
+- a grandfather allowlist for existing hi-fi explorations
+
+### Tasks
+
+- **P4.1 — Author the sketch kit.** `docs/wireframe-kit/sketch-kit.css`: a bundled hand-drawn webfont (Architects Daughter / Caveat, served locally for determinism + offline), Sharpie-black strokes on off-white "paper," a persistent "WIREFRAME — not final visual" banner, and a small `.sk-*` box/label/button/field/note vocabulary. Pure-CSS sketch (rough.js deferred per design doc). **Proven complete when:** a sample wireframe renders in the hand-drawn aesthetic with no network fetch (font is local); kit lives outside product modules.
+
+- **P4.2 — `check-mockup-lofi` gate (validator-paired).** Exploration HTML (`docs/**/explorations/**/*.html`, excluding the grandfather allowlist) may reference **only** `sketch-kit.css` — no design-system tokens, no `.ac-*` classes, no brand-color literals. Violation → FAIL. Wire into the pre-commit gate chain + `Makefile`. **Proven complete when:** the gate FAILS an adversarial scenario (a wireframe importing design-system CSS), PASSES a clean wireframe, and carries a gutted-stub self-check proving the rejection has teeth; `pnpm test:scope-discovery` green; the scenario fails against the pre-gate behavior (revert test per `validator-paired-changes`).
+
+- **P4.3 — Grandfather existing hi-fi explorations.** Allowlist the existing s550 + roland-bugfix Phase 8 hi-fi mockups so the gate doesn't retroactively fail them; converting historical/shipped explorations is pure cost. **Proven complete when:** `make check-mockup-lofi` is clean at HEAD with the existing mockups present; the allowlist is explicit and dated.
+
+- **P4.4 — Brief convention + playbook.** The `brief.md` template gains a "derived from current page/state" field and a "design-language ref" field (pointing at the Phase 3 spec, so a sketch declares its visual vocabulary by reference instead of drawing it). Document the lo-fi-mockup workflow in `.claude/rules/workflow-playbooks.md`. **Proven complete when:** the template + playbook are updated; a sample brief exercises both new fields.
+
+- **P4.5 — Worked example.** Author one sample lo-fi wireframe using the kit (e.g. a sketch of a candidate editor-tab reorder) to prove the kit + demonstrate the pattern for future explorations. **Proven complete when:** the example renders in the hand-drawn aesthetic and passes `make check-mockup-lofi`.
+
+### Phase 4 acceptance criteria
+
+- New exploration mockups are hand-drawn sketches that cannot be mistaken for shippable UI.
+- `check-mockup-lofi` is wired into pre-commit, ships validator-paired (adversarial scenario + gutted-stub self-check), and `pnpm test:scope-discovery` is green.
+- Existing hi-fi mockups are grandfathered; the gate is clean at HEAD.
+- The brief template + playbook codify the lo-fi convention and the design-language reference.
+- Operator confirms the sketch aesthetic and the gate behavior.
+
 ## Pre-commit Discipline
 
 - One refinement per commit; descriptive subject; no sweep refactors slipped in alongside a phase task.
@@ -99,8 +205,11 @@ Anything surfaced becomes either an additional T8.x sub-task (migrate now) or a 
 
 ## GitHub Tracking
 
-- **Parent issue:** TBD (created via `/feature-issues` once Phase 1 acceptance is locked).
-- **Phase 1 issues:** TBD.
+- **Parent issue:** [#465](https://github.com/audiocontrol-org/audiocontrol/issues/465) — cross-editor UX refinement track.
+- **Phase 1 issues:** TBD (to be created once Phase 1 acceptance is locked).
+- **Phase 2:** [#466](https://github.com/audiocontrol-org/audiocontrol/issues/466) — device-free render & capture engine.
+- **Phase 3:** [#467](https://github.com/audiocontrol-org/audiocontrol/issues/467) — per-editor design-language specification.
+- **Phase 4:** [#468](https://github.com/audiocontrol-org/audiocontrol/issues/468) — lo-fi sketch mockup kit + wireframe-only gate.
 
 ## Out of Scope
 

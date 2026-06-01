@@ -36,6 +36,15 @@ For the branch overall:
 - Phases ship as PRs against `main`; the branch stays alive between phases, rebased onto `main` as needed.
 - New phases get appended as scope is identified, not pre-defined years in advance.
 
+## Implementation Phases
+
+Phases ship as PRs against `main`; the branch stays alive between phases. Full task breakdowns live in [workplan.md](./workplan.md).
+
+- **Phase 1 — Filter editor (TVF curve + above-the-fold reorder).** Promote Akai `FilterDisplay` → editor-core `AcFilterCurveEditor`; both editors adopt at one commit; Roland FILTER tab reorders above-the-fold. *(In progress; seeded from roland-bugfix Phase 8.)*
+- **Phase 2 — Device-free render & capture engine.** One engine that renders a real editor route with no hardware (real-device-captured fixtures) and captures deterministic PNGs — for promo material, in-loop visual review, and the Phase 3 living gallery. *(Added 2026-06-01 per [design-mockup-pipeline.md](./design-mockup-pipeline.md).)*
+- **Phase 3 — Per-editor design-language specification.** Backfill the visual-design leg cleaved out of mockups: a per-editor markdown spec + a living styleguide gallery rendered from real components. *(Depends on Phase 2 for the gallery.)*
+- **Phase 4 — Lo-fi sketch mockup kit + wireframe-only gate.** Replace hi-fi mockups with hand-drawn sketches that carry only UX; an inverted-teeth gate forces exploration HTML to use only the sketch kit. *(Independent of the engine.)*
+
 ## Open questions
 
 - Should this track absorb the `frontend-design` skill outputs (creative redesigns) or stay narrowly defined to "refinements of shipped surfaces"? Default: refinements only; bigger redesigns get their own feature definition.
