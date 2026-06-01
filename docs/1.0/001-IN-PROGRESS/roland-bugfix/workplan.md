@@ -425,7 +425,17 @@ See `tooling-feedback.md § "Phase 5 dogfooding — T6.2 adopter manifest gaps +
 
 **Phase 7 dispositioned closed.** The 5-agent fleet ran end-to-end; the new `regime_holdouts:` section is populated; the 1 finding is dispositioned (out-of-scope, no follow-up filed because sampler-backup isn't owned by this branch); the run evidence is captured.
 
-## Phase 8: Filter editor enhancement — TVF curve + above-the-fold reorder
+## Phase 8: Filter editor enhancement — TVF curve + above-the-fold reorder *(migrated)*
+
+**Status:** Migrated 2026-06-01 to the [`editor-ux-refinement`](../editor-ux-refinement/workplan.md) long-running track as its Phase 1. The original task IDs (T8.1 … T8.8) are preserved in the new home to keep existing references stable.
+
+**Why it moved:** Cross-editor visual-primitive promotion + editor-tab layout refinement isn't a Roland bug-fix; it's UX refinement work that spans Akai + Roland. Keeping it on `roland-bugfix` would have tangled bug-fix discipline with enhancement scope.
+
+The rest of this section is preserved below for historical reference; the canonical version lives in the new workplan.
+
+---
+
+### Original scope (preserved for reference)
 
 **Goal:** Promote the Akai `FilterDisplay` to an editor-core primitive `AcFilterCurveEditor`; both Akai and Roland adopt it at the same commit; the Roland tones FILTER tab reorders so the envelope graphic + filter-curve graphic sit above the slider grid (above-the-fold; screenshot-friendly).
 

@@ -75,11 +75,12 @@ Must be completed in order:
 
 Features organized by state. See `docs/1.0/<state>/<slug>/` for details.
 
-### 001-IN-PROGRESS (6)
+### 001-IN-PROGRESS (8)
 
 | Feature | Phase | GitHub | Status |
 |---------|-------|--------|--------|
 | edit-workflow-architecture | 1 | #61 | ~95% |
+| editor-ux-refinement | 1 | TBD | Phase 1 in progress (seeded from roland-bugfix Phase 8, 2026-06-01) |
 | jv1080-editor | — | #4 | 85% |
 | roland-d110 | — | #13 | Partial |
 | sample-editor | — | #99 | ~80% |
