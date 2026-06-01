@@ -75,14 +75,15 @@ export function LibraryPreviewPanelAdapter({
   }
 
   if (pageSelection?.type === 'sample' || pageSelection?.type === 'program') {
+    const commonNodeType = pageSelection.type;
     return (
       <CommonSamplePreviewPanel
         selection={pageSelection ? { type: pageSelection.type as 'sample' | 'program', name: pageSelection.name!, path: pageSelection.path } : null}
         libraryHandle={state.libraryHandle}
         onPromoteToDevice={() => {}}
-        onOpenInLoopEditor={state.onOpenInLoopEditor}
-        onOpenInChopper={state.onOpenInChopper}
-        onOpenInSampleEditor={state.onOpenInSampleEditor}
+        onOpenInLoopEditor={state.onOpenInLoopEditor ? (name, path) => state.onOpenInLoopEditor!(name, commonNodeType, path) : undefined}
+        onOpenInChopper={state.onOpenInChopper ? (name, path) => state.onOpenInChopper!(name, commonNodeType, path) : undefined}
+        onOpenInSampleEditor={state.onOpenInSampleEditor ? (name, path) => state.onOpenInSampleEditor!(name, commonNodeType, path) : undefined}
       />
     );
   }
@@ -98,8 +99,8 @@ export function LibraryPreviewPanelAdapter({
       onImportIndividualTone={state.onImportIndividualTone}
       onImportIndividualPatch={state.onImportIndividualPatch}
       onLoadSet={state.onLoadSet}
-      onOpenInLoopEditor={state.onOpenInLoopEditor ? (name, _nodeType, path) => state.onOpenInLoopEditor!(name, path) : undefined}
-      onOpenInSampleEditor={state.onOpenInSampleEditor ? (name, _nodeType, path) => state.onOpenInSampleEditor!(name, path) : undefined}
+      onOpenInLoopEditor={state.onOpenInLoopEditor}
+      onOpenInSampleEditor={state.onOpenInSampleEditor}
       onExportDeviceTone={state.onExportDeviceTone}
       onExportDevicePatch={state.onExportDevicePatch}
       onEditDeviceTone={state.onEditDeviceTone}

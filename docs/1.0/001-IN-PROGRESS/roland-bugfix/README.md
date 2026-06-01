@@ -18,6 +18,7 @@ The two purposes share the same code surface but stay in **separate commits and 
 | Phase 5: Adopter manifest backfill | ✅ Closed 2026-05-23 | 9 adopter manifests committed; `make check-adopters` → 0 holdouts. Filed + got fixes for #452 (globToRegex alternation) and #453 (`tracked_holdouts:` schema field) via PR #454. SlideDrawer now 6/6 Roland adopters after V3-IMPORT. |
 | Phase 6: Cross-editor symmetry sweep | ✅ Closed 2026-05-23 | 9 conventions × 7 editors matrix captured + every asymmetry dispositioned. 9 Akai library dialogs are tracked_holdouts under cross-editor `ROLAND-BUGFIX-V3-AKAI` (out of scope per PRD). |
 | Phase 7: `/scope-inventory` re-run with regime-holdout-detector | ✅ Closed 2026-05-23 | Updated `scope-manifest.yaml` with populated `regime_holdouts:` section; surfaceable holdouts remediated inline (RGM-001 sub-tasks 1-4) and V3-IMPORT (#450) drained all 3 Roland Import dialog deferrals + the 2 dead-code orphans. |
+| Phase 8: Filter editor enhancement — TVF curve + above-the-fold reorder | Scoped 2026-06-01 | Promote akai `FilterDisplay` to editor-core `AcFilterCurveEditor`; Akai migrates; Roland tones FILTER tab reorders so envelope + filter curve sit above-the-fold. New adopter-manifest + anti-pattern entries continue Phase 5/6 dogfooding. Awaiting operator confirmation before implementation. |
 
 ## Documentation
 

@@ -299,11 +299,19 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
     let connected = false;
 
-    // Multi-mode function parameter addresses (shared across S-330 and S-550)
+    // Multi-mode function parameter addresses (shared across S-330 and S-550).
+    //
+    // Only CHANNELS and PATCHES live in the function-parameter region (00 01 00 xx).
+    // Empirical probe of a live S-550 confirmed that 00 01 00 42 (outputs) and
+    // 00 01 00 56 (levels) return garbage — the S-550 MIDI Implementation has no
+    // MULTI OUTPUT or MULTI LEVEL entries in function parameters.
+    //
+    // OUTPUT ASSIGN and OUTPUT LEVEL are stored per-patch in the patch parameter
+    // block at addresses [0x03, 0x66] and [0x03, 0x5a] respectively.
+    // requestFunctionParameters() reads them from each part's assigned patch.
+    // setMultiOutput() and setMultiLevel() write to the assigned patch directly.
     const MULTI_CHANNELS_ADDRESS = [0x00, 0x01, 0x00, 0x22];
     const MULTI_PATCHES_ADDRESS = [0x00, 0x01, 0x00, 0x32];
-    const MULTI_OUTPUTS_ADDRESS = [0x00, 0x01, 0x00, 0x42];
-    const MULTI_LEVELS_ADDRESS = [0x00, 0x01, 0x00, 0x56];
     const MULTI_PART_COUNT = 8;
 
     // Patch and tone caches for progressive loading
@@ -1119,52 +1127,51 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
         async requestFunctionParameters(): Promise<MultiPartConfig[]> {
             return serialize(async () => {
-                try {
-                    const channelData = await requestDataWithAddress(
-                        MULTI_CHANNELS_ADDRESS,
-                        MULTI_PART_COUNT
+                const channelData = await requestDataWithAddress(
+                    MULTI_CHANNELS_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const patchData = await requestDataWithAddress(
+                    MULTI_PATCHES_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+
+                // OUTPUT ASSIGN and OUTPUT LEVEL are stored per-patch, not in function
+                // parameters.  Read them from each part's assigned patch block.
+                //
+                // Device encoding: 0=OUTPUT 1, 1=OUTPUT 2, ..., 7=OUTPUT 8, 8=TONE.
+                // MultiPartConfig.output uses 1-indexed convention (1=OUTPUT 1) to
+                // match the PlayPage select values, so we add 1 on read.
+                //
+                // OUTPUT LEVEL is stored directly as 0-127; no conversion needed.
+                const parts: MultiPartConfig[] = [];
+                for (let i = 0; i < MULTI_PART_COUNT; i++) {
+                    const patchIndex = patchData[i] ?? 0;
+
+                    const outputAddr = addressBuilders.buildPatchParamAddress(
+                        patchIndex,
+                        'outputAssign'
                     );
-                    const patchData = await requestDataWithAddress(
-                        MULTI_PATCHES_ADDRESS,
-                        MULTI_PART_COUNT
+                    const outputRaw = await requestDataWithAddress(outputAddr, 1);
+                    // Device value 0 = OUTPUT 1; add 1 so output=1 means OUTPUT 1.
+                    const output = (outputRaw[0] ?? 0) + 1;
+
+                    const levelAddr = addressBuilders.buildPatchParamAddress(
+                        patchIndex,
+                        'level'
                     );
+                    const levelRaw = await requestDataWithAddress(levelAddr, 1);
+                    const level = levelRaw[0] ?? 127;
 
-                    let outputData: number[];
-                    try {
-                        outputData = await requestDataWithAddress(
-                            MULTI_OUTPUTS_ADDRESS,
-                            MULTI_PART_COUNT
-                        );
-                    } catch {
-                        // Output parameters may not exist on all firmware versions
-                        outputData = [1, 1, 1, 1, 1, 1, 1, 1];
-                    }
-
-                    const levelData = await requestDataWithAddress(
-                        MULTI_LEVELS_ADDRESS,
-                        MULTI_PART_COUNT
-                    );
-
-                    const parts: MultiPartConfig[] = [];
-                    for (let i = 0; i < MULTI_PART_COUNT; i++) {
-                        parts.push({
-                            channel: channelData[i] ?? 0,
-                            patchIndex: patchData[i] ?? 0,
-                            output: outputData[i] ?? 1,
-                            level: levelData[i] ?? 127,
-                        });
-                    }
-
-                    return parts;
-                } catch {
-                    // Return default configuration
-                    return Array.from({ length: MULTI_PART_COUNT }, (_, i) => ({
-                        channel: i,
-                        patchIndex: 0,
-                        output: 1,
-                        level: 127,
-                    }));
+                    parts.push({
+                        channel: channelData[i] ?? 0,
+                        patchIndex,
+                        output,
+                        level,
+                    });
                 }
+
+                return parts;
             });
         },
 
@@ -1217,35 +1224,47 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
         /**
          * Set output assignment for a multi mode part.
-         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         *
+         * OUTPUT ASSIGN is stored in the part's assigned patch block (not in function
+         * parameters — confirmed by empirical probe, BUG-006).  This method reads the
+         * current patch assignment for the part, then writes the new output value to
+         * that patch's OUTPUT ASSIGN parameter.
+         *
+         * output uses 1-indexed convention (1=OUTPUT 1, ..., 8=OUTPUT 8).  The device
+         * stores 0-indexed (0=OUTPUT 1), so we subtract 1 before writing.
          */
         async setMultiOutput(part: number, output: number): Promise<void> {
             if (part < 0 || part > 7) {
                 throw new Error(`Invalid part number: ${part} (must be 0-7)`);
             }
-            if (output < 0 || output > 8) {
-                throw new Error(`Invalid output: ${output} (must be 0-8)`);
+            if (output < 1 || output > 8) {
+                throw new Error(`Invalid output: ${output} (must be 1-8)`);
             }
 
             return serialize(async () => {
-                let allOutputData: number[];
-                try {
-                    allOutputData = await requestDataWithAddress(
-                        MULTI_OUTPUTS_ADDRESS,
-                        MULTI_PART_COUNT
-                    );
-                } catch {
-                    allOutputData = [1, 1, 1, 1, 1, 1, 1, 1];
-                }
-                const newOutputData = [...allOutputData];
-                newOutputData[part] = output;
-                await sendData(MULTI_OUTPUTS_ADDRESS, newOutputData);
+                const patchData = await requestDataWithAddress(
+                    MULTI_PATCHES_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const patchIndex = patchData[part] ?? 0;
+                const outputAddr = addressBuilders.buildPatchParamAddress(
+                    patchIndex,
+                    'outputAssign'
+                );
+                // Convert from 1-indexed (PlayPage convention) to 0-indexed (device storage).
+                await sendData(outputAddr, [output - 1]);
             });
         },
 
         /**
          * Set level for a multi mode part.
-         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         *
+         * OUTPUT LEVEL is stored in the part's assigned patch block (not in function
+         * parameters — confirmed by empirical probe, BUG-006).  This method reads the
+         * current patch assignment for the part, then writes the new level to that
+         * patch's OUTPUT LEVEL parameter.
+         *
+         * Level is stored directly as 0-127; no encoding conversion needed.
          */
         async setMultiLevel(part: number, level: number): Promise<void> {
             if (part < 0 || part > 7) {
@@ -1256,13 +1275,16 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             }
 
             return serialize(async () => {
-                const allLevelData = await requestDataWithAddress(
-                    MULTI_LEVELS_ADDRESS,
+                const patchData = await requestDataWithAddress(
+                    MULTI_PATCHES_ADDRESS,
                     MULTI_PART_COUNT
                 );
-                const newLevelData = [...allLevelData];
-                newLevelData[part] = level;
-                await sendData(MULTI_LEVELS_ADDRESS, newLevelData);
+                const patchIndex = patchData[part] ?? 0;
+                const levelAddr = addressBuilders.buildPatchParamAddress(
+                    patchIndex,
+                    'level'
+                );
+                await sendData(levelAddr, [level]);
             });
         },
 

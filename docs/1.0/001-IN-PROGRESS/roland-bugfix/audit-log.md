@@ -352,6 +352,27 @@ Expected: the manifest commentary and human-facing replacement message should de
 
 Actual: the structure is current but the surrounding text still narrates the pre-completion Roland holdout state.
 
+### The Phase 6 outcome notes still describe `#453` as a future fix even though the issue is now closed and `tracked_holdouts:` is already live
+
+Finding-ID: AUDIT-20260523-17
+Status:     fixed-awaiting-verification
+Severity:   low
+Surface:    `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md`
+
+Fix: rewrote the Phase 6 Gap-1 note at `workplan.md:381` from future-tense ("Once #453 lands, the matrix gains a third cell-state…") to past-tense ("Closed: #453 landed in PR #454 (commit caa132d9)…"). Cites the merged PR + commit hash + the present matrix state (`⏳` cell-state now rendering). Sibling note at `workplan.md:347` already in past-tense by the AUDIT-13/14 doc-sync; this entry was the last straggler.
+
+The newest docs sync fixed most of the V3-IMPORT narrative drift, but one Phase 6 dogfooding note still speaks about the adopter-manifest `tracked_holdouts:` schema as future work even though the implementation shipped and GitHub issue `#453` is closed.
+
+Evidence:
+
+- the Phase 6 gap note still says "Once #453 lands, the matrix gains a third cell-state and the visibility gap closes automatically" at [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:381)
+- the same workplan now elsewhere acknowledges the shipped state, e.g. [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:344) and [workplan.md](/Users/orion/work/audiocontrol-work/audiocontrol-roland-bugfix/docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md:377)
+- GitHub issue [#453](https://github.com/audiocontrol-org/audiocontrol/issues/453) is closed as `completed` on 2026-05-23, and the manifest comment also says the field shipped in commit `caa132d9`
+
+Expected: the remaining Phase 6 narrative should describe `#453` as landed historical context, not future work.
+
+Actual: this one note still presents the shipped fix as pending.
+
 ---
 
 ## 2026-05-23 Latest Implementation Review

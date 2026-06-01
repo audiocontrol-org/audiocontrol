@@ -120,6 +120,13 @@ export interface PluginLibraryBrowserProps {
   /** Error message to display */
   error?: string;
 
+  /** Called when the operator clicks the error banner's dismiss button.
+   *  When omitted, the dismiss button is not rendered. Wiring this to
+   *  the page-level setError(null) is the right shape — older versions
+   *  of this component wired the × to onRefresh, which made "Dismiss"
+   *  trigger a library reload instead of dismissing. See BUG-005. */
+  onDismissError?: () => void;
+
   /** Current operation progress */
   operationProgress?: OperationProgress;
 
@@ -307,6 +314,7 @@ export function PluginLibraryBrowser({
   previewState,
   loading,
   error,
+  onDismissError,
   operationProgress,
   connectionSlot,
   headerSections,
@@ -828,11 +836,15 @@ export function PluginLibraryBrowser({
             gap: 'var(--ac-space-2)',
           }}>
             <span style={{ flex: 1 }}>{error}</span>
-            <button
-              style={{ background: 'none', border: 'none', color: 'var(--ac-color-danger)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}
-              onClick={onRefresh}
-              title="Dismiss"
-            >&times;</button>
+            {onDismissError && (
+              <button
+                style={{ background: 'none', border: 'none', color: 'var(--ac-color-danger)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}
+                onClick={onDismissError}
+                title="Dismiss"
+                aria-label="Dismiss"
+                data-testid="library-browser-error-dismiss"
+              >&times;</button>
+            )}
           </div>
         )}
 

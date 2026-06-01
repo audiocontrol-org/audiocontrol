@@ -111,6 +111,20 @@ export function LibraryPage() {
     handlePluginSelectionChange, handleSelectDevice, handleSelectLibrary,
   } = useRolandSelectionMapping(libraryHandle);
 
+  // Clear the page-level error banner when the operator switches to a
+  // different library item. Without this, any failed load leaves a
+  // sticky banner that survives every subsequent action — the operator
+  // can't recover without a full page reload. ItemPreviewPanel.tsx:204
+  // already does the equivalent for its local loadError; this is the
+  // page-level counterpart. See BUG-005 / D-LIB-39.
+  useEffect(() => {
+    setError(null);
+  }, [
+    selection?.source, selection?.type, selection?.index,
+    selection?.name, selection?.setName, selection?.path?.join('|'),
+    setError,
+  ]);
+
   useEffect(() => {
     if (!adapter) {
       clientRef.current = null;
@@ -442,9 +456,9 @@ export function LibraryPage() {
     onImportIndividualTone: importDialogs.handleOpenImportIndividualToneDialog,
     onImportIndividualPatch: importDialogs.handleOpenImportIndividualPatchDialog,
     onLoadSet: importDialogs.handleOpenLoadDialog,
-    onOpenInLoopEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInLoopEditor(name, 'sample', path),
-    onOpenInChopper: (name: string, path?: string[]) => editorDialogs.handleOpenInChopper(name, 'sample', path),
-    onOpenInSampleEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInSampleEditor(name, 'sample', path),
+    onOpenInLoopEditor: (name: string, nodeType: string, path?: string[]) => editorDialogs.handleOpenInLoopEditor(name, nodeType, path),
+    onOpenInChopper: (name: string, nodeType: string, path?: string[]) => editorDialogs.handleOpenInChopper(name, nodeType, path),
+    onOpenInSampleEditor: (name: string, nodeType: string, path?: string[]) => editorDialogs.handleOpenInSampleEditor(name, nodeType, path),
     onExportDeviceTone: exportOps.openExportToneDialog,
     onExportDevicePatch: exportOps.openExportPatchDialog,
     onEditDeviceTone: handleEditDeviceTone,
@@ -518,7 +532,19 @@ export function LibraryPage() {
           operator expects them. Handlers still live on `importDialogs`
           and are wired through the per-object UI. */}
 
-      {error && (<div className="ac-alert ac-alert-error"><p className="ac-text-error text-sm">{error}</p></div>)}
+      {error && (
+        <div className="ac-alert ac-alert-error" style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--ac-space-2)' }}>
+          <p className="ac-text-error text-sm" style={{ flex: 1, margin: 0 }}>{error}</p>
+          <button
+            type="button"
+            onClick={() => setError(null)}
+            title="Dismiss"
+            aria-label="Dismiss"
+            data-testid="library-error-dismiss"
+            style={{ background: 'none', border: 'none', color: 'var(--ac-color-danger)', cursor: 'pointer', padding: 0, fontSize: '1rem', lineHeight: 1 }}
+          >&times;</button>
+        </div>
+      )}
 
       <div className="ac-page-shell-body" data-capability="C-LIB-01">
         <PluginLibraryBrowser
@@ -543,6 +569,7 @@ export function LibraryPage() {
           previewState={previewState}
           loading={isLoading || exportOps.isExporting}
           error={error ?? undefined}
+          onDismissError={() => setError(null)}
           connectionSlot={connectionSlot}
           headerSections={
             <SetsSection

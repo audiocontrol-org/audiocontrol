@@ -1,4 +1,4 @@
-generated_at: 2026-05-23T18:56:13.248Z
+generated_at: 2026-05-27T20:43:10.190Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -510,14 +510,14 @@ clones:
     lines: 25
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:709:733
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:635:659
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:662:686
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: a901ae04cedb
     lines: 18
     members:
       - modules/akai-s3k-editor/src/pages/LibraryPage.tsx:733:750
-      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:342:669
+      - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:342:696
     disposition: pending
     reason: null
   - id: 3045e6b4adbc
@@ -538,14 +538,14 @@ clones:
     lines: 28
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:315:342
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:633:659
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:660:686
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 423f58d97969
     lines: 11
     members:
       - modules/akai-s3k-editor/src/pages/SamplesPage.tsx:349:359
-      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:659:669
+      - modules/roland-sxx0-editor/src/pages/LibraryPage.tsx:686:696
     disposition: keep-with-reason
     reason: Cross-editor / cross-library clone. Members span modules outside roland-sxx0-editor + editor-core (akai-s3k-editor, d110-editor, loop-editor, sample-chopper, sampler-library, sampler-devices, midi-core). Refactor would require either (a) cross-editor coordination beyond the roland-bugfix scope (for sibling-editor clones like LibraryIcons / layout / envelope-editor), or (b) per-device specialization of a shared library/devices helper (for roland x sampler-library / sampler-devices wave-format and protocol-byte patterns where the duplication encodes deliberate per-device variation). Flip to refactor when a cross-editor consolidation feature is scoped, or when a hardware repro surfaces a real specialization-vs-shared question for the sampler-* modules.
   - id: 7df4383b5cc3
@@ -2175,6 +2175,104 @@ clones:
       - modules/roland-sxx0-editor/playwright.sample-editor.config.ts:25:50
     disposition: keep-with-reason
     reason: Per-suite Playwright configs are intentionally per-suite — each must work independently with its own E2E_PORT, reporter wiring, and webServer hooks. The existing modules/roland-sxx0-editor/playwright.harness.shared.ts factory already extracts the shared shape for harness-driven suites (test-harness, wiring, rendering); the remaining cross-suite (device-library / http-midi / hardware / loop-editor / sample-chopper / sample-editor / visual / library / scsi-midi) and cross-editor (akai / roland / d110 / jv1080) duplication is the irreducible cost of suite-independence. Further extraction would require a cross-editor factory in modules/e2e-infra/ and couple every editor module to a single shared config surface; the current judgment is that the coupling cost outweighs the per-suite-config dedup payoff. Flip to refactor if a future operator builds out an e2e-infra-wide defineE2EConfig() factory.
+  - id: 9fe6ba270471
+    lines: 8
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:122:129
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:55:168
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: d34a39705772
+    lines: 10
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:144:153
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:131:140
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: dd0dbe37e40d
+    lines: 14
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:153:166
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:140:153
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: b5bd718d20ac
+    lines: 13
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:205:217
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:239:292
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 3292e5960df6
+    lines: 12
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:83:94
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:140:152
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: aa8bff4ae3f4
+    lines: 68
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-channels-exact.ts:9:76
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:12:134
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: d81e50604fbe
+    lines: 16
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:109:124
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:161:176
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 2d852fbfaf14
+    lines: 60
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:12:71
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:21:80
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 2128f36f53f1
+    lines: 7
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:191:197
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:233:239
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 5473f837cb4d
+    lines: 6
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:204:209
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:216:221
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 8f07a781001d
+    lines: 11
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:241:251
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:282:292
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 7a2699a9c568
+    lines: 18
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:68:85
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:123:140
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 64529be553dc
+    lines: 20
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-detail.ts:85:104
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:140:159
+    disposition: keep-with-reason
+    reason: BUG-006 probe scripts are intentionally self-contained standalone hardware-investigation tools; sharing helpers would defeat their property of being runnable independently against live hardware. Same precedent as the 2026-05-22 batch probe-script disposition.
+  - id: 18d5fe25b24e
+    lines: 6
+    members:
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:162:167
+      - modules/roland-sxx0-editor/scripts/probe-multi-mode.ts:55:60
+    disposition: keep-with-reason
+    reason: Probe script intentionally self-contained per the probe-wave-*.ts precedent (workplan 2026-05-22 batch row). The 6-line RQD-building block repeats between discoverPort and rawRead so the script stays drop-in-runnable against hardware without test-apparatus coupling.
   - id: ee1d1bbe4b61
     lines: 10
     members:
