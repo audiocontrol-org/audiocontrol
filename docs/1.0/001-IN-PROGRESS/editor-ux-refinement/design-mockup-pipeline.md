@@ -1,3 +1,7 @@
+---
+deskwork:
+  id: 22d01eb5-c988-47c2-b5cb-548037376c41
+---
 # Design — Editor UX pipeline: design language, lo-fi mockups, device-free capture
 
 *Brainstorm date: 2026-06-01. Feeds workplan Phases 2–4 (appended via `/dw-lifecycle:extend`).*
