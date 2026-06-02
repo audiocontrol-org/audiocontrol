@@ -2,6 +2,41 @@
 
 Long-running track. Phases ship as PRs against `main`; new phases get appended as cross-editor UX refinement scope is identified. Each phase follows the per-commit discipline in `.claude/rules/agent-discipline.md` (no "just for now" deferrals, validator-paired changes, controller is the gate).
 
+## Phase 0: Bug-fix pass — tab active-indicator must track the selected tab (`AcRadioTabs`)
+
+*Identified 2026-06-02 during Phase 1 visual review: the operator noticed the FILTER tab's content was shown while the WAVE (first) tab appeared highlighted.*
+
+**Goal:** The radio-driven editor tab strip (`AcRadioTabs`, shared by the Tones and Patches editors) must render its active-tab highlight (accent text + underline) on the **selected** tab, reliably, on every paint — not stale-paint the default first tab.
+
+**Evidence (controller-verified via DOM probes + screenshots, 2026-06-02):**
+- The selected tab's radio is correct: clicking Filter sets `#tt-filter` `checked=true` / `matches(':checked')=true`, `#tt-wave` `checked=false`; single `.ac-tabs` container, no duplicate IDs, one `name=tone-tab-0` group. The **panel content is always correct** (the Filter panel shows).
+- But on the full-page paint the **accent color + `::after` underline render on WAVE** (`color=rgb(107,195,234)`, underline ~opaque) while FILTER renders dim (`color=rgb(148,163,184)`, underline ~transparent).
+- Forcing a layout reflow on the strip (an element-only screenshot, or `getComputedStyle` on the strip element) makes FILTER highlight correctly — i.e. it's a **stale-paint / uncontrolled-input race**, not a wrong-tab-selected logic error.
+
+**Root cause (hypothesis to confirm under TDD):** `AcRadioTabs` renders **uncontrolled** `<input type="radio" defaultChecked>` and drives BOTH panel display and the active-tab indicator purely via `#tt-<id>:checked ~ …` sibling selectors in `_shared.css`. The panel-display rule (`~ .ac-panels > [data-tab]`) repaints reliably; the active-indicator rule (`~ .ac-tab-strip [for]`) can stale-paint to the `defaultChecked` first tab after a React re-render. Because the IDs (`tt-*` / `pt-*`) are static and the state is uncontrolled, the indicator and the panel can momentarily disagree.
+
+**Scope:** `AcRadioTabs` is shared — the fix lands once and corrects **both** the Tones (`tt-*`) and Patches (`pt-*`) editors. This is NOT a Phase-1 (filter-compaction) regression — Phase 1 touched only filter *panel content*; the tab strip is unchanged from the pre-Phase-1 HEAD.
+
+**Modules affected:**
+- `modules/roland-sxx0-editor/src/components/common/AcRadioTabs.tsx` (the primitive)
+- `modules/roland-sxx0-editor/src/styles/_shared.css` (the `.ac-tab` active-state rules, if the fix moves off pure `:checked`)
+- `modules/roland-sxx0-editor/test/wiring/` (new regression spec; existing `D-TONE-EDITOR-TABS-01` / `D-PATCH-EDITOR-TABS-01` are the safety net)
+
+### Tasks
+
+- **T0.1 — Failing regression test first.** Add a wiring spec `D-TAB-INDICATOR-01` that, after switching to a non-default tab (Filter on tones; Mapping on patches), asserts the **selected** tab label carries the active treatment AND the default first tab does NOT — read the rendered indicator, not just the radio property (e.g. assert the selected `[for="tt-filter"]` has the accent `color` / non-transparent `::after` background and `[for="tt-wave"]` does not). The test MUST FAIL against current `main` (reproduces the stale-paint). Per `validator-paired-changes`: articulate the assertion that distinguishes pre/post behavior before writing the fix. **Proven complete when:** the new spec fails at HEAD `6fe066a6` and the failure message names the wrong-tab indicator.
+
+- **T0.2 — Make the active-tab state robust.** Recommended: drive the active tab from a controlled `useState` in `AcRadioTabs`, applying an explicit `.ac-tab--active` (or equivalent) class to the selected label and `data-tab`-shown panel, so the indicator and panel share ONE source of truth that can't stale-paint. Keep the radio inputs for keyboard/a11y, but stop relying solely on the `:checked` paint for the visual indicator. (Alternative if a CSS-only fix proves sufficient: eliminate the race without React state — but only if T0.1 stays green deterministically across repeated runs.) Whatever the mechanism, do NOT leave a `defaultChecked`-vs-render divergence. **Proven complete when:** T0.1 passes; `D-TONE-EDITOR-TABS-01` + `D-PATCH-EDITOR-TABS-01` still pass; `make test-wiring-roland` shows no NEW failures vs the documented pre-existing baseline; a full-page screenshot of the Filter tab (no forced reflow) shows FILTER highlighted, attached for operator review.
+
+- **T0.3 — Cross-editor parity check.** Verify the same fix corrects the Patches editor tab strip (`pt-common` / `pt-mapping`) — switch to Mapping, confirm the indicator tracks. If `AcRadioTabs` is promoted to editor-core as part of the fix, register the adopter-manifest entry. **Proven complete when:** the patches-side assertion in `D-TAB-INDICATOR-01` passes and a patches Mapping-tab screenshot confirms.
+
+### Phase 0 acceptance criteria
+
+- The active-tab highlight tracks the selected tab on the natural paint (no forced reflow needed), on both the Tones and Patches editors.
+- `D-TAB-INDICATOR-01` lands in the same commit as the fix and fails against `6fe066a6`.
+- Existing tab contract tests stay green; no new `make test-wiring-roland` failures beyond the documented pre-existing baseline.
+- Operator confirms the corrected highlight via screenshot.
+
 ## Phase 1: Filter editor enhancement — TVF curve + above-the-fold reorder
 
 *Migrated 2026-06-01 from `docs/1.0/001-IN-PROGRESS/roland-bugfix/workplan.md` §Phase 8. Original task IDs preserved (T8.1 … T8.8) to keep existing references stable.*
