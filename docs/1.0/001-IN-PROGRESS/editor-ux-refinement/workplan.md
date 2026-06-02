@@ -6,6 +6,8 @@ Long-running track. Phases ship as PRs against `main`; new phases get appended a
 
 *Identified 2026-06-02 during Phase 1 visual review: the operator noticed the FILTER tab's content was shown while the WAVE (first) tab appeared highlighted.*
 
+> **✅ T0.1–T0.3 DONE** (2026-06-02). Fix: `AcRadioTabs` made **controlled** — a single `useState(activeId)` drives the radios' `checked` (was uncontrolled `defaultChecked`, the source of the stale-paint race) AND adds `aria-selected` to the `role="tab"` labels (also closes an a11y gap: `role=tab` requires `aria-selected`). One source of truth → the indicator and the panel can't disagree. No CSS change needed (the existing `#tt-*:checked ~` rules now paint reliably because React re-asserts `checked` every render). **T0.1** `D-TAB-INDICATOR-01a/b` (tones Filter + patches Mapping) landed in the same commit, failing at `6fe066a6` (no `aria-selected` exists) and passing post-fix; the visual assertion polls the label color past the `transition: color` mid-flight. **T0.2/T0.3** verified: full-page screenshots (no forced reflow) show FILTER highlighted on Tones and MAPPING on Patches — both sent to operator. Existing `D-TONE-EDITOR-TABS-01` / `D-PATCH-EDITOR-TABS-01` stay green; `make test-wiring-roland` 161 passed / same 16 pre-existing failures (no new); chevron/css-dup/clone-dup/anti-patterns/adopters gates clean.
+
 **Goal:** The radio-driven editor tab strip (`AcRadioTabs`, shared by the Tones and Patches editors) must render its active-tab highlight (accent text + underline) on the **selected** tab, reliably, on every paint — not stale-paint the default first tab.
 
 **Evidence (controller-verified via DOM probes + screenshots, 2026-06-02):**

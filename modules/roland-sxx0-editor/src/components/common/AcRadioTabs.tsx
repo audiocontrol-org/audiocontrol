@@ -21,6 +21,7 @@
  * shell — at that point a separate refactor moves this file out.
  */
 
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 export interface AcRadioTabDef {
@@ -49,7 +50,14 @@ export function AcRadioTabs({
   groupName,
   ariaLabel,
 }: AcRadioTabsProps): JSX.Element {
-  const activeId = defaultTabId ?? tabs[0]!.id;
+  // CONTROLLED active tab. The radios were previously uncontrolled
+  // (`defaultChecked`); a React re-render after a tab click could re-assert
+  // the default first tab's `:checked` paint while the panel (also driven
+  // by `:checked`) stayed correct — so the active-highlight stale-painted to
+  // the wrong tab (editor-ux-refinement Phase 0). Driving `checked` +
+  // `aria-selected` from one state value is the single source of truth: the
+  // indicator and the panel can no longer disagree.
+  const [activeId, setActiveId] = useState<string>(defaultTabId ?? tabs[0]!.id);
   return (
     <div className="ac-tabs">
       {tabs.map((tab) => (
@@ -58,7 +66,8 @@ export function AcRadioTabs({
           type="radio"
           name={groupName}
           id={tab.id}
-          defaultChecked={tab.id === activeId}
+          checked={tab.id === activeId}
+          onChange={() => setActiveId(tab.id)}
         />
       ))}
 
@@ -70,6 +79,7 @@ export function AcRadioTabs({
             id={`${tab.id}-label`}
             className="ac-tab"
             role="tab"
+            aria-selected={tab.id === activeId}
             tabIndex={0}
           >
             {tab.label}

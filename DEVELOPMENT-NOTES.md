@@ -11,6 +11,35 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-06-02 (cont.): editor-ux-refinement — Phase 0 tab active-indicator fix (T0.1–T0.3)
+
+### Feature: editor-ux-refinement
+### Worktree: audiocontrol-editor-ux-refinement
+
+### Goal
+Fix the pre-existing bug (found during Phase 1 review) where the editor tab strip's active highlight could stick to the default first tab while the correct panel showed.
+
+### Accomplished
+- **Diagnosed** via DOM probes: the selected radio + panel were always correct; only the active-highlight stale-painted. Root cause: `AcRadioTabs` used uncontrolled `<input defaultChecked>` — a React re-render could re-assert the default tab's `:checked` paint.
+- **T0.1** — failing regression `D-TAB-INDICATOR-01a/b` (tones Filter + patches Mapping); anchored on `aria-selected` (deterministic; the bug was intermittent so a pure-visual test would flake at HEAD). Failed at `6fe066a6`.
+- **T0.2** — made `AcRadioTabs` controlled (`useState` → `checked` + `aria-selected`). One source of truth; the `:checked` CSS now paints reliably (React re-asserts every render). No CSS change needed. Also closes an a11y gap (`role=tab` requires `aria-selected`).
+- **T0.3** — verified both Tones + Patches via full-page screenshots (FILTER / MAPPING highlight correctly); shared primitive → one fix covers both.
+
+### Didn't Work / corrected
+- First visual assertion hardcoded the accent rgb and failed reading `rgb(120,185,219)` — the `transition: color` mid-flight blend. Switched to polling "left the inactive slate," robust to the transition + exact accent value.
+
+### Course Corrections
+- **[PROCESS]** Operator flagged the highlight during Phase 1 review; rather than hand-wave, ran DOM diagnostics to prove it's the indicator (not the selection), confirmed pre-existing (tab code byte-identical to HEAD), then scoped it as Phase 0 before fixing.
+
+### Quantitative
+- Files: `AcRadioTabs.tsx` (controlled), `tab-indicator.spec.ts` (new, 2 tests).
+- `make test-wiring-roland` 161 passed / same 16 pre-existing failures (no new).
+
+### Insights
+- An uncontrolled-input that drives BOTH a reliable signal (panel display) and a flaky one (highlight) is a classic divergence trap — controlling it unifies them. The a11y fix (`aria-selected`) and the bug fix are the same change.
+
+---
+
 ## 2026-06-02: editor-ux-refinement — Phase 1 v2 filter-tab compaction (T8.6/T8.7/T8.9–T8.13)
 
 ### Feature: editor-ux-refinement
