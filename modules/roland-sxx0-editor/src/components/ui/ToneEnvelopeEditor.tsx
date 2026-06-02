@@ -28,7 +28,8 @@
 
 import { useRef } from 'react';
 import type { SamplerEnvelope } from '@/core/midi/SamplerClient';
-import { AcEnvelope, type AcEnvelopeSegment } from '@audiocontrol/editor-core';
+import { AcEnvelope, AcDisclosure, type AcEnvelopeSegment } from '@audiocontrol/editor-core';
+import { TONES_TWEAK_DISCLOSURE_THEME } from '@/constants/tones-disclosure';
 import { cn } from '@/lib/utils';
 
 interface ToneEnvelopeEditorProps {
@@ -125,6 +126,12 @@ export function ToneEnvelopeEditor({
       <AcEnvelope
         label={`${label} · 8-SEGMENT`}
         segments={segments}
+        // v2 compaction (T8.11): the per-segment numeric table moves under
+        // the Tweak disclosure below (the inline edit grid), so the
+        // envelope graphic + sustain/end pips stay compact and the filter
+        // curve below sits above-the-fold. AcEnvelope's own table would be
+        // redundant with the edit grid, so it is suppressed here.
+        showTable={false}
         sustainSegment={sustainPoint + 1}
         endSegment={endPoint}
         activeSegment={sustainPoint + 1}
@@ -147,9 +154,21 @@ export function ToneEnvelopeEditor({
           and Level (0..127) per segment, in two rows of 8 inputs. The
           `data-edit-row` attribute is the spec-helper anchor. The current
           `envelope` prop reflects the latest streaming value (the panel
-          calls `onUpdate` on every keystroke), so onBlur commits with it. */}
-      <div className="tones__envelope-edit-grid">
-        <div className="tones__envelope-edit-row" data-edit-row="rate">
+          calls `onUpdate` on every keystroke), so onBlur commits with it.
+
+          Per the v2 filter-tab compaction (T8.11), the numeric grid is the
+          fine-tune back-channel beneath the envelope graphic, so it hides
+          under a collapsed-by-default Tweak disclosure. The graphic conveys
+          shape; the table appears only when the operator asks for it. */}
+      <AcDisclosure
+        title="Tweak"
+        hint="per-segment values"
+        titleAs="span"
+        defaultOpen={false}
+        theme={TONES_TWEAK_DISCLOSURE_THEME}
+      >
+        <div className="tones__envelope-edit-grid">
+          <div className="tones__envelope-edit-row" data-edit-row="rate">
           <span className="ac-field-label">Rate</span>
           {rates.map((rate, i) => (
             <input
@@ -183,7 +202,8 @@ export function ToneEnvelopeEditor({
             />
           ))}
         </div>
-      </div>
+        </div>
+      </AcDisclosure>
     </div>
   );
 }

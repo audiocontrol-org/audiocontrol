@@ -12,7 +12,7 @@ This is a parking lot for editor-page UX work that doesn't belong on a device-sc
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Filter editor — TVF curve + above-the-fold reorder | In progress | T8.1–T8.5 done (AcFilterCurveEditor promoted, both editors adopt, gates green). Remaining: v2 filter-tab compaction T8.9–T8.13 (TWEAK disclosures + AcDisclosure) + T8.6/T8.7 tests; see [workplan.md](./workplan.md) §Phase 1 |
+| Phase 1: Filter editor — TVF curve + above-the-fold reorder | Implementation complete; pending operator review | T8.1–T8.5 done (AcFilterCurveEditor promoted). T8.9–T8.13 done: `AcDisclosure` primitive (supersedes `CollapsibleSection`; D-110 migrated), Roland FILTER tab compacted (sliders/modes + per-segment table under TWEAK disclosures; `AcEnvelope.showTable` opt-out), above-the-fold verified at 1280×900 (curve bottom ≈887px, was ≈1010). T8.6/T8.7 tests done (AcDisclosure + AcFilterCurveEditor contract tests; tone-filter-layout wiring specs). All scope/CSS/chevron gates clean; full build green. See [workplan.md](./workplan.md) §Phase 1 |
 | Phase 2: Device-free render & capture engine | In progress | P2.1–P2.5 done — `make promo-shots` produces deterministic device-free PNGs (verified). P2.6 (filter-tab above-the-fold shot) blocked on Phase 1 |
 | Phase 3: Per-editor design-language specification | In progress | P3.1–P3.3 specs done; P3.4 living gallery blocked on Phase 2 engine |
 | Phase 4: Lo-fi sketch mockup kit + wireframe-only gate | Done | Sketch kit + check-mockup-lofi gate (validator-paired, pre-commit) + grandfather + brief convention |

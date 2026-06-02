@@ -62,6 +62,14 @@ export interface AcEnvelopeProps {
   /** Optional className appended to the envelope root. */
   className?: string;
   /**
+   * Whether to render the per-segment numeric table (`AcEnvelopeTable`).
+   * Defaults to `true`. Consumers that want a compact envelope (graph +
+   * sustain/end pips only) — e.g. the Roland tone editor's v2 filter-tab
+   * compaction, which moves per-segment editing under a "Tweak"
+   * disclosure — pass `false` and supply their own per-segment editor.
+   */
+  showTable?: boolean;
+  /**
    * When true, the entire envelope (graph point buttons, meta pip
    * radiogroups, table segment-select buttons) is rendered inert. Pip
    * elements drop out of the tab order and stop firing change callbacks
@@ -113,17 +121,19 @@ export function AcEnvelope(props: AcEnvelopeProps): JSX.Element {
         onEndChange={props.onEndChange}
         disabled={disabled}
       />
-      <AcEnvelopeTable
-        segments={segments}
-        maxTime={maxTime}
-        maxLevel={maxLevel}
-        activeSegment={activeSegment}
-        sustainSegment={sustainSegment}
-        onPointSelect={props.onPointSelect}
-        onTimeChange={props.onTimeChange}
-        onLevelChange={props.onLevelChange}
-        disabled={disabled}
-      />
+      {props.showTable !== false && (
+        <AcEnvelopeTable
+          segments={segments}
+          maxTime={maxTime}
+          maxLevel={maxLevel}
+          activeSegment={activeSegment}
+          sustainSegment={sustainSegment}
+          onPointSelect={props.onPointSelect}
+          onTimeChange={props.onTimeChange}
+          onLevelChange={props.onLevelChange}
+          disabled={disabled}
+        />
+      )}
     </div>
   );
 }

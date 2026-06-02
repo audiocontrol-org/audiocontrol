@@ -211,16 +211,46 @@ export async function fillLabeledNumber(
 }
 
 /**
+ * Expand a collapsed-by-default `AcDisclosure` "Tweak" pill so its body
+ * (the numeric back-channel) is interactable.
+ *
+ * The v2 filter-tab compaction (T8.10/T8.11) hides the per-segment
+ * envelope grid and the filter sliders/modes under Tweak disclosures so
+ * the graphics sit above-the-fold. A tone panel can carry TWO tweaks (the
+ * envelope's "per-segment values" and the filter section's
+ * "parameters · modes"); `hint` disambiguates by the summary's hint text.
+ *
+ * Idempotent: clicks only when the summary reports `aria-expanded="false"`,
+ * so repeated calls within one test are safe.
+ */
+export async function expandTweak(
+  scope: Locator,
+  hint: string | RegExp,
+): Promise<void> {
+  const summary = scope
+    .locator('.tones__tweak-summary', { hasText: hint })
+    .first();
+  await expect(summary).toBeVisible({ timeout: 5_000 });
+  if ((await summary.getAttribute('aria-expanded')) !== 'true') {
+    await summary.click();
+  }
+}
+
+/**
  * Drive an envelope rate/level input in the inline edit grid below the
  * v3 AcEnvelope visualization. Each `<div data-edit-row="rate|level">`
  * carries 8 `<input type="number">` children; the captured fixtures
  * target index 0 (`.first()`). Commits on `onBlur`.
+ *
+ * The grid lives under the envelope's collapsed-by-default Tweak (T8.11),
+ * so this first expands that disclosure ("per-segment values").
  */
 export async function fillEnvelopeFirstCell(
   panel: Locator,
   row: 'Rate' | 'Level',
   value: string,
 ): Promise<void> {
+  await expandTweak(panel, 'per-segment');
   const editRow = row === 'Rate' ? 'rate' : 'level';
   const input = panel
     .locator(`[data-edit-row="${editRow}"] input[type="number"]`)

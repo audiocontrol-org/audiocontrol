@@ -24,6 +24,7 @@
  * filter required.
  */
 import { test, expect } from '@playwright/test';
+import { expandTweak } from './tone-writes-helpers';
 
 const HARNESS_URL =
   '/roland/s330/editor/tones?midi=simulated&scenario=tones-bank-0';
@@ -142,20 +143,19 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
     await expect(tvfEnv.locator('svg').first()).toBeVisible();
   });
 
-  test('D-TONE-ENV-06: TVF envelope segment table is reachable inside the Filter tab', async ({ page }) => {
-    // The legacy `Expand envelope editor` button belonged to the old
-    // EnvelopeEditor. The v3 AcEnvelope replaces it with an inline
-    // segment-selection table (the segment buttons live inside the
-    // envelope's table portion, role="table") plus the inline edit
-    // grid for per-segment rate/level. The display affordance asserted
-    // here is the segment table presence.
+  test('D-TONE-ENV-06: TVF envelope per-segment editor is reachable under the Tweak (Filter tab)', async ({ page }) => {
+    // v2 filter-tab compaction (T8.11): the per-segment numeric editor (the
+    // inline rate/level edit grid) is collapsed under the envelope's
+    // "per-segment values" Tweak so the graphic stays compact and the
+    // filter curve sits above-the-fold. AcEnvelope's own display table is
+    // suppressed (showTable=false). The editor remains reachable by
+    // expanding the Tweak.
     await page.getByRole('tab', { name: 'Filter' }).click();
 
     const filterPanel = page.locator('[data-tab="tt-filter"]');
-    const segmentTable = filterPanel
-      .getByRole('table', { name: /Envelope segments/i })
-      .first();
-    await expect(segmentTable).toBeVisible({ timeout: 5_000 });
+    await expect(filterPanel.locator('[data-edit-row="rate"]')).toHaveCount(0);
+    await expandTweak(filterPanel, 'per-segment');
+    await expect(filterPanel.locator('[data-edit-row="rate"]').first()).toBeVisible();
   });
 
   test('D-TONE-ENV-07: TVA envelope graphic renders inside the Amp tab', async ({ page }) => {
@@ -171,13 +171,14 @@ test.describe('Capabilities — Tone display (D-TONE)', () => {
     await expect(tvaEnv.locator('svg').first()).toBeVisible();
   });
 
-  test('D-TONE-ENV-12: TVA envelope segment table is reachable inside the Amp tab', async ({ page }) => {
+  test('D-TONE-ENV-12: TVA envelope per-segment editor is reachable under the Tweak (Amp tab)', async ({ page }) => {
+    // Same v2 compaction applies to the TVA envelope (shared
+    // ToneEnvelopeEditor): the per-segment editor is Tweak-collapsed.
     await page.getByRole('tab', { name: 'Amp' }).click();
 
     const ampPanel = page.locator('[data-tab="tt-amp"]');
-    const segmentTable = ampPanel
-      .getByRole('table', { name: /Envelope segments/i })
-      .first();
-    await expect(segmentTable).toBeVisible({ timeout: 5_000 });
+    await expect(ampPanel.locator('[data-edit-row="rate"]')).toHaveCount(0);
+    await expandTweak(ampPanel, 'per-segment');
+    await expect(ampPanel.locator('[data-edit-row="rate"]').first()).toBeVisible();
   });
 });

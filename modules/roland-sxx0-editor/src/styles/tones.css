@@ -345,6 +345,130 @@
 }
 
 /* ============================================================
+   SECTION COLLAPSIBLE — AcDisclosure "section" presentation
+   (v2 filter-tab compaction, design SSOT 04-tones-v2.html).
+   AcDisclosure renders a <button> (not a native <summary>) and
+   the canonical AcChevron as its marker — so there is NO marker
+   rotation rule here; the glyph swaps ▸/▾ inside the component.
+   ============================================================ */
+.tones__section--collapsible {
+  display: flex;
+  flex-direction: column;
+  /* Tighter than a top-level section gap — the disclosure header sits
+     close to its graphic so both the envelope + filter-curve graphics
+     stay above-the-fold (T8.13). */
+  gap: var(--ac-space-2);
+  min-width: 0;
+}
+
+.tones__section-head--summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.tones__section-head--summary:hover .tones__section-title {
+  color: var(--ac-color-accent);
+}
+
+.tones__section-head--summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  border-radius: 2px;
+}
+
+.tones__section-collapsible-marker {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tones__section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+  min-width: 0;
+}
+
+/* ============================================================
+   TWEAK DISCLOSURE — AcDisclosure "pill" presentation. Hides the
+   numeric back-channel (per-segment table; filter sliders + modes)
+   beneath a graphical editor; collapsed by default so the default
+   tab shows only the graphics (above-the-fold). Marker is the
+   canonical AcChevron — again no rotation rule.
+   ============================================================ */
+.tones__tweak {
+  margin-top: var(--ac-space-3);
+}
+
+.tones__tweak-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0.55rem var(--ac-space-3);
+  border-top: var(--ac-rule-hairline) dashed color-mix(in srgb, var(--ac-color-border-subtle) 60%, transparent);
+  border-bottom: var(--ac-rule-hairline) dashed color-mix(in srgb, var(--ac-color-border-subtle) 60%, transparent);
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.tones__tweak-summary:hover {
+  background: color-mix(in srgb, var(--ac-color-accent) 4%, transparent);
+}
+
+.tones__tweak-summary:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+}
+
+.tones__tweak-label-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.tones__tweak-label {
+  font-family: var(--ac-font-display);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: var(--ac-tracking-eyebrow);
+  color: var(--ac-color-text-primary);
+}
+
+.tones__tweak-hint {
+  font-family: var(--ac-font-mono);
+  font-size: 0.6rem;
+  color: color-mix(in srgb, var(--ac-color-text-muted) 80%, transparent);
+  letter-spacing: 0.02em;
+}
+
+.tones__tweak-marker {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tones__tweak-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-4);
+  padding-top: var(--ac-space-3);
+}
+
+/* ============================================================
    TAB STRIP — radio-driven, CSS-only activation. Five tabs:
    Wave · Pitch · Filter · Amp · LFO. The active tab is illuminated
    via the `id="tt-*":checked ~ .tones__tab-strip [for="tt-*"]`

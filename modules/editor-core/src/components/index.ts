@@ -45,10 +45,10 @@ export {
   type AcEnvelopeTableSegment,
 } from './AcEnvelopeTable';
 export {
-  CollapsibleSection,
-  type CollapsibleSectionProps,
-  type CollapsibleSectionTheme,
-} from './CollapsibleSection';
+  AcDisclosure,
+  type AcDisclosureProps,
+  type AcDisclosureTheme,
+} from './AcDisclosure';
 export { NotificationArea, type NotificationAreaProps } from './NotificationArea';
 export {
   MidiConnectionPage,

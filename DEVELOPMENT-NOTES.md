@@ -11,6 +11,40 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-06-02: editor-ux-refinement — Phase 1 v2 filter-tab compaction (T8.6/T8.7/T8.9–T8.13)
+
+### Feature: editor-ux-refinement
+### Worktree: audiocontrol-editor-ux-refinement
+
+### Goal
+Drive Phase 1 to exhaustion: build the `AcDisclosure` primitive and use it to compact the Roland FILTER tab so the envelope + filter-curve graphics sit above-the-fold (the T8.8 gap), plus land the owed T8.6/T8.7 tests.
+
+### Accomplished
+- **T8.9 `AcDisclosure`** — discovered a live `CollapsibleSection` already existed (exported, consumed by D-110 `PartialEditor`). Rather than add a second disclosure primitive (the DRY violation the repo screams about), evolved it: `AcDisclosure` renders the canonical `AcChevron`, adds the "Tweak" presentation + controlled/uncontrolled, theme bag a superset. Deleted `CollapsibleSection`, migrated D-110 (pure import/tag swap), registered `ac-disclosure` adopter manifest. 6-case contract test.
+- **T8.10–T8.12** — Roland FILTER tab restructured to two `AcDisclosure` section-collapsibles; sliders+modes and the per-segment editor moved under collapsed "Tweak" disclosures; new `.tones__*` CSS (no chevron-named classes).
+- **T8.11 root-cause** — the v2 "per-segment table" is `AcEnvelope`'s always-on `AcEnvelopeTable` (redundant with the inline edit grid), not just the edit grid. Added opt-in `AcEnvelope.showTable` (default true); Roland tone envelopes pass false. Re-pointed `D-TONE-ENV-06/12`.
+- **T8.13 above-the-fold** — verified at 1280×900 via `D-TONE-FILTER-FOLD-01` (`boundingClientRect`): curve bottom ≈887 (was ≈1010). Screenshot sent to operator.
+- **T8.6/T8.7** — `AcFilterCurveEditor` contract test (4 cases incl. dual-axis drag — it had zero tests) + `tone-filter-layout.spec.ts` (order/fold/curve-drag).
+- **Verification** — tone wiring specs 55/0; full `make test-wiring-roland` 159 passed; full build green all editors; all scope/CSS/chevron gates clean.
+
+### Didn't Work / corrected mid-stream
+- First pass tweaked only the edit grid, leaving `AcEnvelopeTable` visible → FOLD-01 failed (curve at 903 > fold). Read the rendered layout (screenshot), found the redundant always-on table, added `showTable`. The discipline "verify the actual layout, don't trust the assertion passing" caught it.
+
+### Course Corrections
+- **[PROCESS]** When `make test-wiring-roland` showed 16 failures on surfaces I never touched, did NOT assume mine — stashed to clean HEAD and re-ran: identical 16 (+7 editor-core) are **pre-existing**. Surfaced as a finding instead of silently reconciling (per "controller is the gate" / "count drift is a finding").
+- **[COMPLEXITY]** Resisted building a parallel `AcDisclosure` next to `CollapsibleSection`; evolved+deleted instead (DRY).
+
+### Quantitative
+- New primitives: `AcDisclosure`; `AcEnvelope.showTable`. Deleted: `CollapsibleSection`.
+- New tests: AcDisclosure (6), AcFilterCurveEditor (4), tone-filter-layout (4); re-pointed ENV-06/12.
+- Pre-existing failures documented: 16 wiring + 7 editor-core (verified against HEAD).
+
+### Insights
+- A 164KB mockup + an existing-primitive check up front prevented two would-be regressions (duplicate disclosure primitive; the `AcEnvelopeTable` redundancy). "Read the mockup + grep for the concept first" paid for itself twice.
+- The pre-existing-failure baseline dance (stash → HEAD → re-run) is the only honest way to attribute failures without CI. It cost ~10 min and prevented chasing ghosts in 23 unrelated tests.
+
+---
+
 ## 2026-06-01: editor-ux-refinement — brainstorm pipeline + Phases 2-4 (P2.1/P2.2, Phase 3 specs, Phase 4 complete)
 
 ### Feature: editor-ux-refinement

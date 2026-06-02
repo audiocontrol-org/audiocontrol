@@ -73,6 +73,7 @@ import {
   fillLabeledNumber,
   fillEnvelopeFirstCell,
   selectEnvelopePip,
+  expandTweak,
   expectFixtureFullyConsumed,
   type ToneTabName,
 } from './tone-writes-helpers';
@@ -297,6 +298,12 @@ test.describe('Tone parameter write affordances', () => {
       const editor = await openTone0Editor(page);
       await switchToToneTab(page, t.tab);
 
+      // Filter-tab sliders live under the Filter section's collapsed
+      // "parameters · modes" Tweak (v2 compaction T8.10).
+      if (t.tabId === 'tt-filter') {
+        await expandTweak(tonePanel(editor, 'tt-filter'), 'parameters');
+      }
+
       await fillSliderInput(
         tonePanel(editor, t.tabId).getByTestId(t.testId),
         t.value,
@@ -356,6 +363,11 @@ test.describe('Tone parameter write affordances', () => {
       if (t.tab) await switchToToneTab(page, t.tab);
 
       const scope = tonePanel(editor, t.tabId);
+      // The Filter-Enable toggle lives under the Filter section's
+      // collapsed "parameters · modes" Tweak (v2 compaction T8.10).
+      if (t.tabId === 'tt-filter') {
+        await expandTweak(scope, 'parameters');
+      }
       // Click whichever option (-on/-off) is NOT currently active so
       // state flips from `current` to `!current`. AcToggle marks the
       // active option via `data-active="true"` on the <label>.
@@ -385,6 +397,7 @@ test.describe('Tone parameter write affordances', () => {
     await page.goto(tonesUrl('tone-0-tvf-eg-polarity'));
     const editor = await openTone0Editor(page);
     await switchToToneTab(page, 'Filter');
+    await expandTweak(tonePanel(editor, 'tt-filter'), 'parameters');
 
     await tonePanel(editor, 'tt-filter')
       .getByTestId('tone-tvf-polarity-reverse')
@@ -397,6 +410,7 @@ test.describe('Tone parameter write affordances', () => {
     await page.goto(tonesUrl('tone-0-tvf-level-curve'));
     const editor = await openTone0Editor(page);
     await switchToToneTab(page, 'Filter');
+    await expandTweak(tonePanel(editor, 'tt-filter'), 'parameters');
 
     await fillSliderInput(
       tonePanel(editor, 'tt-filter').getByTestId('param-level-curve'),

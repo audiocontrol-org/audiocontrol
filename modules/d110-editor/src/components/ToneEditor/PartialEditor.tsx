@@ -6,7 +6,7 @@
  */
 
 import { useCallback } from 'react';
-import { CollapsibleSection } from '@audiocontrol/editor-core';
+import { AcDisclosure } from '@audiocontrol/editor-core';
 import { useD110Store, selectCurrentTone } from '@/stores';
 import { useMidiStore } from '@/stores';
 import { PartialSelector } from '@/components/ToneEditor/PartialSelector';
@@ -155,7 +155,7 @@ export function PartialEditor(): JSX.Element {
 
       <div className="space-y-3">
         {/* Pitch Section */}
-        <CollapsibleSection
+        <AcDisclosure
           title="Pitch"
           defaultOpen={true}
           theme={collapsibleTheme}
@@ -167,10 +167,10 @@ export function PartialEditor(): JSX.Element {
             structure34={tone.common.structure34}
             partialIndex={selectedPartial}
           />
-        </CollapsibleSection>
+        </AcDisclosure>
 
         {/* Pitch Envelope Section */}
-        <CollapsibleSection
+        <AcDisclosure
           title="Pitch Envelope"
           defaultOpen={false}
           theme={collapsibleTheme}
@@ -179,10 +179,10 @@ export function PartialEditor(): JSX.Element {
             envelope={partial.pitchEnvelope}
             onChange={handlePitchEnvelopeChange}
           />
-        </CollapsibleSection>
+        </AcDisclosure>
 
         {/* Filter Section */}
-        <CollapsibleSection
+        <AcDisclosure
           title="Filter (TVF)"
           defaultOpen={true}
           theme={collapsibleTheme}
@@ -194,10 +194,10 @@ export function PartialEditor(): JSX.Element {
             structure34={tone.common.structure34}
             partialIndex={selectedPartial}
           />
-        </CollapsibleSection>
+        </AcDisclosure>
 
         {/* Filter Envelope Section */}
-        <CollapsibleSection
+        <AcDisclosure
           title="Filter Envelope"
           defaultOpen={false}
           theme={collapsibleTheme}
@@ -209,10 +209,10 @@ export function PartialEditor(): JSX.Element {
             structure34={tone.common.structure34}
             partialIndex={selectedPartial}
           />
-        </CollapsibleSection>
+        </AcDisclosure>
 
         {/* Amp Section */}
-        <CollapsibleSection
+        <AcDisclosure
           title="Amplifier (TVA)"
           defaultOpen={true}
           theme={collapsibleTheme}
@@ -221,10 +221,10 @@ export function PartialEditor(): JSX.Element {
             params={partial}
             onChange={handlePartialChange}
           />
-        </CollapsibleSection>
+        </AcDisclosure>
 
         {/* Amp Envelope Section */}
-        <CollapsibleSection
+        <AcDisclosure
           title="Amp Envelope"
           defaultOpen={false}
           theme={collapsibleTheme}
@@ -233,10 +233,10 @@ export function PartialEditor(): JSX.Element {
             envelope={partial.tvaEnvelope}
             onChange={handleTvaEnvelopeChange}
           />
-        </CollapsibleSection>
+        </AcDisclosure>
 
         {/* LFO Section */}
-        <CollapsibleSection
+        <AcDisclosure
           title="LFO"
           defaultOpen={true}
           theme={collapsibleTheme}
@@ -245,7 +245,7 @@ export function PartialEditor(): JSX.Element {
             params={partial.lfo}
             onChange={handleLfoChange}
           />
-        </CollapsibleSection>
+        </AcDisclosure>
       </div>
     </div>
   );

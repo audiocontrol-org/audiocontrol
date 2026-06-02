@@ -338,3 +338,19 @@ adopter_manifests:
       Roland TVF FILTER tab both adopted 2026-06-02 (editor-ux-refinement
       Phase 1 T8.1-T8.3). introduced_in is the parent commit; backfill to the
       promotion commit per refactor-protocol step 6 if required.
+  - id: ac-disclosure
+    introduced_in: 34b4ba48
+    from: '@audiocontrol/editor-core'
+    expected_adopters_glob:
+      - 'modules/d110-editor/src/components/ToneEditor/PartialEditor.tsx'
+      - 'modules/roland-sxx0-editor/src/components/tones/panels/ToneFilterPanel.tsx'
+      - 'modules/roland-sxx0-editor/src/components/ui/ToneEnvelopeEditor.tsx'
+    message: |
+      Render the shared <AcDisclosure> from @audiocontrol/editor-core for
+      every collapse/expand affordance (section-collapsible + "Tweak" pill).
+      It renders the canonical AcChevron marker, so disclosures cannot drift.
+      Supersedes the former CollapsibleSection (deleted 2026-06-02,
+      editor-ux-refinement Phase 1 T8.9). D-110 PartialEditor + Roland TVF
+      FILTER tab (panel + envelope editor) adopt it. introduced_in is the
+      parent commit; backfill to the introducing commit per refactor-protocol
+      step 6 if required.
