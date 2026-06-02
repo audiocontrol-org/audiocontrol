@@ -268,6 +268,14 @@ test-wiring-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 test-rendering-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-test-harness-e2e.sh playwright.rendering.config.ts $(ARGS)"
 
+# Promo scene-manifest validator self-check (editor-ux-refinement P2.2).
+# Asserts the device-free screenshot manifest only references real captured
+# fixtures; the adversarial scenario proves the fixture-existence rule has
+# teeth. No device, no browser.
+.PHONY: check-promo-manifest
+check-promo-manifest:
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/e2e-infra && npx tsx src/promo/validate-scenes.selfcheck.ts"
+
 # Coverage gate: lint -> wiring -> test-ui-roland -> credibility -> manifest -> gate.
 # Exits non-zero if any 'implemented' D-row has 'coverage: none' in the
 # generated manifest. Workplan 9R-A.1 T8 + 9R-A.2; reform spec §6.

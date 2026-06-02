@@ -11,7 +11,8 @@
     "./reporters/heartbeat-reporter": "./reporters/heartbeat-reporter.ts"
   },
   "imports": {
-    "#node/*": "./src/node/*"
+    "#node/*": "./src/node/*",
+    "#promo/*": "./src/promo/*"
   },
   "scripts": {
     "test": "echo 'no tests yet'",
