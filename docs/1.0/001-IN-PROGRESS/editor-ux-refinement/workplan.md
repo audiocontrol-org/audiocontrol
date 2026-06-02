@@ -212,6 +212,18 @@ Anything surfaced becomes either an additional T8.x sub-task (migrate now) or a 
 - The brief template + playbook codify the lo-fi convention and the design-language reference.
 - Operator confirms the sketch aesthetic and the gate behavior.
 
+## Deferred / follow-up backlog
+
+Everything identified-but-not-yet-done lives here so it can't get lost (operator directive 2026-06-01: "if it's in the workplan, we will eventually get to it"). Phasing is loose — these get pulled in as capacity allows.
+
+- **F-1 — Capture s550 promo fixtures from hardware** *(P2 follow-up; [#469](https://github.com/audiocontrol-org/audiocontrol/issues/469))*. The promo manifest shoots s330 only (the s550 fixtures dir is empty). Record s550 NDJSON via `make record-fixtures-roland-s550` for tones/patches/play, add s550 scenes to `scenes.ts`. Needs S-550 hardware; no fabricated fixtures.
+- **F-2 — Capture real Akai S3000XL promo fixtures** *(P2 follow-up; [#470](https://github.com/audiocontrol-org/audiocontrol/issues/470))*. The Akai keygroup promo scene uses factory data today; back it with a real captured fixture. Needs S3000XL hardware.
+- **F-3 — Fix Akai `.s3k-param-value` mono-stack divergence** *(P3 follow-up)*. `modules/akai-s3k-editor/src/index.css` uses a local `ui-monospace, 'Cascadia Code'…` stack for numeric readouts instead of the shared mono token. Promote it to the design-system mono token (verify the token name in `editor-core/src/design/tokens.css`) so the Akai numeric type matches the cross-editor contract. Documented in `docs/design-language/akai.md`.
+- **F-4 — Bundle an OFL hand-drawn webfont into the sketch kit** *(P4 follow-up)*. `docs/wireframe-kit/sketch-kit.css` uses a macOS system marker-font stack (Bradley Hand / Chalkboard / Comic Sans). Bundle a local OFL `.woff2` (e.g. Architects Daughter) via `@font-face` so the hand-drawn aesthetic is deterministic across platforms, not just macOS. Keep it local (no CDN) — the `check-mockup-lofi` gate forbids remote resources.
+- **F-5 — Framed / social-media-preset screenshot variants** *(P2 follow-up, after P2.3/P2.4)*. Add optional output presets to the promo engine: OG image (1200×630), square, and an optional browser/device frame around the captured UI, on top of the plain full-app-shell shot.
+- **F-6 — rough.js wobbly-stroke upgrade for the sketch kit** *(P4 follow-up, optional)*. If the pure-CSS sketch reads too clean, bundle rough.js for genuinely hand-drawn SVG strokes. Cosmetic; only if the operator wants more wobble.
+- **F-7 — JV-1080 / D-110 design-language specs** *(P3 follow-up)*. `docs/design-language/{jv1080,d110}.md` are honest one-line stubs today. Author full specs when those editors get visual work (defining their language before that would be fabrication).
+
 ## Pre-commit Discipline
 
 - One refinement per commit; descriptive subject; no sweep refactors slipped in alongside a phase task.
@@ -226,6 +238,7 @@ Anything surfaced becomes either an additional T8.x sub-task (migrate now) or a 
 - **Phase 2:** [#466](https://github.com/audiocontrol-org/audiocontrol/issues/466) — device-free render & capture engine.
 - **Phase 3:** [#467](https://github.com/audiocontrol-org/audiocontrol/issues/467) — per-editor design-language specification.
 - **Phase 4:** [#468](https://github.com/audiocontrol-org/audiocontrol/issues/468) — lo-fi sketch mockup kit + wireframe-only gate.
+- **Follow-ups (hardware-gated):** [#469](https://github.com/audiocontrol-org/audiocontrol/issues/469) — s550 promo fixtures; [#470](https://github.com/audiocontrol-org/audiocontrol/issues/470) — Akai S3000XL promo fixtures. Other follow-ups (F-3…F-7) tracked in the Deferred / follow-up backlog section above (workplan-only).
 
 ## Out of Scope
 
