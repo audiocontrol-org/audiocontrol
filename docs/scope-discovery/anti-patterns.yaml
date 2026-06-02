@@ -231,3 +231,16 @@ anti_patterns:
       2026-05-23 per RGM-001 sub-task 4). Replace with
       `import { downloadBlob } from '@audiocontrol/editor-core'` +
       `downloadBlob(blob, filename)`.
+  - id: ac-filter-curve-editor-inline
+    added_in: fbdb9110
+    primitive: AcFilterCurveEditor
+    from: '@audiocontrol/editor-core'
+    shape_regex:
+      - 'generateFilterPath'
+      - '2nd-order resonant LPF'
+    excludes_paths:
+      - 'modules/editor-core/src/components/AcFilterCurveEditor.tsx'
+    message: |
+      Don't reimplement an inline LPF filter-response SVG. Render the shared
+      <AcFilterCurveEditor> from @audiocontrol/editor-core; its cutoffMax/qMax
+      props parameterize the device domain (Akai 99/15, Roland TVF 127/127).

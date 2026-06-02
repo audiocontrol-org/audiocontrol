@@ -326,3 +326,15 @@ adopter_manifests:
       Roland Import dialogs migrated 2026-05-23 (V3-IMPORT, #450). The
       9 Akai library dialogs remain TRACKED HOLDOUTS pending a cross-
       editor follow-up (ROLAND-BUGFIX-V3-AKAI).
+  - id: ac-filter-curve-editor
+    introduced_in: fbdb9110
+    from: '@audiocontrol/editor-core'
+    expected_adopters_glob:
+      - 'modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx'
+      - 'modules/roland-sxx0-editor/src/components/tones/panels/ToneFilterPanel.tsx'
+    message: |
+      Render the shared <AcFilterCurveEditor> from @audiocontrol/editor-core
+      instead of an inline LPF filter-response SVG. Akai keygroup filter +
+      Roland TVF FILTER tab both adopted 2026-06-02 (editor-ux-refinement
+      Phase 1 T8.1-T8.3). introduced_in is the parent commit; backfill to the
+      promotion commit per refactor-protocol step 6 if required.

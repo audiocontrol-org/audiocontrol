@@ -8,6 +8,7 @@ export {
 // v3 atomic control primitives (Phase 9 Task 4.0)
 export { AcCheckbox, type AcCheckboxProps } from './AcCheckbox';
 export { AcChevron, type AcChevronProps } from './AcChevron';
+export { AcFilterCurveEditor, type AcFilterCurveEditorProps } from './AcFilterCurveEditor';
 export {
   AcRangeBar,
   type AcRangeBarProps,

@@ -4,7 +4,7 @@ import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 import { AdsrDisplay, MultiPointEnvelopeDisplay } from '@/components/keygroups/AdsrDisplay';
-import { FilterDisplay } from '@/components/keygroups/FilterDisplay';
+import { AcFilterCurveEditor } from '@audiocontrol/editor-core';
 import type { NoteRange } from '@/components/keygroups/note-coordinate-utils';
 
 interface KeygroupEditorProps {
@@ -127,10 +127,20 @@ export function KeygroupEditor({
         <Section
           title="Filter"
           headerContent={
-            <FilterDisplay
+            <AcFilterCurveEditor
               frequency={header.FILFRQ}
               resonance={header.FILQ}
-              onChange={onDragChange ? (changes) => { for (const [f, v] of Object.entries(changes)) onDragChange(f, v); } : (changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
+              cutoffMax={99}
+              qMax={15}
+              onChange={(frequency, resonance) => {
+                if (onDragChange) {
+                  onDragChange('FILFRQ', frequency);
+                  onDragChange('FILQ', resonance);
+                } else {
+                  onParameterChange('FILFRQ', frequency);
+                  onParameterChange('FILQ', resonance);
+                }
+              }}
               onCommit={onCommitHeader}
             />
           }

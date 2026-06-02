@@ -314,49 +314,14 @@
   }
 
   /* ================================================================
-   * ADSR Envelope Display
+   * Envelope / curve display label
+   *
+   * The draggable curve chrome (.ac-curve-display / .ac-curve-{bg,fill,
+   * line,dot,hit}) was promoted to editor-core
+   * (design/curve-display-primitives.css) and is shared with
+   * AcFilterCurveEditor. Only the Akai-specific A/D/S/R text label remains
+   * here — it is not part of the shared chrome.
    * ================================================================ */
-
-  .s3k-envelope-display {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-
-  .s3k-adsr-bg {
-    fill: rgba(255, 255, 255, 0.03);
-  }
-
-  .s3k-adsr-fill {
-    fill: var(--ac-color-accent, #d4a843);
-    opacity: 0.08;
-  }
-
-  .s3k-adsr-line {
-    fill: none;
-    stroke: var(--ac-color-accent, #d4a843);
-    stroke-width: 2;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-    opacity: 0.8;
-  }
-
-  .s3k-adsr-dot {
-    fill: var(--ac-color-accent, #d4a843);
-    opacity: 0.9;
-  }
-
-  .s3k-adsr-dot--draggable {
-    cursor: grab;
-  }
-
-  .s3k-adsr-hit {
-    cursor: grab;
-  }
-
-  .s3k-adsr-hit--dragging {
-    cursor: grabbing;
-  }
 
   .s3k-adsr-label {
     fill: var(--ac-color-text-muted, #9ca3af);

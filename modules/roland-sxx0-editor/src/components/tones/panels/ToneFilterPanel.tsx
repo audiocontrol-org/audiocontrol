@@ -23,7 +23,7 @@
 import type {
   SamplerTone, SamplerEnvelope, SamplerEgPolarity, SamplerLevelCurve,
 } from '@/core/midi/SamplerClient';
-import { AcToggle } from '@audiocontrol/editor-core';
+import { AcToggle, AcFilterCurveEditor } from '@audiocontrol/editor-core';
 import { ParamSliderRow } from '@/components/ui/ParamSliderRow';
 import { ToneEnvelopeEditor } from '@/components/ui/ToneEnvelopeEditor';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -70,14 +70,45 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
     onCommit?.(updatedTone);
   };
 
+  // The filter curve dot drags cutoff (X) and resonance (Y) together. Stream
+  // both during the drag (onUpdate only — no per-frame device write), commit
+  // the latest tone on mouseup. Same two-stage shape as the TVF envelope.
+  const handleFilterCurveChange = (cutoff: number, resonance: number) => {
+    onUpdate?.({ ...tone, tvf: { ...tvf, cutoff, resonance } });
+  };
+  const handleFilterCurveCommit = () => {
+    onCommit?.(tone);
+  };
+
   return (
     <section className="tones__section">
       {/* No section header — duplicates the active FILTER tab. */}
 
-      {/* Slider grid first. Filter Enable + EG Polarity share a single
-          compact-grid row below, since both are binary/few-position
-          enums that read better as segmented controls than as a
-          checkbox + dropdown. */}
+      {/* Above-the-fold: the TVF envelope graphic and the filter-response
+          curve sit at the top so both visualizations are visible without
+          scrolling at the default viewport. The slider grid + toggles
+          follow below. */}
+      <ToneEnvelopeEditor
+        envelope={tvf.envelope}
+        onChange={handleTvfEnvelopeChange}
+        onCommit={handleTvfEnvelopeCommit}
+        label="TVF"
+        disabled={!tvf.enabled}
+      />
+
+      <AcFilterCurveEditor
+        frequency={tvf.cutoff}
+        resonance={tvf.resonance}
+        cutoffMax={127}
+        qMax={127}
+        onChange={handleFilterCurveChange}
+        onCommit={handleFilterCurveCommit}
+        disabled={!tvf.enabled}
+      />
+
+      {/* Filter Enable + EG Polarity share a single compact-grid row below
+          the sliders, since both are binary/few-position enums that read
+          better as segmented controls than as a checkbox + dropdown. */}
       <div className="tones__param-rows">
         <ParamSliderRow label="Cutoff" value={tvf.cutoff} onChange={handleCutoffChange} tooltip={TONE_TOOLTIPS.tvfCutoff} disabled={!tvf.enabled} />
         <ParamSliderRow label="Resonance" value={tvf.resonance} onChange={handleResonanceChange} tooltip={TONE_TOOLTIPS.tvfResonance} disabled={!tvf.enabled} />
@@ -122,14 +153,6 @@ export function ToneFilterPanel({ tone, onUpdate, onCommit }: ToneFilterPanelPro
           </div>
         </Tooltip>
       </div>
-
-      <ToneEnvelopeEditor
-        envelope={tvf.envelope}
-        onChange={handleTvfEnvelopeChange}
-        onCommit={handleTvfEnvelopeCommit}
-        label="TVF"
-        disabled={!tvf.enabled}
-      />
     </section>
   );
 }

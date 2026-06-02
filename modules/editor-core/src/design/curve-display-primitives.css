@@ -1,0 +1,53 @@
+/**
+ * Curve-display primitives — the shared chrome for an SVG curve/area with a
+ * draggable node. Used by AcFilterCurveEditor (the LPF filter-response
+ * curve) and the Akai keygroup AdsrDisplay (the ADSR envelope). The classes
+ * are deliberately generic (`.ac-curve-*`, not `.ac-filter-*`) because the
+ * chrome is shared across a filter curve and an envelope.
+ *
+ * Promoted from the Akai s3k-editor `.s3k-envelope-display` / `.s3k-adsr-*`
+ * rules so both editors share one definition. Color tracks the per-editor
+ * accent (`--ac-color-accent`), so the same component reads amber on Akai
+ * and accent-blue on Roland.
+ */
+
+.ac-curve-display {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.ac-curve-bg {
+  fill: rgba(255, 255, 255, 0.03);
+}
+
+.ac-curve-fill {
+  fill: var(--ac-color-accent, #d4a843);
+  opacity: 0.08;
+}
+
+.ac-curve-line {
+  fill: none;
+  stroke: var(--ac-color-accent, #d4a843);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
+
+.ac-curve-dot {
+  fill: var(--ac-color-accent, #d4a843);
+  opacity: 0.9;
+}
+
+.ac-curve-dot--draggable {
+  cursor: grab;
+}
+
+.ac-curve-hit {
+  cursor: grab;
+}
+
+.ac-curve-hit--dragging {
+  cursor: grabbing;
+}

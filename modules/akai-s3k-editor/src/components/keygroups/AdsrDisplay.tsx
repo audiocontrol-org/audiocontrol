@@ -172,26 +172,26 @@ export function AdsrDisplay({ attack, decay, sustain, release, onChange, onCommi
 
   return (
     <svg ref={svgRef} width={WIDTH} height={TOTAL_HEIGHT}
-      viewBox={`0 0 ${WIDTH} ${TOTAL_HEIGHT}`} className="s3k-envelope-display"
+      viewBox={`0 0 ${WIDTH} ${TOTAL_HEIGHT}`} className="ac-curve-display"
       aria-label={`ADSR: A=${attack} D=${decay} S=${sustain} R=${release}`}>
-      <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={4} className="s3k-adsr-bg" />
+      <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={4} className="ac-curve-bg" />
       {[0.25, 0.5, 0.75].map((pct) => (
         <line key={pct} x1={PADDING} y1={TOP + pct * DRAW_HEIGHT}
           x2={PADDING + DRAW_WIDTH} y2={TOP + pct * DRAW_HEIGHT}
           stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
       ))}
-      <path d={fillD} className="s3k-adsr-fill" />
-      <path d={pathD} className="s3k-adsr-line" />
+      <path d={fillD} className="ac-curve-fill" />
+      <path d={pathD} className="ac-curve-line" />
       {points.map((p, i) => (
         <g key={i}>
           {draggable[i] && onChange && (
             <circle cx={p.x} cy={p.y} r={HIT_RADIUS} fill="transparent"
-              className={dragging === i ? 's3k-adsr-hit--dragging' : 's3k-adsr-hit'}
+              className={dragging === i ? 'ac-curve-hit--dragging' : 'ac-curve-hit'}
               onMouseDown={(e) => { e.preventDefault(); setDragging(i); }} />
           )}
           <circle cx={p.x} cy={p.y}
             r={dragging === i ? POINT_RADIUS_ACTIVE : (draggable[i] ? POINT_RADIUS : 3)}
-            className={draggable[i] && onChange ? 's3k-adsr-dot s3k-adsr-dot--draggable' : 's3k-adsr-dot'}
+            className={draggable[i] && onChange ? 'ac-curve-dot ac-curve-dot--draggable' : 'ac-curve-dot'}
             onMouseDown={draggable[i] && onChange ? (e) => { e.preventDefault(); setDragging(i); } : undefined} />
         </g>
       ))}
@@ -287,28 +287,28 @@ export function MultiPointEnvelopeDisplay({ rates, levels, onChange, onCommit }:
 
   return (
     <svg ref={svgRef} width={WIDTH} height={TOTAL_HEIGHT}
-      viewBox={`0 0 ${WIDTH} ${TOTAL_HEIGHT}`} className="s3k-envelope-display"
+      viewBox={`0 0 ${WIDTH} ${TOTAL_HEIGHT}`} className="ac-curve-display"
       aria-label={`Filter envelope: ${rates.map((r, i) => `R${i + 1}=${r} L${i + 1}=${levels[i]}`).join(' ')}`}>
-      <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={4} className="s3k-adsr-bg" />
+      <rect x={0} y={0} width={WIDTH} height={HEIGHT} rx={4} className="ac-curve-bg" />
       {[0.25, 0.5, 0.75].map((pct) => (
         <line key={pct} x1={PADDING} y1={TOP + pct * DRAW_HEIGHT}
           x2={PADDING + DRAW_WIDTH} y2={TOP + pct * DRAW_HEIGHT}
           stroke="currentColor" strokeOpacity={0.08} strokeWidth={1} />
       ))}
-      <path d={fillD} className="s3k-adsr-fill" />
-      <path d={pathD} className="s3k-adsr-line" />
+      <path d={fillD} className="ac-curve-fill" />
+      <path d={pathD} className="ac-curve-line" />
       {points.map((p, i) => {
         const isDraggable = i > 0 && onChange;
         return (
           <g key={i}>
             {isDraggable && (
               <circle cx={p.x} cy={p.y} r={HIT_RADIUS} fill="transparent"
-                className={dragging === i ? 's3k-adsr-hit--dragging' : 's3k-adsr-hit'}
+                className={dragging === i ? 'ac-curve-hit--dragging' : 'ac-curve-hit'}
                 onMouseDown={(e) => { e.preventDefault(); setDragging(i); }} />
             )}
             <circle cx={p.x} cy={p.y}
               r={dragging === i ? POINT_RADIUS_ACTIVE : (isDraggable ? POINT_RADIUS : 3)}
-              className={isDraggable ? 's3k-adsr-dot s3k-adsr-dot--draggable' : 's3k-adsr-dot'}
+              className={isDraggable ? 'ac-curve-dot ac-curve-dot--draggable' : 'ac-curve-dot'}
               onMouseDown={isDraggable ? (e) => { e.preventDefault(); setDragging(i); } : undefined} />
           </g>
         );

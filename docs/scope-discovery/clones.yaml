@@ -1,4 +1,4 @@
-generated_at: 2026-05-27T20:43:10.190Z
+generated_at: 2026-06-02T15:10:21.917Z
 clones:
   - id: 0c01c0982ede
     lines: 15
@@ -42,13 +42,13 @@ clones:
       - modules/roland-sxx0-editor/playwright.harness.shared.ts:38:54
     disposition: keep-with-reason
     reason: "Cross-module CLI script / build-config duplication. validate-akai-s3000xl + validate-device + remaining vite / vitest / playwright configs: each is a per-module self-contained CLI or config file that must work independently from its own module path. Extracting shared helpers would couple modules through a single point of failure and complicate test-infra layering. See earlier playwright-config batch (commit 214a99b8) and validate-device intra-file disposition (commit 77d8003e) for the precedent. Flip to refactor if a future operator builds out cross-module test-infra / CLI primitives in modules/e2e-infra/ with the test apparatus the test-before-extract protocol requires."
-  - id: e14d3218fcbe
+  - id: 044b3c153829
     lines: 8
     members:
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:112:119
-      - modules/akai-s3k-editor/src/components/keygroups/FilterDisplay.tsx:132:139
-    disposition: pending
-    reason: null
+      - modules/editor-core/src/components/AcFilterCurveEditor.tsx:141:148
+    disposition: ignore-with-justification
+    reason: Pre-existing SVG drag-node / envelope scaffolding shared across AcFilterCurveEditor, AdsrDisplay, and D110EnvelopeEditor; surfaced (not introduced) by promoting FilterDisplay (the prior clone partner, now deleted). Extracting a shared useSvgDragNode hook is tracked follow-up F-8, beyond Phase 1's filter-primitive scope.
   - id: c926c1ca1bec
     lines: 14
     members:
@@ -59,31 +59,31 @@ clones:
   - id: 35f3a66c0f21
     lines: 19
     members:
-      - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:145:177
+      - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:145:163
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:261:279
     disposition: pending
     reason: null
-  - id: b2002aea9997
+  - id: 6283a6909722
     lines: 14
     members:
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:150:163
-      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:360:177
-    disposition: pending
-    reason: null
-  - id: c691f58c2b48
+      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:360:373
+    disposition: ignore-with-justification
+    reason: Pre-existing SVG drag-node / envelope scaffolding shared across AcFilterCurveEditor, AdsrDisplay, and D110EnvelopeEditor; surfaced (not introduced) by promoting FilterDisplay (the prior clone partner, now deleted). Extracting a shared useSvgDragNode hook is tracked follow-up F-8, beyond Phase 1's filter-primitive scope.
+  - id: f528edb2cdc1
     lines: 10
     members:
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:176:185
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:291:300
-    disposition: pending
-    reason: null
-  - id: d1b5e391de69
+    disposition: ignore-with-justification
+    reason: Pre-existing SVG drag-node / envelope scaffolding shared across AcFilterCurveEditor, AdsrDisplay, and D110EnvelopeEditor; surfaced (not introduced) by promoting FilterDisplay (the prior clone partner, now deleted). Extracting a shared useSvgDragNode hook is tracked follow-up F-8, beyond Phase 1's filter-primitive scope.
+  - id: fccdf6e1e948
     lines: 7
     members:
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:187:193
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:304:310
-    disposition: pending
-    reason: null
+    disposition: ignore-with-justification
+    reason: Pre-existing SVG drag-node / envelope scaffolding shared across AcFilterCurveEditor, AdsrDisplay, and D110EnvelopeEditor; surfaced (not introduced) by promoting FilterDisplay (the prior clone partner, now deleted). Extracting a shared useSvgDragNode hook is tracked follow-up F-8, beyond Phase 1's filter-primitive scope.
   - id: e112d60125f1
     lines: 7
     members:
@@ -91,21 +91,13 @@ clones:
       - modules/akai-s3k-editor/src/components/keygroups/AdsrDisplay.tsx:315:321
     disposition: pending
     reason: null
-  - id: 090fc86629c2
-    lines: 11
-    members:
-      - modules/akai-s3k-editor/src/components/keygroups/FilterDisplay.tsx:167:177
-      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:363:373
-    disposition: pending
-    reason: null
-  - id: b8dfd6196fc8
+  - id: 1f3b7d52ce21
     lines: 7
     members:
       - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:106:112
-      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:132:138
-      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:156:162
-    disposition: pending
-    reason: null
+      - modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx:166:172
+    disposition: ignore-with-justification
+    reason: Pre-existing SVG drag-node / envelope scaffolding shared across AcFilterCurveEditor, AdsrDisplay, and D110EnvelopeEditor; surfaced (not introduced) by promoting FilterDisplay (the prior clone partner, now deleted). Extracting a shared useSvgDragNode hook is tracked follow-up F-8, beyond Phase 1's filter-primitive scope.
   - id: 41255eb6a8a0
     lines: 9
     members:
@@ -846,6 +838,13 @@ clones:
       - modules/jv1080-editor/src/components/layout/Layout.tsx:41:67
     disposition: pending
     reason: null
+  - id: 9df0ff34d350
+    lines: 11
+    members:
+      - modules/d110-editor/src/components/ui/D110EnvelopeEditor.tsx:363:163
+      - modules/editor-core/src/components/AcFilterCurveEditor.tsx:182:192
+    disposition: ignore-with-justification
+    reason: Pre-existing SVG drag-node / envelope scaffolding shared across AcFilterCurveEditor, AdsrDisplay, and D110EnvelopeEditor; surfaced (not introduced) by promoting FilterDisplay (the prior clone partner, now deleted). Extracting a shared useSvgDragNode hook is tracked follow-up F-8, beyond Phase 1's filter-primitive scope.
   - id: 554cd30ae514
     lines: 12
     members:
