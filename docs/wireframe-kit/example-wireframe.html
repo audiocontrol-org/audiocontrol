@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WIREFRAME — Filter tab (sketch) — editor-ux-refinement</title>
+  <!--
+    THE ONLY STYLESHEET THIS FILE MAY LINK.
+    No design-system CSS, no .ac-* classes, no --ac-* tokens, no brand colors.
+    This is a deliberately lo-fi, hand-drawn UX sketch — it carries layout /
+    flow / hierarchy ONLY, never visual style. The P4.2 check-mockup-lofi gate
+    enforces that exploration HTML imports only this kit.
+  -->
+  <link rel="stylesheet" href="./sketch-kit.css" />
+</head>
+<body class="sk-page">
+
+  <!-- Persistent ribbon: no screenshot of this page can be mistaken for the product. -->
+  <div class="sk-banner"><span>WIREFRAME — not final visual · UX sketch only</span></div>
+
+  <!-- Page heading -->
+  <div class="sk-row" style="align-items: baseline; justify-content: space-between;">
+    <span class="sk-label sk-label--title">Filter tab — candidate layout</span>
+    <span class="sk-label sk-label--muted">Roland S-550 · TVF · design-language ref: docs/design-language/roland.md</span>
+  </div>
+
+  <p class="sk-note">Sketch of a possible above-the-fold reorder — proving the kit, not specifying pixels.</p>
+
+  <!-- Tab strip (sketched) -->
+  <div class="sk-row" style="margin: 0.6rem 0;">
+    <span class="sk-btn">Pitch</span>
+    <span class="sk-btn sk-btn--primary">Filter (TVF)</span>
+    <span class="sk-btn">Amp (TVA)</span>
+    <span class="sk-btn">LFO</span>
+  </div>
+
+  <!-- Two-column body: response curve + envelope on the left, controls on the right -->
+  <div class="sk-row">
+
+    <div class="sk-col" style="flex: 2 1 0;">
+
+      <!-- Filter response-curve placeholder -->
+      <div class="sk-panel">
+        <span class="sk-label">TVF response curve</span>
+        <div class="sk-box" style="height: 9rem; display: flex; align-items: flex-end; justify-content: center;">
+          <span class="sk-label sk-label--muted">~ low-pass curve drawn here ~</span>
+        </div>
+        <span class="sk-note">Cutoff &amp; resonance handles drag on this curve.</span>
+      </div>
+
+      <!-- Envelope graphic placeholder (S-550 envelopes are 8-segment, not ADSR) -->
+      <div class="sk-panel">
+        <span class="sk-label">TVF envelope — 8 segment</span>
+        <div class="sk-box" style="height: 6.5rem; display: flex; align-items: center; justify-content: center;">
+          <span class="sk-label sk-label--muted">/\__/‾\____  8-segment shape sketched here</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="sk-col" style="flex: 1 1 0;">
+
+      <!-- Slider-row controls -->
+      <div class="sk-panel">
+        <span class="sk-label">Filter params</span>
+
+        <span class="sk-label sk-label--muted">Cutoff freq</span>
+        <div class="sk-field"></div>
+
+        <span class="sk-label sk-label--muted">Resonance</span>
+        <div class="sk-field"></div>
+
+        <span class="sk-label sk-label--muted">Key follow</span>
+        <div class="sk-field"></div>
+
+        <span class="sk-label sk-label--muted">Env depth</span>
+        <div class="sk-field"></div>
+      </div>
+
+      <div class="sk-row">
+        <span class="sk-btn">Reset</span>
+        <span class="sk-btn sk-btn--primary">Apply (live)</span>
+      </div>
+
+      <p class="sk-note">No save/cancel — edits stream live to the device.</p>
+
+    </div>
+
+  </div>
+
+  <!-- Live-status footer -->
+  <div class="sk-box">
+    <span class="sk-label sk-label--muted">● live · S-550 connected · tone 03 “SynBrass”</span>
+  </div>
+
+</body>
+</html>

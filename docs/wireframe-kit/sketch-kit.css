@@ -1,0 +1,259 @@
+/* ============================================================================
+   sketch-kit.css — the lo-fi, hand-drawn wireframe vocabulary.
+
+   PURPOSE
+   This stylesheet exists so that exploration mockups look OBVIOUSLY
+   hand-drawn and can NEVER be mistaken for shippable UI. A hand-drawn
+   sketch carries ONLY UX (layout, flow, hierarchy) — never visual style.
+   Visual truth lives in the real components, not in a static artifact
+   that can rot. See docs/.../design-mockup-pipeline.md (Item 1 / Phase 4).
+
+   THE RULE (enforced by the P4.2 `check-mockup-lofi` gate)
+   Exploration HTML may link ONLY this file. It must NOT reference the real
+   design system: no `--ac-*` variables, no `.ac-*` classes, no brand colors,
+   no product tokens. This file is deliberately self-contained and visually
+   UNLIKE the product.
+
+   SELF-CONTAINED
+   Pure CSS. No @import, no CDN, no network fetch at render time, no build
+   step. Works offline and renders deterministically.
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   FONT — hand-drawn / marker stack.
+
+   We use a system hand-drawn stack that exists on macOS (where these
+   wireframes are authored and screenshotted). NO CDN / NO @import from
+   Google Fonts — that would break offline + deterministic rendering, and
+   is forbidden by the brief.
+
+   FOLLOW-UP (out of scope for this task): bundle an OFL hand-drawn webfont
+   locally (e.g. Architects Daughter or Caveat as a .woff2 sitting next to
+   this file, referenced via a relative @font-face src) so the aesthetic is
+   identical on Linux/CI runners that lack the macOS system fonts. The binary
+   font fetch is the only reason that is deferred; the @font-face wiring is
+   trivial once the .woff2 is present. Tracked in workplan P4.1.
+   ---------------------------------------------------------------------------- */
+:root {
+  /* All sketch tokens are `--sk-*` — deliberately NOT `--ac-*`. */
+  --sk-ink:        #1c1a17;   /* near-black "Sharpie" stroke                 */
+  --sk-ink-soft:   #4a463f;   /* lighter pencil annotation                   */
+  --sk-paper:      #f6f2e9;   /* off-white "paper" background                */
+  --sk-paper-2:    #efe9da;   /* slightly darker paper for nested boxes      */
+  --sk-highlight:  #fff4b8;   /* yellow highlighter for callouts             */
+  --sk-banner:     #ffd23f;   /* loud warning-tape yellow for the ribbon     */
+  --sk-font: "Bradley Hand", "Chalkboard SE", "Comic Sans MS",
+             "Marker Felt", "Noteworthy", "Comic Sans", cursive;
+}
+
+/* ----------------------------------------------------------------------------
+   PAGE — the paper surface everything sits on.
+   ---------------------------------------------------------------------------- */
+.sk-page {
+  font-family: var(--sk-font);
+  color: var(--sk-ink);
+  background-color: var(--sk-paper);
+  /* Faint ruled-notebook grid so it reads as a sketch pad, not a screen. */
+  background-image:
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 1.65rem,
+      rgba(28, 26, 23, 0.06) 1.65rem,
+      rgba(28, 26, 23, 0.06) calc(1.65rem + 1px));
+  line-height: 1.65rem;
+  padding: 3.5rem 2rem 2rem;   /* top padding clears the fixed banner */
+  margin: 0;
+  min-height: 100vh;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sk-page * { box-sizing: border-box; }
+
+/* ----------------------------------------------------------------------------
+   WIREFRAME BANNER — a loud, fixed ribbon. No screenshot of a wireframe can
+   be mistaken for the product because this ribbon is always in frame.
+   ---------------------------------------------------------------------------- */
+.sk-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  font-family: var(--sk-font);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--sk-ink);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--sk-banner) 0,
+    var(--sk-banner) 16px,
+    #1c1a17 16px,
+    #1c1a17 18px,
+    var(--sk-banner) 18px,
+    var(--sk-banner) 34px);
+  padding: 0.35rem 0.5rem;
+  border-bottom: 3px solid var(--sk-ink);
+}
+.sk-banner > span {
+  background: var(--sk-banner);
+  padding: 0.1rem 0.9rem;
+  border: 2px solid var(--sk-ink);
+  border-radius: 255px 12px 225px 10px / 12px 225px 14px 255px;
+  display: inline-block;
+}
+
+/* ----------------------------------------------------------------------------
+   THE WOBBLY BORDER — the heart of the hand-drawn look.
+
+   Pure CSS, no SVG filter needed: asymmetric `border-radius` makes every box
+   look drawn freehand, and a tiny per-box rotation jitter (via nth-of-type)
+   keeps a column of boxes from looking machine-aligned.
+   ---------------------------------------------------------------------------- */
+.sk-box,
+.sk-panel,
+.sk-btn,
+.sk-field {
+  border: 2.5px solid var(--sk-ink);
+  /* The signature "drawn by hand" irregular corner radius. */
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  background-color: var(--sk-paper);
+}
+
+.sk-box {
+  padding: 1rem 1.1rem;
+  margin: 0.6rem 0;
+  /* Faint offset "double stroke" shadow, like a pen line traced twice. */
+  box-shadow: 2px 3px 0 -1px rgba(28, 26, 23, 0.35);
+}
+
+/* Alternate the corner shape + a hair of rotation so stacked boxes look
+   individually hand-drawn rather than stamped from one template. */
+.sk-box:nth-of-type(odd) {
+  border-radius: 15px 225px 15px 255px / 255px 15px 225px 15px;
+  transform: rotate(-0.4deg);
+}
+.sk-box:nth-of-type(even) {
+  transform: rotate(0.35deg);
+}
+
+/* PANEL — a labeled region (a "screen area" in the sketch). Slightly heavier
+   than a plain box; its header sits INSIDE the border. */
+.sk-panel {
+  padding: 0.4rem 1rem 1rem;
+  margin: 0.8rem 0;
+  background-color: var(--sk-paper-2);
+  box-shadow: 3px 4px 0 -1px rgba(28, 26, 23, 0.4);
+}
+.sk-panel > .sk-label:first-child {
+  display: block;
+  margin: 0 0 0.6rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 2px dashed var(--sk-ink);
+  font-size: 1.05rem;
+}
+
+/* ----------------------------------------------------------------------------
+   LABEL — sketched text. Underlined like an annotation, not styled like a UI.
+   ---------------------------------------------------------------------------- */
+.sk-label {
+  font-family: var(--sk-font);
+  color: var(--sk-ink);
+  font-size: 1rem;
+}
+.sk-label--title {
+  font-size: 1.5rem;
+  text-decoration: underline wavy var(--sk-ink) 1.5px;
+  text-underline-offset: 4px;
+}
+.sk-label--muted { color: var(--sk-ink-soft); font-size: 0.9rem; }
+
+/* ----------------------------------------------------------------------------
+   BUTTON — a hand-drawn pill. Looks pressable but clearly drawn.
+   ---------------------------------------------------------------------------- */
+.sk-btn {
+  display: inline-block;
+  font-family: var(--sk-font);
+  font-size: 1rem;
+  color: var(--sk-ink);
+  background-color: var(--sk-paper);
+  padding: 0.3rem 1.1rem;
+  margin: 0.2rem;
+  border-radius: 225px 18px 215px 18px / 18px 215px 18px 225px;
+  box-shadow: 2px 2px 0 0 rgba(28, 26, 23, 0.55);
+  cursor: default;
+  transform: rotate(-0.5deg);
+}
+.sk-btn--primary {
+  background-color: var(--sk-highlight);
+  transform: rotate(0.5deg);
+}
+
+/* ----------------------------------------------------------------------------
+   FIELD — an input placeholder box. Reads as "a control goes here," not as a
+   real input. A scribble line stands in for the value.
+   ---------------------------------------------------------------------------- */
+.sk-field {
+  display: flex;
+  align-items: center;
+  min-height: 2.2rem;
+  padding: 0.2rem 0.7rem;
+  margin: 0.3rem 0;
+  background-color: var(--sk-paper);
+  color: var(--sk-ink-soft);
+  font-size: 0.95rem;
+  border-radius: 235px 14px 235px 14px / 14px 235px 14px 235px;
+}
+/* The "scribbled-in value" — a wavy underline filling the field. */
+.sk-field::after {
+  content: "";
+  flex: 1;
+  height: 0.5rem;
+  margin-left: 0.5rem;
+  border-bottom: 2px solid var(--sk-ink-soft);
+  /* Wavy so it reads as a hand-scrawled value, not a real text cursor. */
+  border-radius: 0 0 40% 40%;
+}
+
+/* ----------------------------------------------------------------------------
+   NOTE — an annotation callout. The "designer scribbled in the margin" voice.
+   Highlighter background + a leader so it clearly sits OUTSIDE the UI it
+   annotates.
+   ---------------------------------------------------------------------------- */
+.sk-note {
+  position: relative;
+  display: inline-block;
+  font-family: var(--sk-font);
+  font-size: 0.9rem;
+  color: var(--sk-ink);
+  background-color: var(--sk-highlight);
+  padding: 0.25rem 0.7rem;
+  margin: 0.4rem 0;
+  border: 2px solid var(--sk-ink);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  transform: rotate(-1.2deg);
+}
+.sk-note::before {
+  content: "✎ ";   /* a little pencil glyph so it reads as a margin note */
+}
+
+/* ----------------------------------------------------------------------------
+   LAYOUT PRIMITIVES — tiny flex helpers. No grid system, no breakpoints; a
+   sketch doesn't need responsive engineering.
+   ---------------------------------------------------------------------------- */
+.sk-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  align-items: stretch;
+}
+.sk-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
