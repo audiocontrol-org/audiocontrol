@@ -3720,3 +3720,39 @@ The pattern: every fix added at least one adversarial scenario with TEETH (would
 - **Two phases of project-level docs sync now exist in `.claude/CLAUDE.md` / `AGENTS.md`.** The §"Nucleation Site Prevention" section grew from a single-paragraph mention of the Phase 2 gates (pre-this-session) to a full table covering 6 blocking gates + commit-msg gate + `--no-verify` triad + 5 operator-driven tools + 2 discovery skills + validator-suite reminder. Pattern: project-level docs surface what's there; detailed contracts live in `docs/scope-discovery/`. The sync ensures Codex (AGENTS.md) and Claude (CLAUDE.md) agents see the same gate set.
 
 - **PR #454's existence is the protocol working as designed.** PR #446 shipped, the auditor reviewed, found problems, I fixed them, PR #454 carries the fixes. This is exactly the "ship → audit → fix → ship-the-fixes" loop the audit-log protocol exists to enable. Two PRs in one ~36-hour arc, all empirically verified, zero hook bypasses, all in the audit trail. The protocol's overhead pays for itself the first time it catches a defect post-merge that would otherwise have shipped silently.
+
+## 2026-06-02: editor-ux-refinement — Phase 2 engine complete + Phase 1 AcFilterCurveEditor promotion
+
+### Feature: editor-ux-refinement
+### Worktree: audiocontrol-editor-ux-refinement
+
+### Goal
+Continue the autonomous burn-down: finish the Phase 2 device-free screenshot engine, then implement Phase 1 (the filter-editor primitive promotion).
+
+### Accomplished
+- **Phase 2 engine complete (P2.3–P2.5)** `875b3578` — refactored the shared launcher into `run_with_dev_server`; built `capture.ts` (Playwright API, device-free); `make promo-shots` produces 4 real deterministic PNGs (Roland tones/patches/play + Akai keygroups, 2560×1600 @2x). Determinism check + `make promo-shots-determinism` gate.
+- **Phase 1 promotion (T8.1–T8.5)** `117df78d` — `AcFilterCurveEditor` promoted to editor-core (generic `cutoffMax`/`qMax` props, device-agnostic `onChange`, `disabled`); Akai migrated, `FilterDisplay.tsx` deleted; Roland TVF tab adopts + reorders; adopter-manifest + anti-pattern registered. All gates green; all editors build.
+- Scoped the v2 filter-tab compaction (T8.9–T8.13) + F-8 (shared SVG-drag hook).
+
+### Didn't Work / Course Corrections
+- **[PROCESS] Implemented the T8.3 filter-tab reorder WITHOUT reading the v2 mockup SSOT** (`04-tones-v2.html`). The above-the-fold goal failed (curve ~54px below the fold) because the v2 compaction (detail controls hidden under TWEAK disclosures + section collapsibles) wasn't followed — I did a bare reorder of expanded controls. The operator caught it ("did you see the v2 refinements?"). This is the exact mockup→implementation gap this feature exists to prevent. Saved `feedback_read_mockup_before_redesign`; scoped the real fix as T8.9–T8.13.
+- **[PROCESS] Scope-inventory miss caught by the clone gate.** The `.s3k-adsr-*` classes were shared with `AdsrDisplay`, not FilterDisplay-only. The clone gate blocked committing the promoted copy while FilterDisplay existed (forcing T8.1+T8.2 atomic), and reading the code revealed the sharing. Corrected to generic `.ac-curve-*` chrome + migrated AdsrDisplay too.
+- **[PROCESS] Determinism check caught a real bug.** First promo-capture run was non-deterministic on the tones page (live rec-LED/VFD animation captured mid-frame); fixed with Playwright `animations:'disabled'`.
+
+### Insights
+- Every gate earned its keep this session: the **clone gate** forced the atomic promotion + surfaced the AdsrDisplay sharing; the **determinism check** caught an animation race; the **above-the-fold visual check** caught the skipped v2 design. Controller-is-the-gate + visual verification working as intended.
+- The headline lesson: for a UI redesign, READ THE DESIGN SSOT FIRST. The vertical-fit came from hiding detail (disclosures), which a "reorder" framing completely hides.
+
+### Quantitative
+- Commits (whole effort): ~16. Issues created: 2 (#469, #470 hardware captures). Clone groups dispositioned: 6 (→ F-8).
+
+### Next session resume
+- Phase 1 remaining: **T8.9–T8.13** (v2 compaction: build `AcDisclosure`, TWEAK-disclose sliders + segment table, collapsible sections, re-verify above-the-fold) + **T8.6/T8.7** (protecting tests). Pin the T8.13 target viewport height first.
+
+### Hygiene observations
+- Open issues referenced this session: #465 (parent), #466 (Phase 2), #467 (Phase 3), #468 (Phase 4), #469 + #470 (hardware promo captures). All OPEN by design — Phase 2/3/4 work is partial or hardware-gated; close when their acceptance is met.
+- (Repo-wide stale-worktree scan flagged ~20 OTHER feature worktrees — out of scope for this feature; not actioned here.)
+
+### Next session recommendation (hygiene)
+- Resume: Phase 1 T8.9–T8.13 (v2 compaction) + T8.6/T8.7 (tests) — read 04-tones-v2.html first.
+- Triage: none new for this feature; #466 stays open until Phase 2 P2.6 + the gallery (P3.4) land.
