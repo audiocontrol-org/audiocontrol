@@ -146,6 +146,8 @@ Anything surfaced becomes either an additional T8.x sub-task (migrate now) or a 
 
 ### Tasks
 
+> **P3.1–P3.3 ✅ Done** (2026-06-01) — `docs/design-language/{roland,akai}.md` authored with every visual claim cited to a real token/primitive (grep-verified: `--ac-roland-primary #6bc3ea`, `--ac-color-rec #f6533c`, `VfdGlowDefs`, `.ac-chevron`, `--ac-fp-*`, Akai `--ac-color-accent #d4a843`, `.s3k-adsr-*`). `jv1080.md` + `d110.md` are honest one-line scope stubs. roland.md also pre-stages the P3.5 canonical-source note. **P3.4 (living gallery) remains — blocked on the Phase 2 engine.** Flagged for Phase-3 review: Akai `.s3k-param-value` uses a local `ui-monospace` stack instead of a token (a real divergence, documented in akai.md, not yet fixed).
+
 - **P3.1 — Author `docs/design-language/roland.md`.** Palette, typography, signature components (rec-LED red as the S-550 PLAY-LED homage, VFD glow, CRT, virtual front panel) each with *rationale* and a reference to the real `DESIGN-SYSTEM.md` token / `.ac-*` primitive that implements it, plus do's/don'ts. **Proven complete when:** every visual claim cites a token or `.ac-*`/`.sk-*` primitive that actually exists (grep-verified at author time); zero fabricated tokens; no temporal/projection language per docs standards.
 
 - **P3.2 — Author `docs/design-language/akai.md`.** Same shape for the Akai S3000XL editor's realized identity. **Proven complete when:** same gate as P3.1 for the Akai surface.
