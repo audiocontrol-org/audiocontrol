@@ -11,6 +11,39 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-06-01: editor-ux-refinement — brainstorm pipeline + Phases 2-4 (P2.1/P2.2, Phase 3 specs, Phase 4 complete)
+
+### Feature: editor-ux-refinement
+### Worktree: audiocontrol-editor-ux-refinement
+
+### Goal
+Add two operator asks to the workplan (keep mockups from being mistaken for intended direction; a device-free promo screenshot generator), then implement.
+
+### Accomplished
+- Brainstormed the two asks into a **three-stage editor-UX pipeline** (design language / lo-fi UX sketch / implementation+device-free screenshots). Design doc `edcee468`, ingested to deskwork + approved to Final `40ed8741`.
+- Workplan extended with Phases 2-4 + issues #465-#468 (`0e0e70cd`).
+- **P2.1** `4e8e5743` — shared dev-server launcher extracted to e2e-infra (Roland 4✓ / Akai 19✓ via independent re-run).
+- **P2.2** `30fbc2fa` — typed promo scene manifest + validator + adversarial self-check (`make check-promo-manifest`).
+- **Phase 3 P3.1-P3.3** `2d6fc17d` — per-editor design-language specs (every citation grep-verified) + honest stubs (delegated to a documentation-engineer sub-agent, citations controller-verified).
+- **Phase 4 COMPLETE** `49381d82` + `4386bfec` — hand-drawn sketch kit (delegated to a ui-engineer sub-agent) + `check-mockup-lofi` inverted-teeth gate (validator-paired, wired into pre-commit) + 12-mockup grandfather + brief template/playbook.
+
+### Didn't Work / Deferred with a concrete plan
+- **P2.3 capture engine** NOT built this session — it's a multi-step cross-module engine (launcher refactor + Playwright-API capture + make wiring + verified PNGs). Stopped at the verified boundary rather than leave it half-built (per drive-to-completion). Decided approach (reuse the e2e-infra pattern, NOT duplicate `test/rendering/`) + exact build plan recorded in workplan §P2.3. P2.4/P2.6 + P3.4 gallery chain off it.
+
+### Course Corrections
+- **[PROCESS]** Operator reversed the mockup-fidelity direction mid-brainstorm: from a heavy mockup-vs-as-built drift gate to **deliberately lo-fi hand-drawn sketches** (a sketch can't be mistaken for visual direction), which dissolved the problem instead of policing it. Then named the missing third leg (design language) that mockups used to cover via double-duty.
+- **[PROCESS]** Operator: "plain URLs EVERY TIME" — I printed a fenced URL first despite an existing memory; reinforced `feedback_print_url_directly`.
+- **[PROCESS]** Operator: burn down autonomously, surface decisions at the end — drove parallel sub-agents (Phase 3 + Phase 4 drafts) while building Phase 2.
+
+### Insights
+- The existing `test/rendering/` smokes already do device-free PNG capture — found mid-build; surfaced as the P2.3 architecture decision rather than duplicating. The anti-duplication culture made "investigate adjacent capture infra before building" the right reflex.
+- Delegating the two independent drafts (design-language docs, sketch kit) to parallel background sub-agents while building the Phase 2 engine in the foreground worked cleanly — non-overlapping output paths, controller-verified citations/cleanliness before commit.
+
+### Quantitative
+- Commits this session: 9 (+ docs). Sub-agents: 2 (parallel). Issues created: 4.
+
+---
+
 ## 2026-05-23: roland-bugfix — V3-IMPORT closure + post-migration doc sync
 
 ### Feature: roland-bugfix

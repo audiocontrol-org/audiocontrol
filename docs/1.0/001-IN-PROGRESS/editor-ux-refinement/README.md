@@ -13,9 +13,9 @@ This is a parking lot for editor-page UX work that doesn't belong on a device-sc
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Phase 1: Filter editor — TVF curve + above-the-fold reorder | In progress | Seeded from roland-bugfix Phase 8 (migrated 2026-06-01); see [workplan.md](./workplan.md) §Phase 1 |
-| Phase 2: Device-free render & capture engine | Planned | Added 2026-06-01 per [design-mockup-pipeline.md](./design-mockup-pipeline.md); foundation for promo screenshots + Phase 3 gallery |
-| Phase 3: Per-editor design-language specification | Planned | Added 2026-06-01; markdown spec + living gallery (gallery depends on Phase 2) |
-| Phase 4: Lo-fi sketch mockup kit + wireframe-only gate | Planned | Added 2026-06-01; hand-drawn sketches replace hi-fi mockups; inverted-teeth gate |
+| Phase 2: Device-free render & capture engine | In progress | P2.1 launcher + P2.2 manifest/validator done; P2.3 capture engine decided (reuse e2e-infra pattern) + planned, blocks P2.4/P2.6 |
+| Phase 3: Per-editor design-language specification | In progress | P3.1–P3.3 specs done; P3.4 living gallery blocked on Phase 2 engine |
+| Phase 4: Lo-fi sketch mockup kit + wireframe-only gate | Done | Sketch kit + check-mockup-lofi gate (validator-paired, pre-commit) + grandfather + brief convention |
 
 ## Links
 
