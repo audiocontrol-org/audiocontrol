@@ -276,6 +276,23 @@ test-rendering-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 check-promo-manifest:
 	$(DEVENV_RUN) "cd $(MODULES_DIR)/e2e-infra && npx tsx src/promo/validate-scenes.selfcheck.ts"
 
+# Device-free promo screenshots (editor-ux-refinement P2.3/P2.4). For each
+# editor: launch its dev server with no hardware (shared run_with_dev_server),
+# render the promo scene manifest via Playwright, and write full-page PNGs to
+# out/promo/ (gitignored). Promote chosen shots into docs/promo/ for the
+# committed gallery. No device required.
+.PHONY: promo-shots
+promo-shots: $(ROLAND_SXX0_EDITOR) $(AKAI_S3K_EDITOR) ensure-playwright
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/roland-sxx0-editor && source ../e2e-infra/scripts/dev-server-lib.sh && export PROMO_EDITOR=roland && run_with_dev_server npx tsx ../e2e-infra/src/promo/capture.ts"
+	$(DEVENV_RUN) "cd $(MODULES_DIR)/akai-s3k-editor && source ../e2e-infra/scripts/dev-server-lib.sh && export PROMO_EDITOR=akai && run_with_dev_server npx tsx ../e2e-infra/src/promo/capture.ts"
+
+# Promo-capture determinism check (editor-ux-refinement P2.3). Runs
+# promo-shots twice and asserts every PNG is byte-identical across runs.
+# Heavy (two capture runs); operator-invoked, not a pre-commit gate.
+.PHONY: promo-shots-determinism
+promo-shots-determinism:
+	./tools/check-promo-determinism.sh
+
 # Coverage gate: lint -> wiring -> test-ui-roland -> credibility -> manifest -> gate.
 # Exits non-zero if any 'implemented' D-row has 'coverage: none' in the
 # generated manifest. Workplan 9R-A.1 T8 + 9R-A.2; reform spec §6.

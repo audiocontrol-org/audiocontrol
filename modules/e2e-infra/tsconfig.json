@@ -7,7 +7,7 @@
       "@/*": ["./src/*"],
       "#node/*": ["./src/node/*"]
     },
-    "lib": ["esnext"],
+    "lib": ["esnext", "dom"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "resolveJsonModule": true,

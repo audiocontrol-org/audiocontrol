@@ -52,10 +52,13 @@ ac_dev_server_cleanup() {
 # HTTPS URL, exports E2E_PORT, runs Playwright against the given config, and
 # tears the server process tree down on exit. Returns non-zero (and prints
 # the Vite output) if the port never appears.
-run_playwright_harness() {
-  local playwright_config=$1
-  shift
-
+# run_with_dev_server <command...> — starts a Vite dev server on an OS-
+# assigned port, waits for it to announce its HTTPS URL, exports E2E_PORT,
+# runs the command, and tears the server process tree down on exit. Returns
+# the command's exit code, or non-zero (printing the Vite output) if the
+# port never appears. Shared by the UI test harness and the promo-screenshot
+# capture (editor-ux-refinement Phase 2).
+run_with_dev_server() {
   echo "Step 1: Starting dev server..."
   AC_VITE_LOG=$(mktemp)
   trap ac_dev_server_cleanup EXIT INT TERM
@@ -88,7 +91,15 @@ run_playwright_harness() {
   echo "   Server running on port $port"
   echo ""
 
-  echo "Step 2: Running UI test harness specs..."
   export E2E_PORT="$port"
-  npx playwright test -c "$playwright_config" "$@"
+  "$@"
+}
+
+# run_playwright_harness <playwright-config> [playwright args...] — thin
+# wrapper that runs the Playwright test runner against the given config on a
+# fresh device-free dev server.
+run_playwright_harness() {
+  local playwright_config=$1
+  shift
+  run_with_dev_server npx playwright test -c "$playwright_config" "$@"
 }
