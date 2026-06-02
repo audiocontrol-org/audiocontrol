@@ -58,6 +58,10 @@ fi
 if printf '%s\n' "$STAGED_NAMES" | grep -qxF 'docs/scope-discovery/clones.yaml'; then
   HAS_CLONES_YAML=1
 fi
+HAS_EXPLORATION_HTML=0
+if printf '%s\n' "$STAGED_NAMES" | grep -qE '/explorations/.*\.html$'; then
+  HAS_EXPLORATION_HTML=1
+fi
 
 # -----------------------------------------------------------------------
 # Fast-fail path (PRE_COMMIT_SHORT_CIRCUIT=1)
@@ -93,6 +97,10 @@ if [ "$PRE_COMMIT_SHORT_CIRCUIT" = "1" ]; then
     # zero cost for this gate.
     echo "pre-commit: checking clones.yaml disposition-survivor invariant…"
     make --no-print-directory check-disposition-survivor
+  fi
+  if [ "$HAS_EXPLORATION_HTML" = "1" ]; then
+    echo "pre-commit: checking exploration mockups stay lo-fi…"
+    make --no-print-directory check-mockup-lofi
   fi
   exit 0
 fi
@@ -155,6 +163,9 @@ if [ "$HAS_CLONES_YAML" = "1" ]; then
   # silently transitions from a protected disposition to `pending` in
   # the staged diff against HEAD.
   run_gate check-disposition-survivor make --no-print-directory check-disposition-survivor
+fi
+if [ "$HAS_EXPLORATION_HTML" = "1" ]; then
+  run_gate check-mockup-lofi make --no-print-directory check-mockup-lofi
 fi
 
 # Tally failures + render the consolidated report. Format: failure

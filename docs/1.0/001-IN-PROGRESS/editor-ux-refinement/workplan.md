@@ -183,7 +183,11 @@ Anything surfaced becomes either an additional T8.x sub-task (migrate now) or a 
 
 ### Tasks
 
-> **P4.1 + P4.5 ✅ Done** (2026-06-01) — `docs/wireframe-kit/sketch-kit.css` (hand-drawn `--sk-*`/`.sk-*` kit: system marker-font stack, wobbly borders, ruled-paper bg, WIREFRAME ribbon; grep-clean of `--ac-*`/`.ac-*`/`@import`/CDN — only prose mentions them), `example-wireframe.html` (a filter-tab sketch linking ONLY `./sketch-kit.css`), and `README.md`. Local-OFL-webfont bundling noted as a follow-up. **P4.2 (gate), P4.3 (grandfather), P4.4 (brief convention) remain — I build those.**
+> **Phase 4 ✅ Done** (2026-06-01) — all of P4.1–P4.5.
+> - **P4.1 + P4.5** — `docs/wireframe-kit/sketch-kit.css` (hand-drawn `--sk-*`/`.sk-*` kit; grep-clean of `--ac-*`/`.ac-*`/`@import`/CDN), `example-wireframe.html` (filter-tab sketch linking ONLY `./sketch-kit.css`), `README.md`. Local-OFL-webfont bundling noted as a follow-up.
+> - **P4.2** — `tools/check-mockup-lofi.sh` + `make check-mockup-lofi`, wired into `.githooks/pre-commit` (fires on staged `docs/**/explorations/**/*.html`). Structural rule: an exploration mockup may link only `sketch-kit.css`, no `@import`, no remote resources. Validator-paired self-check `tools/check-mockup-lofi.validate.sh` (`make check-mockup-lofi-validate`): clean wireframe passes; design-system-link / `@import` / remote-CDN all rejected — proven by independent run.
+> - **P4.3** — `tools/mockup-lofi-grandfather.txt` allowlists the 12 pre-convention hi-fi mockups; gate clean at HEAD.
+> - **P4.4** — `docs/wireframe-kit/brief-template.md` (adds `derived_from:` + `design_language:` fields) + a "Author a lo-fi exploration mockup" playbook in `.claude/rules/workflow-playbooks.md`.
 
 - **P4.1 — Author the sketch kit.** `docs/wireframe-kit/sketch-kit.css`: a bundled hand-drawn webfont (Architects Daughter / Caveat, served locally for determinism + offline), Sharpie-black strokes on off-white "paper," a persistent "WIREFRAME — not final visual" banner, and a small `.sk-*` box/label/button/field/note vocabulary. Pure-CSS sketch (rough.js deferred per design doc). **Proven complete when:** a sample wireframe renders in the hand-drawn aesthetic with no network fetch (font is local); kit lives outside product modules.
 

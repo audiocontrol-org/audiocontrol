@@ -1,0 +1,22 @@
+# Grandfather allowlist for check-mockup-lofi.sh (editor-ux-refinement P4.3).
+#
+# These hi-fi HTML mockups predate the lo-fi sketch convention (Phase 4,
+# 2026-06-01). Converting historical / shipped explorations to hand-drawn
+# wireframes is pure cost, so they are exempt from the gate. NEW exploration
+# mockups (anywhere, including these directories) are NOT exempt -- only the
+# exact paths listed here are.
+#
+# One repo-root-relative path per line. Blank lines and `#` comments ignored.
+
+docs/1.0/001-IN-PROGRESS/roland-bugfix/explorations/04-tones-v2.html
+docs/1.0/003-COMPLETE/s550-support/explorations/01-design-language.html
+docs/1.0/003-COMPLETE/s550-support/explorations/02-homepage.html
+docs/1.0/003-COMPLETE/s550-support/explorations/03-patches.html
+docs/1.0/003-COMPLETE/s550-support/explorations/04-tones.html
+docs/1.0/003-COMPLETE/s550-support/explorations/05-play.html
+docs/1.0/003-COMPLETE/s550-support/explorations/06-workflows.html
+docs/1.0/003-COMPLETE/s550-support/explorations/07-library.html
+docs/1.0/003-COMPLETE/s550-support/explorations/08-front-panel-s550.html
+docs/1.0/003-COMPLETE/s550-support/explorations/ACCEPTED/2026-05-18-connect-vfd-status/mockup.html
+docs/1.0/003-COMPLETE/s550-support/explorations/REJECTED/2026-05-18-connect-focus-card/mockup.html
+docs/1.0/003-COMPLETE/s550-support/explorations/REJECTED/2026-05-18-connect-signal-flow/mockup.html

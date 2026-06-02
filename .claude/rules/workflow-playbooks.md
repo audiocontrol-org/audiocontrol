@@ -39,6 +39,21 @@ paths:
 10. **Run a duplication audit before declaring the phase / task complete** (see playbook below).
 11. Commit with GitHub issue reference
 
+## Author a lo-fi exploration mockup
+
+Mockups explore **UX** (layout, flow, hierarchy) — never visual style.
+Visual/component fidelity is decided in real components and the per-editor
+design language, then reviewed via the device-free screenshot engine. A
+mockup is a deliberately hand-drawn wireframe so it can't be mistaken for
+intended visual direction.
+
+1. Create the exploration dir: `docs/<version>/<status>/<feature-slug>/explorations/<dated-slug>/`.
+2. Copy `docs/wireframe-kit/brief-template.md` → that dir's `brief.md`; fill in `derived_from:` (the current as-built page/state the sketch departs from) and `design_language:` (the relevant `docs/design-language/<editor>.md`).
+3. Author `mockup.html` using ONLY the sketch kit: link `docs/wireframe-kit/sketch-kit.css` and the `.sk-*` vocabulary. Do **not** link the design system, `@import` CSS, or reference remote resources — `make check-mockup-lofi` (pre-commit) blocks it. See `docs/wireframe-kit/README.md`.
+4. Keep it lo-fi. If you feel the urge to make it look "real," that's a signal the decision belongs in real components, not the mockup.
+5. Run `make check-mockup-lofi` before committing (the pre-commit hook runs it on any staged `docs/**/explorations/**/*.html`).
+6. After operator review, record ACCEPTED/REJECTED in the brief frontmatter.
+
 ## Phase-completion duplication audit
 
 **Required step. No phase or task is complete until this audit passes.**

@@ -299,6 +299,17 @@ check-coverage-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 check-chevron-sizing:
 	./tools/check-chevron-sizing.sh
 
+# Lo-fi mockup gate (editor-ux-refinement P4.2). Fails when an exploration
+# mockup (docs/**/explorations/**/*.html, minus the dated grandfather
+# allowlist) links any stylesheet other than the sketch kit, @imports CSS,
+# or links a remote resource -- keeping wireframes structurally incapable of
+# impersonating the real product. See docs/wireframe-kit/README.md.
+.PHONY: check-mockup-lofi check-mockup-lofi-validate
+check-mockup-lofi:
+	./tools/check-mockup-lofi.sh
+check-mockup-lofi-validate:
+	./tools/check-mockup-lofi.validate.sh
+
 # Cross-page CSS duplication gate. Fails when a NEW `.pageA__X` /
 # `.pageB__X` rule pair appears whose body overlaps with the other —
 # i.e. somebody copy-pasted page chrome instead of extracting it to a
