@@ -1,0 +1,52 @@
+contract: 2
+version: 1.0.0
+surface: lcxl3-daw
+metadata:
+  name: API Vision Channel
+  description: >-
+    A starter map for the API Vision channel strip, using only parameters LUNA reports for
+    it. The 560 bands on the "560 EQ" page show only when the plugin's EQ Select is on 560;
+    EQ Select is a stepped parameter and stays a mouse control. The layout it pairs with is
+    a starter for the layout editor to replace.
+plugin:
+  manufacturer: Universal Audio
+  name: API Vision Channel Strip
+  luna_plugin_ids: [uaudio_api_vision_ext]
+pages:
+  - name: Channel
+    assignments:
+      - { control: encoder_1_1, parameter: { id: 550_hf_freq, name: 550 HF Freq } }
+      - { control: encoder_1_2, parameter: { id: 550_hf_gain, name: 550 HF Gain } }
+      - { control: encoder_1_3, parameter: { id: 550_hmf_freq, name: 550 HMF Freq } }
+      - { control: encoder_1_4, parameter: { id: 550_hmf_gain, name: 550 HMF Gain } }
+      - { control: encoder_1_5, parameter: { id: 550_lmf_freq, name: 550 LMF Freq } }
+      - { control: encoder_1_6, parameter: { id: 550_lmf_gain, name: 550 LMF Gain } }
+      - { control: encoder_1_7, parameter: { id: 550_lf_freq, name: 550 LF Freq } }
+      - { control: encoder_1_8, parameter: { id: 550_lf_gain, name: 550 LF Gain } }
+      - { control: encoder_2_1, parameter: { id: 235_thresh, name: 235 Thresh } }
+      - { control: encoder_2_2, parameter: { id: 235_depth, name: 235 Depth } }
+      - { control: encoder_2_3, parameter: { id: 235_attack, name: 235 Attack } }
+      - { control: encoder_2_4, parameter: { id: 235_release, name: 235 Release } }
+      - { control: encoder_2_5, parameter: { id: 225_thresh, name: 225 Thresh } }
+      - { control: encoder_2_6, parameter: { id: 225_ratio, name: 225 Ratio } }
+      - { control: encoder_2_7, parameter: { id: 225_attack, name: 225 Attack } }
+      - { control: encoder_2_8, parameter: { id: 225_release, name: 225 Release } }
+      - { control: fader_1, parameter: { id: line_gain, name: Line Gain } }
+      - { control: fader_8, parameter: { id: level, name: Level } }
+      - { control: button_top_1, parameter: { id: pad, name: Pad }, mode: toggle }
+      - { control: button_top_2, parameter: { id: phase, name: Phase }, mode: toggle }
+  - name: 560 EQ
+    assignments:
+      - { control: encoder_1_1, parameter: { id: 560_16khz, name: 560 16kHz } }
+      - { control: encoder_1_2, parameter: { id: 560_8khz, name: 560 8kHz } }
+      - { control: encoder_1_3, parameter: { id: 560_4khz, name: 560 4kHz } }
+      - { control: encoder_1_4, parameter: { id: 560_2khz, name: 560 2kHz } }
+      - { control: encoder_1_5, parameter: { id: 560_1khz, name: 560 1kHz } }
+      - { control: encoder_1_6, parameter: { id: 560_500hz, name: 560 500Hz } }
+      - { control: encoder_1_7, parameter: { id: 560_250hz, name: 560 250Hz } }
+      - { control: encoder_1_8, parameter: { id: 560_125hz, name: 560 125Hz } }
+      - { control: encoder_2_1, parameter: { id: 560_63hz, name: 560 63Hz } }
+      - { control: encoder_2_2, parameter: { id: 560_31hz, name: 560 31Hz } }
+      - { control: fader_1, parameter: { id: line_gain, name: Line Gain } }
+      - { control: fader_8, parameter: { id: level, name: Level } }
+      - { control: button_top_1, parameter: { id: eq_on, name: EQ On }, mode: toggle }

@@ -1,0 +1,14 @@
+# A starter layout for the layout editor to replace. Bindings are plugin-independent: they
+# stay active whatever plugin is targeted. Feedback values are LCXL3 palette values.
+contract: 2
+version: 1.0.0
+surface: lcxl3-daw
+kind: layout
+bindings:
+  - { role: page.next, press: { control: button_side } }
+  - { role: page.previous, press: { control: button_side, with: shift } }
+  - { role: transport.play, press: { control: play } }
+  - { role: transport.record, press: { control: record } }
+feedback:
+  - { role: transport.play, active: 33, inactive: 39 }
+  - { role: transport.record, active: 5, inactive: 7 }
