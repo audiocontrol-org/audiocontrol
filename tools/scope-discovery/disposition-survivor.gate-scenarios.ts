@@ -2,7 +2,7 @@
  * tools/scope-discovery/disposition-survivor.gate-scenarios.ts
  *
  * AUDIT-20260524-14 Heavy-backstop scenarios for the
- * `check-disposition-survivor` pre-commit gate. Split out of
+ * `check-disposition-survivor` gate. Split out of
  * `disposition-survivor.validate.ts` so the host stays under the
  * 300-500 line cap; the Light-fix scenarios stay in the host (they
  * exercise the strict-parse + refresh-baseline path, which is a

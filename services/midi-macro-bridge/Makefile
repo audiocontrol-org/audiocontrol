@@ -90,7 +90,7 @@ clean:
 	$(CARGO) clean
 	@rm -f $(STAMP)
 
-# Convenience: lint + test + release build, like a pre-commit gate.
+# Convenience: lint + test + release build, like a local gate before committing.
 all: fmt-check lint test release-binary
 
 # Release packaging.

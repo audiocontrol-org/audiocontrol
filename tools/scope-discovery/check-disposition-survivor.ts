@@ -44,7 +44,7 @@
  * Entries that legitimately disappear (id removed from staged) or
  * change id (membership/content change) are NOT flagged — those are
  * either operator-driven refactors or content-driven id rolls, both
- * of which are visible in the standard pre-commit clone-detector diff.
+ * of which are visible in the standard clone-detector diff.
  * This gate's narrow job is to catch the SILENT loss path where the
  * id stays the same but the disposition reverts.
  */
@@ -153,8 +153,8 @@ function gitShowBlob(spec: string, cwd: string): GitShowResult {
 /**
  * Returns true if `<baseline>` is staged for commit (added, modified,
  * or copied). Uses `git diff --cached --name-only --diff-filter=ACM`
- * — matches the pattern used in `.githooks/pre-commit`'s staged-files
- * sniffer. If the file isn't staged, this gate has nothing to do.
+ * — the staged-index check used when the gate runs bare (`make gates`
+ * passes `--head-ref <merge-base> --working-tree` instead). If the file isn't staged, this gate has nothing to do.
  */
 function isBaselineStaged(baseline: string, cwd: string): boolean {
   const result = spawnSync(
@@ -281,7 +281,7 @@ async function main(): Promise<number> {
   if (!stagedResult.ok) {
     // The file is staged for deletion (or otherwise unreadable from
     // index). A deletion is a destructive operation but it's visible
-    // in the standard pre-commit diff — outside this gate's narrow
+    // in the standard staged diff — outside this gate's narrow
     // remit (silent same-id disposition reverts).
     return 0;
   }

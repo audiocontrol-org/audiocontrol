@@ -17,7 +17,7 @@
  *
  * Wiring:
  *   make check-css-duplication      # runs this script
- *   pre-commit hook                 # invokes the make target
+ *   make gates                      # invokes the make target
  *
  * Configurable via:
  *   --root <path>      where to walk for stylesheets (default: modules/)

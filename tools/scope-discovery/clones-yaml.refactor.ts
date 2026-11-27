@@ -4,7 +4,7 @@
  * Refactor-disposition precondition schema for clones.yaml entries
  * (T5.1, scope-discovery-protocol Phase 5). Extracted from
  * clones-yaml.ts so the host file stays under the 300-500 line cap and
- * so T5.3's pre-commit gate can import the validator without pulling
+ * so T5.3's `make gates` check can import the validator without pulling
  * in the YAML ser/deser surface.
  *
  * Why these fields are required on `disposition: refactor`:
@@ -46,7 +46,7 @@ export const TESTS_PROOF_SHA_REGEX = /^[0-9a-f]{7,40}$/;
  *     the design is named before extraction begins.
  *
  * File-existence of <file-path> is NOT checked here (parser stays
- * permissive at the string level); T5.3's pre-commit gate validates
+ * permissive at the string level); T5.3's `make gates` check validates
  * the path resolves to a tracked file in the repo.
  */
 export interface RefactorPreconditions {
@@ -82,7 +82,7 @@ export type RefactorPreconditionsCheck =
  * built RefactorPreconditions object or an array of human-readable error
  * messages naming the entry id + which field is missing/malformed.
  *
- * Exported so T5.3's pre-commit gate can validate manually-edited entries
+ * Exported so T5.3's `make gates` check can validate manually-edited entries
  * with the same rules used at parse time. Single source of truth for
  * "what counts as a complete refactor declaration."
  */

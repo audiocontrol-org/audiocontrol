@@ -81,7 +81,7 @@ test('D-CART-03: cart total updates with the item price', ...)
 test('D-CHECKOUT-05: empty-cart state shows "Continue Shopping" CTA', ...)
 ```
 
-The rule is simple, but its consequences are substantial. Once every test is named this way, the inventory's "test citation" column becomes mechanically maintainable: a script greps for `D-CART-01:` in the test corpus and emits the file:line where it lives. The grep is the authority; if the inventory's citation diverges from the actual test location, the script catches the discrepancy in CI or a pre-commit hook.
+The rule is simple, but its consequences are substantial. Once every test is named this way, the inventory's "test citation" column becomes mechanically maintainable: a script greps for `D-CART-01:` in the test corpus and emits the file:line where it lives. The grep is the authority; if the inventory's citation diverges from the actual test location, the script catches the discrepancy when it runs as a gate (e.g. in `make gates`).
 
 More importantly, the protocol makes **coverage auditable by inspection**. Open the inventory. For each row whose status is `implemented` or `partial`, the test citation column must not be empty. If it is, the capability has no test — a coverage gap. The audit is a grep, not an audit meeting. The audit happens every time someone opens the inventory; the friction of leaving a gap is high enough that gaps get filled.
 
@@ -113,7 +113,7 @@ grep -rn "<input type=" src/ | grep -v "className.*ac-input"
 grep -rn "<select" src/ | grep -v "className.*ac-select"
 ```
 
-A clean grep means the design system is the only primitive surface in the codebase. A grep with hits means a page has re-implemented a primitive — a nucleation site that will attract more drift. The grep runs in CI or a pre-commit hook; the team catches drift the same day it happens, not three releases later when the cleanup cost is prohibitive.
+A clean grep means the design system is the only primitive surface in the codebase. A grep with hits means a page has re-implemented a primitive — a nucleation site that will attract more drift. The grep runs as a gate, e.g. in `make gates`; the team catches drift the same day it happens, not three releases later when the cleanup cost is prohibitive.
 
 The composition pattern is important. Some primitives are pure CSS classes applied to native HTML elements (`<select class="ac-select">`, `<input type="text" class="ac-input">`); some are React components that compose multiple HTML elements (`<AcCheckbox>` rendering a `<label>` wrapping an `<input>` and a span); some are higher-order compositions (`<AcSlider>` rendering a label, an `<AcRangeBar>` visualization, and a configurable readout slot). The team makes a deliberate choice per primitive: if the primitive is a single element with styling, prefer the class; if the primitive requires multi-element composition, prefer the component; if the primitive needs to be customized by callers in well-defined ways, expose composition slots rather than props for every variation.
 

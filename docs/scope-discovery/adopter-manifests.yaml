@@ -102,8 +102,8 @@
 #   The shape grammar (above) is small and finite; a 100-line compiler
 #   beats a 2MB dep. Mirrors T6.1's pure-regex stance.
 #
-# Pre-commit hook (`make check-adopters`) walks this registry on every
-# .ts/.tsx change and flags any holdouts. See
+# `make gates` (via `make check-adopters`) walks this registry over the
+# whole tree and flags any holdouts. See
 # `tools/scope-discovery/check-adopters.ts` for the gate.
 
 adopter_manifests:

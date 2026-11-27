@@ -26,7 +26,7 @@
  *      no new deps required; jscpd was already present.
  *
  * Wiring (downstream):
- *   T2.3 — .githooks/pre-commit invokes this with no --refresh-baseline
+ *   T2.3 — `make gates` (tools/gates.sh) invokes this with no --refresh-baseline
  *   T2.5 — adversarial validator at clone-detector.validate.ts
  *   T2.7 — `make refresh-clones-baseline` runs with --refresh-baseline
  *   T4.1 — first Phase-4 baseline run produces the dispositionable backlog

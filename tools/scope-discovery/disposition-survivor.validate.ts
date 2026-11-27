@@ -11,7 +11,7 @@
  *     can no longer be silently overwritten with a fresh-pending wipe.
  *
  *   Heavy backstop — `tools/scope-discovery/check-disposition-survivor.ts`:
- *     a pre-commit gate that fails the commit if any clones.yaml entry
+ *     a `make gates` gate that fails if any clones.yaml entry
  *     transitions from a protected disposition (keep-with-reason /
  *     ignore-with-justification / refactor) to `pending` in the staged
  *     diff against HEAD.

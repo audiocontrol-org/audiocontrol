@@ -309,7 +309,7 @@ Always prioritize security, correctness, and maintainability while providing con
   language change, sync ALL four locations.
 -->
 
-When you are reviewing a commit, PR, or change that **disposes a clone group as `refactor`** (in `docs/scope-discovery/clones.yaml`) or that **lands an extraction implementing a `refactor` disposition**, the review is incomplete unless you verify Step 0 (canonical-side identification + regression-detection coverage). This applies whether or not the operator named Phase 5 in the review request — refactor commits without Step 0 evidence are structurally rejected by the T5.3 pre-commit gate; reviewers catch the same omissions at PR review time.
+When you are reviewing a commit, PR, or change that **disposes a clone group as `refactor`** (in `docs/scope-discovery/clones.yaml`) or that **lands an extraction implementing a `refactor` disposition**, the review is incomplete unless you verify Step 0 (canonical-side identification + regression-detection coverage). This applies whether or not the operator named Phase 5 in the review request — refactor commits without Step 0 evidence are structurally rejected by the T5.3 `make gates` check (`check-refactor-preconditions`); reviewers catch the same omissions at PR review time.
 
 A commit / PR / clone-group entry passes Step 0 only when **both** of the following are true.
 
