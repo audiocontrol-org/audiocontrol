@@ -129,11 +129,11 @@ The two-stage review (`superpowers:subagent-driven-development`) catches spec-co
 
 **How to apply:**
 
-- **After every implementer dispatch that touches code, re-run the load-bearing test gate yourself before dispatching reviewers.** For roland-sxx0-editor work: `make test-ui-roland`. For scope-discovery-protocol tooling: `pnpm test:scope-discovery`. For other modules: the corresponding `make test-*` target named in the workplan's "Proven complete when" gate. Run from the project root in a fresh background bash.
+- **After every implementer dispatch that touches code, run `make gates` and re-run the load-bearing test gate yourself before dispatching reviewers.** The project has no git hooks, so nothing else runs the gates: `make gates` is the only check on new clones, anti-patterns, adopter holdouts, CSS duplication, disposition losses and refactor preconditions (AGENTS.md §"Gates"). For roland-sxx0-editor work: `make test-ui-roland`. For scope-discovery-protocol tooling: `pnpm test:scope-discovery`. For other modules: the corresponding `make test-*` target named in the workplan's "Proven complete when" gate. Run from the project root in a fresh background bash.
 
 - **The independent re-run does NOT replace the two-stage review.** The order is:
   1. Implementer reports DONE.
-  2. **Controller independently re-runs the test gate.** If red, the implementer is re-dispatched with the specific failure — no reviewers yet.
+  2. **Controller independently runs `make gates` and re-runs the test gate.** If either is red, the implementer is re-dispatched with the specific failure — no reviewers yet.
   3. If green, dispatch spec-compliance reviewer.
   4. If spec-compliant, dispatch code-quality reviewer.
   5. After each fix-and-re-review loop, **re-run the test gate again.** Even doc-only changes get the gate re-run if any source files moved (the cost is low; the cost of an unverified green is high).
