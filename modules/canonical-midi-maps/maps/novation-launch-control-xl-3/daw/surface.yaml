@@ -1,0 +1,91 @@
+# Contract 2 surface profile: the LCXL3 driven in DAW mode from a host.
+# Control ids name physical controls only; roles (transport, paging) belong to the layout.
+contract: 2
+surface: lcxl3-daw
+kind: surface
+device:
+  manufacturer: Novation
+  model: Launch Control XL 3
+ports:
+  input: LCXL3 1 DAW Out
+  output: LCXL3 1 DAW In
+controls:
+  - { id: encoder_1_1, kind: encoder, address: { channel: 16, cc: 13 }, follows: true }
+  - { id: encoder_1_2, kind: encoder, address: { channel: 16, cc: 14 }, follows: true }
+  - { id: encoder_1_3, kind: encoder, address: { channel: 16, cc: 15 }, follows: true }
+  - { id: encoder_1_4, kind: encoder, address: { channel: 16, cc: 16 }, follows: true }
+  - { id: encoder_1_5, kind: encoder, address: { channel: 16, cc: 17 }, follows: true }
+  - { id: encoder_1_6, kind: encoder, address: { channel: 16, cc: 18 }, follows: true }
+  - { id: encoder_1_7, kind: encoder, address: { channel: 16, cc: 19 }, follows: true }
+  - { id: encoder_1_8, kind: encoder, address: { channel: 16, cc: 20 }, follows: true }
+  - { id: encoder_2_1, kind: encoder, address: { channel: 16, cc: 21 }, follows: true }
+  - { id: encoder_2_2, kind: encoder, address: { channel: 16, cc: 22 }, follows: true }
+  - { id: encoder_2_3, kind: encoder, address: { channel: 16, cc: 23 }, follows: true }
+  - { id: encoder_2_4, kind: encoder, address: { channel: 16, cc: 24 }, follows: true }
+  - { id: encoder_2_5, kind: encoder, address: { channel: 16, cc: 25 }, follows: true }
+  - { id: encoder_2_6, kind: encoder, address: { channel: 16, cc: 26 }, follows: true }
+  - { id: encoder_2_7, kind: encoder, address: { channel: 16, cc: 27 }, follows: true }
+  - { id: encoder_2_8, kind: encoder, address: { channel: 16, cc: 28 }, follows: true }
+  - { id: encoder_3_1, kind: encoder, address: { channel: 16, cc: 29 }, follows: true }
+  - { id: encoder_3_2, kind: encoder, address: { channel: 16, cc: 30 }, follows: true }
+  - { id: encoder_3_3, kind: encoder, address: { channel: 16, cc: 31 }, follows: true }
+  - { id: encoder_3_4, kind: encoder, address: { channel: 16, cc: 32 }, follows: true }
+  - { id: encoder_3_5, kind: encoder, address: { channel: 16, cc: 33 }, follows: true }
+  - { id: encoder_3_6, kind: encoder, address: { channel: 16, cc: 34 }, follows: true }
+  - { id: encoder_3_7, kind: encoder, address: { channel: 16, cc: 35 }, follows: true }
+  - { id: encoder_3_8, kind: encoder, address: { channel: 16, cc: 36 }, follows: true }
+  - { id: fader_1, kind: fader, address: { channel: 16, cc: 5 } }
+  - { id: fader_2, kind: fader, address: { channel: 16, cc: 6 } }
+  - { id: fader_3, kind: fader, address: { channel: 16, cc: 7 } }
+  - { id: fader_4, kind: fader, address: { channel: 16, cc: 8 } }
+  - { id: fader_5, kind: fader, address: { channel: 16, cc: 9 } }
+  - { id: fader_6, kind: fader, address: { channel: 16, cc: 10 } }
+  - { id: fader_7, kind: fader, address: { channel: 16, cc: 11 } }
+  - { id: fader_8, kind: fader, address: { channel: 16, cc: 12 } }
+  - { id: button_top_1, kind: button, address: { channel: 1, cc: 37 } }
+  - { id: button_top_2, kind: button, address: { channel: 1, cc: 38 } }
+  - { id: button_top_3, kind: button, address: { channel: 1, cc: 39 } }
+  - { id: button_top_4, kind: button, address: { channel: 1, cc: 40 } }
+  - { id: button_top_5, kind: button, address: { channel: 1, cc: 41 } }
+  - { id: button_top_6, kind: button, address: { channel: 1, cc: 42 } }
+  - { id: button_top_7, kind: button, address: { channel: 1, cc: 43 } }
+  - { id: button_top_8, kind: button, address: { channel: 1, cc: 44 } }
+  - { id: button_bottom_1, kind: button, address: { channel: 1, cc: 45 } }
+  - { id: button_bottom_2, kind: button, address: { channel: 1, cc: 46 } }
+  - { id: button_bottom_3, kind: button, address: { channel: 1, cc: 47 } }
+  - { id: button_bottom_4, kind: button, address: { channel: 1, cc: 48 } }
+  - { id: button_bottom_5, kind: button, address: { channel: 1, cc: 49 } }
+  - { id: button_bottom_6, kind: button, address: { channel: 1, cc: 50 } }
+  - { id: button_bottom_7, kind: button, address: { channel: 1, cc: 51 } }
+  - { id: button_bottom_8, kind: button, address: { channel: 1, cc: 52 } }
+  # The button left of fader 1 (measured: channel 1, CC 104). Its printed label is unknown,
+  # so the id stays a placeholder until the hardware is read.
+  - { id: button_side, kind: button, address: { channel: 1, cc: 104 } }
+  - { id: play, kind: button, address: { channel: 1, cc: 116 } }
+  - { id: record, kind: button, address: { channel: 1, cc: 118 } }
+  - { id: shift, kind: button, address: { channel: 7, cc: 63 } }
+protocol:
+  claim:
+    - { sysex: "F0 00 20 29 02 15 02 7F F7" } # DAW mode on
+    - { cc: { channel: 7, number: 30, value: 2 } } # select the Control layout
+    - { cc: { channel: 7, number: 69, value: 0 } } # encoder rows absolute
+    - { cc: { channel: 7, number: 72, value: 0 } }
+    - { cc: { channel: 7, number: 73, value: 0 } }
+  release:
+    - { sysex: "F0 00 20 29 02 15 02 00 F7" } # DAW mode off
+  mode:
+    address: { channel: 7, cc: 30 }
+    ready: [1, 2]
+    suspended:
+      - values: [6, 7, 8, 9, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
+        reason: The controller is in a custom mode; switch it to Mixer or Control
+  follow: { cc: { channel: "{channel}", number: "{cc}", value: "{value}" } }
+  label:
+    - { sysex: "F0 00 20 29 02 15 04 {cc} 62 F7" }
+    - { sysex: "F0 00 20 29 02 15 06 {cc} 01 {text} F7" }
+  announce:
+    - { sysex: "F0 00 20 29 02 15 04 36 62 F7" }
+    - { sysex: "F0 00 20 29 02 15 06 36 01 {text} F7" }
+  indicate:
+    message: { cc: { channel: 1, number: "{cc}", value: "{state}" } }
+    off: 0
