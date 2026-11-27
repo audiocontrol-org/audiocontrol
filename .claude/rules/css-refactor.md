@@ -66,9 +66,9 @@ Before touching any line of CSS that meets the above:
 
 ## Tools that enforce this
 
-The `make check-css-duplication` Make target + the pre-commit hook
-in `.githooks/pre-commit` block NEW cross-page duplication at commit
-time. Pre-existing pairs catalogued in
+The `make check-css-duplication` Make target, run by `make gates`
+(`tools/gates.sh`), blocks NEW cross-page duplication before commit
+and before a PR opens. Pre-existing pairs catalogued in
 `tools/check-css-duplication.expected.txt` don't block — they're
 backlog. As duplicates are unified through the protocol above, remove
 their stems from the expected list in the same commit.
@@ -91,6 +91,6 @@ Memory-based discipline (`~/.claude/projects/.../memory/`) is keyed
 to one user on one machine. It does not survive across worktrees,
 clones, or dev environments. This file is tracked in git and loads
 on every session in this repo regardless of operator or workspace.
-The pre-commit hook is the enforcement layer; this rule is the
+`make gates` is the enforcement layer; this rule is the
 agent-readable description of why it exists and how to work
 without tripping it.

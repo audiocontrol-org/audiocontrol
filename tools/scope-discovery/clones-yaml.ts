@@ -42,7 +42,7 @@
  * together are the SSOT. clones.yaml has no JSON Schema (the
  * scope-manifest schema covers a different file). The TS discriminated
  * union + runtime guards here are the only enforcement, paired with
- * T5.3's pre-commit gate.
+ * T5.3's `make gates` check.
  */
 
 import { stringify as stringifyYaml } from 'yaml';
@@ -274,8 +274,8 @@ export function serializeClonesYaml(doc: ClonesYaml): string {
 
 /**
  * Comparison between a freshly-detected set of clone groups and a
- * baseline ClonesYaml. Used by the pre-commit gate to decide whether
- * to fail the commit.
+ * baseline ClonesYaml. Used by `make gates` to decide whether
+ * to fail the gate.
  *
  * NEW:     in newClones but not in baseline (by id)
  * DROPPED: in baseline but not in newClones (refactor success)

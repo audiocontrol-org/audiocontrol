@@ -70,8 +70,8 @@
 #   catch. If a future entry truly needs full AST matching, that's the moment
 #   to add the dep — not before.
 #
-# Pre-commit hook (`make check-anti-patterns`) walks this registry on every
-# .ts/.tsx change and flags any matching shape in the staged tree. See
+# `make gates` (via `make check-anti-patterns`) walks this registry over the
+# whole tree and flags any matching shape. See
 # `tools/scope-discovery/check-anti-patterns.ts` for the gate.
 
 # roland-bugfix Phase 4 backfill (2026-05-23, post-PR-#454):

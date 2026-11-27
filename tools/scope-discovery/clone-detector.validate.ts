@@ -9,8 +9,8 @@
  *
  * Mirrors `tools/check-css-duplication.validate.ts`'s structure:
  *   - subprocess invocation of the underlying checker (no programmatic
- *     coupling to the detector's internals — we exercise it the way the
- *     pre-commit hook does);
+ *     coupling to the detector's internals — we exercise it the way `make
+ *     gates` does);
  *   - exits 0 on all assertions passing, 1 on any assertion failure,
  *     2 on infrastructure error (fixture I/O, missing tool).
  *
@@ -82,7 +82,7 @@ const TMP_ROOT = '.tmp';
  * (clone-detector.ts). The signature mirrors the shape used by the
  * other migrated validators (anti-patterns, adopter-manifests,
  * editor-symmetry) so call sites stay uniform across the suite. Same
- * `spawn('tsx', ...)` shape as the pre-commit hook + the
+ * `spawn('tsx', ...)` shape as `make gates` + the
  * `make check-clone-duplication` target — the gate we're validating
  * is the same gate developers run.
  *
@@ -149,7 +149,7 @@ async function makeFixture(label: string): Promise<Fixture> {
 
 /**
  * Single source of truth for the detector CLI arg shape every scenario
- * uses. Default is the quiet form that matches the pre-commit hook;
+ * uses. Default is the quiet form that matches `make gates`;
  * scenario 1 needs the non-quiet form once to assert on per-group
  * stdout. Avoids 7 repetitions of the same args array.
  */

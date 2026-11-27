@@ -134,7 +134,7 @@ Each item:
   language change, sync ALL four locations.
 -->
 
-When the audit scope covers `docs/scope-discovery/clones.yaml` entries dispositioned as `refactor`, or commits/PRs implementing a refactor disposition, the audit is incomplete unless you verify Step 0 (canonical-side identification + regression-detection coverage). Refactor commits without Step 0 evidence are structurally rejected by the T5.3 pre-commit gate; auditors catch the same omissions when reviewing the dispositioned baseline or implementation PRs.
+When the audit scope covers `docs/scope-discovery/clones.yaml` entries dispositioned as `refactor`, or commits/PRs implementing a refactor disposition, the audit is incomplete unless you verify Step 0 (canonical-side identification + regression-detection coverage). Refactor commits without Step 0 evidence are structurally rejected by the T5.3 `make gates` check (`check-refactor-preconditions`); auditors catch the same omissions when reviewing the dispositioned baseline or implementation PRs.
 
 A clone-group entry passes Step 0 only when **both** of the following are true.
 

@@ -13,6 +13,6 @@
 # size it independently without forking the rule.
 #
 # Baseline is currently empty: any new cross-page duplicate
-# blocks the pre-commit hook. Add a stem here only if an
+# fails `make gates`. Add a stem here only if an
 # intentional-but-blocked duplicate needs to be temporarily
 # deferred — and only with a note documenting the deferral.

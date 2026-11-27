@@ -11,19 +11,21 @@
  *     can no longer be silently overwritten with a fresh-pending wipe.
  *
  *   Heavy backstop — `tools/scope-discovery/check-disposition-survivor.ts`:
- *     a pre-commit gate that fails the commit if any clones.yaml entry
+ *     a `make gates` gate that fails if any clones.yaml entry
  *     transitions from a protected disposition (keep-with-reason /
  *     ignore-with-justification / refactor) to `pending` in the staged
  *     diff against HEAD.
  *
- * Scenarios (8 total):
+ * Scenarios (10 total):
  *   1. content-hash-match-preserves-disposition (Light, host)
  *   2. content-hash-match-preserves-refactor-disposition (Light, host)
  *   3. malformed-baseline-fails-loud-not-silent (Light, host)
- *   4-7. Heavy-gate scenarios live in `disposition-survivor.gate-scenarios.ts`
+ *   4-9. Heavy-gate scenarios live in `disposition-survivor.gate-scenarios.ts`
  *        (file-cap split): block loss diff, allow legitimate additions,
- *        allow protected→protected, --force override.
- *   8. gutted-stub self-check (also in the gate-scenarios sibling).
+ *        allow protected→protected, --force override, and branch mode
+ *        (--working-tree against a base ref) blocking a committed loss
+ *        and allowing additions.
+ *   10. gutted-stub self-check (also in the gate-scenarios sibling).
  *
  * Run via:
  *   tsx tools/scope-discovery/disposition-survivor.validate.ts
@@ -47,6 +49,8 @@ import {
   scenarioGateBlocksLossDiff,
   scenarioGateForceOverride,
   scenarioGuttedStubSelfCheck,
+  scenarioWorkingTreeAllowsBranchAdditions,
+  scenarioWorkingTreeBlocksBranchLoss,
 } from './disposition-survivor.gate-scenarios.js';
 import { errorMessage } from './util/typeguards.js';
 
@@ -284,6 +288,8 @@ async function main(): Promise<number> {
     scenarioGateAllowsLegitimateAdditions,
     scenarioGateAllowsProtectedChanges,
     scenarioGateForceOverride,
+    scenarioWorkingTreeBlocksBranchLoss,
+    scenarioWorkingTreeAllowsBranchAdditions,
     scenarioGuttedStubSelfCheck,
   ];
   const results: ScenarioResult[] = [];

@@ -6,7 +6,7 @@ This document defines where scope-discovery artifacts live in the repository and
 - the `/scope-widen` skill (Phase 3 T3.4) when appending widening-pass evidence
 - the `make scope-inventory FEATURE=<slug>` Make target (T2.7) when validating + instructing
 - the clone detector at `tools/scope-discovery/clone-detector.ts` (T2.2)
-- the pre-commit hook (T2.3) when reading the dispositioned baseline
+- the `make gates` clone check (T2.3) when reading the dispositioned baseline
 
 The PRD's Goal #5 (*"Inventory artifacts on disk — manifest canonical, discovery evidence retained and journaled"*) is the source-of-truth for the design decision; this file is its operational expansion. Nothing here is gitignored — every artifact is part of the planning record.
 
@@ -69,7 +69,7 @@ Disposition vocabulary:
 - `keep-with-reason` — clone is intentional; `reason` field MUST contain a one-line justification.
 - `ignore-with-justification` — clone is a false positive (e.g., generated code, schema-driven duplication); `reason` field MUST contain a one-line justification.
 
-The pre-commit hook (T2.3) reads this file. A commit that introduces a NEW group (id not present in the baseline) is rejected. Existing dispositioned groups pass the hook regardless of disposition value.
+The clone gate in `make gates` (T2.3) reads this file. A branch that introduces a NEW group (id not present in the baseline) fails the gate. Existing dispositioned groups pass the gate regardless of disposition value.
 
 ### `docs/scope-discovery/LAYOUT.md`
 
@@ -98,7 +98,7 @@ anti_patterns:
 
 - **Validator:** [`../../tools/scope-discovery/check-anti-patterns.ts`](../../tools/scope-discovery/check-anti-patterns.ts)
 - **Make targets:** `make check-anti-patterns` (read-only)
-- **Pre-commit gate:** **blocks** on TS/TSX changes that match any registered shape
+- **`make gates`:** **blocks** on TS/TSX changes that match any registered shape
 
 #### `docs/scope-discovery/adopter-manifests.yaml`
 
@@ -127,7 +127,7 @@ adopter_manifests:
 
 - **Validator:** [`../../tools/scope-discovery/check-adopters.ts`](../../tools/scope-discovery/check-adopters.ts)
 - **Make targets:** `make check-adopters` (read-only)
-- **Pre-commit gate:** **blocks** on TS/TSX changes whose paths match any manifest glob but do not import the canonical `from`
+- **`make gates`:** **blocks** on TS/TSX changes whose paths match any manifest glob but do not import the canonical `from`
 
 #### `docs/scope-discovery/editor-symmetry.md`
 
@@ -135,7 +135,7 @@ Operator-readable fleet matrix. Rows are adopter-manifest entries; columns are e
 
 - **Validator:** [`../../tools/scope-discovery/check-editor-symmetry.ts`](../../tools/scope-discovery/check-editor-symmetry.ts)
 - **Make targets:** `make check-editor-symmetry` (read-only; prints to stdout) and `make check-editor-symmetry-write` (rewrites the artifact)
-- **Pre-commit gate:** runs read-only on TS/TSX changes; **non-blocking** beyond the underlying adopter-manifest gate (the symmetry matrix is a presentation of the same data)
+- **`make gates`:** runs read-only over the whole tree; **non-blocking** beyond the underlying adopter-manifest gate (the symmetry matrix is a presentation of the same data)
 
 #### `docs/scope-discovery/deprecation-queue.md`
 
@@ -143,7 +143,7 @@ Operator-readable list of files carrying a file-level deprecation marker (top-of
 
 - **Validator:** [`../../tools/scope-discovery/check-deprecations.ts`](../../tools/scope-discovery/check-deprecations.ts)
 - **Make targets:** `make check-deprecations` (read-only) and `make check-deprecations-write` (rewrites the artifact)
-- **Pre-commit gate:** **informational, not blocking** — the deprecation lifecycle is operator-driven; exit code is 0 regardless of importer count (only exit 2 on infra error)
+- **`make gates`:** **not part of it; informational, not blocking** — the deprecation lifecycle is operator-driven; exit code is 0 regardless of importer count (only exit 2 on infra error)
 
 The five-agent `/scope-inventory` fleet's fifth agent ([`../../tools/scope-discovery/discovery-agents/regime-holdout-detector.ts`](../../tools/scope-discovery/discovery-agents/regime-holdout-detector.ts), Phase 6 T6.5) consumes the first four scanners in-process and emits a `RegimeHoldoutFindings` payload that the synthesis pass writes into the manifest's top-level `regime_holdouts:` section. See [`README.md`](README.md) §"Regime-holdout discovery" for the composition model.
 
@@ -228,17 +228,17 @@ Narrative output of the synthesis pass (T3.2). Combines per-agent findings into 
 
 - `tools/scope-discovery/` — the TypeScript implementation (detector, dispatch wrapper, validators, discovery agents). Lives under `tools/` because it's code, not planning artifacts.
 - `.claude/skills/scope-inventory/` and `.claude/skills/scope-widen/` — the skill definitions (SKILL.md). Lives under `.claude/skills/` per Claude Code's plugin convention.
-- `.githooks/pre-commit` — wires the clone detector into the commit gate. Lives under `.githooks/` per the project's existing hook convention.
+- `tools/gates.sh` — the `make gates` script that runs the clone detector and the other gates. Lives under `tools/` with the gate scripts.
 - `.jscpd.json` — jscpd configuration (scope, thresholds, ignores). Lives at the repo root per jscpd's convention.
 
-## Pre-commit gate vs. validator suite
+## `make gates` vs. validator suite
 
 The scope-discovery tooling has two distinct verification surfaces and the boundary between them is load-bearing:
 
-- **Pre-commit hook** (`.githooks/pre-commit`) runs ONLY the clone detector (`make check-clone-duplication`) on commits that touch TS/TSX. It's the fast, deterministic gate that blocks NEW clone groups at commit time. The dispatch wrapper is NOT invoked here — the wrapper fires at sub-agent dispatch time inside an orchestrator session, not at commit time, so a commit-time wrapper check would have nothing to validate.
+- **`make gates`** (`tools/gates.sh`) runs the whole-tree scans, including the clone detector (`make check-clone-duplication`), plus the disposition-survivor and refactor-preconditions checks. It's the fast, deterministic gate that blocks NEW clone groups before a commit or PR. The dispatch wrapper is NOT invoked here — the wrapper fires at sub-agent dispatch time inside an orchestrator session, not at commit time, so a commit-time wrapper check would have nothing to validate.
 - **Validator suite** (`pnpm test:scope-discovery` or `make test-scope-discovery`) runs BOTH adversarial validator harnesses in sequence: `check-clone-duplication-validate` (proves the clone detector has teeth — gutted-logic self-check plants adversarial fixtures and asserts the detector catches them) followed by `check-dispatch-wrapper-validate` (proves the wrapper rejects malformed sub-agent returns — synthetic dispatchFn responses + gutted-wrapper self-check). Combined runtime is under 30s.
 
-The validator suite is **controller-invokable and operator-invokable**, not pre-commit-invoked. The project removed external CI gates 2026-05-11; the controller (orchestrator session) is now the gate per `.claude/rules/agent-discipline.md` §"When CI is absent, the controller is the gate". The orchestrator runs `pnpm test:scope-discovery` after every Phase 2 task dispatch to independently verify the gates still have teeth; operators run it ad-hoc when they change detector/wrapper logic or want to confirm a touched validator scenario.
+The validator suite is **controller-invokable and operator-invokable**, not part of `make gates`. The project removed external CI gates 2026-05-11; the controller (orchestrator session) is now the gate per `.claude/rules/agent-discipline.md` §"When CI is absent, the controller is the gate". The orchestrator runs `pnpm test:scope-discovery` after every Phase 2 task dispatch to independently verify the gates still have teeth; operators run it ad-hoc when they change detector/wrapper logic or want to confirm a touched validator scenario.
 
 ## Git-ignore policy
 

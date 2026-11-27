@@ -115,26 +115,34 @@ Remove bad patterns instead of documenting around them:
 
 If future agents would be tempted to copy it, treat it as debt and fix or remove it.
 
-### Pre-commit gates enforce this mechanically
+### Gates
 
-Agent-side directives are systematically ignored for persistent pathologies, so the discipline lives in code that blocks commits:
+The project uses no git hooks. Hooks live per clone, are invisible in review, are skipped by `--no-verify`, and fight committing early and often. Enforcement lives in one verb, `make gates`, and in code review. Agent-side directives are systematically ignored for persistent pathologies, so the discipline lives in code that fails loudly:
 
-| Gate | What it blocks | When it runs |
+- Run `make gates` before every commit and before opening or merging a PR. A failing gate is fixed, never skipped.
+- The controller runs `make gates` itself after every implementer dispatch; an implementer's reported result is a claim, not evidence (`.claude/rules/agent-discipline.md`).
+- New enforcement goes into `make gates` (`tools/gates.sh`) with an adversarial validator, never into a hook.
+- `GATES_BASE` (default `origin/main`) names the base the branch is checked against. Fetch first so the base is current.
+- Clones that ran the old `make install-hooks` run `git config --unset core.hooksPath` once.
+
+`make gates` runs every gate below and prints one consolidated PASS/FAIL report:
+
+| Gate | What it fails on | Scope |
 |---|---|---|
-| `make check-css-duplication` | duplicate CSS classes | `.css`/`.scss` staged changes |
-| `make check-clone-duplication` | new TS/TSX token-level clones not dispositioned in `docs/scope-discovery/clones.yaml` (495 baseline groups; content-hashed IDs survive line shifts) | `.ts`/`.tsx` staged changes |
-| `make check-chevron-sizing` | chevron CSS classes outside the canonical `.ac-chevron` rule | `.css`/`.scss` staged changes |
-| `make check-anti-patterns` | source matching a registered legacy shape in `docs/scope-discovery/anti-patterns.yaml` | `.ts`/`.tsx` staged changes |
-| `make check-adopters` | files in an adopter glob that don't import the canonical primitive declared in `docs/scope-discovery/adopter-manifests.yaml` | `.ts`/`.tsx` staged changes |
-| `make check-editor-symmetry` | read-only matrix check; the operator-readable artifact at `docs/scope-discovery/editor-symmetry.md` is refreshed by `make check-editor-symmetry-write` | `.ts`/`.tsx` staged changes |
-| `commit-msg` hook | `Closes clones.yaml <id>` markers when the named group's disposition isn't `refactor`, its `canonical_side` file doesn't exist, its `tests_proof.sha` doesn't resolve in git, or its `tests` commands fail at HEAD | every commit message |
-| `pre-commit` + `post-commit` + `pre-push` triad | catches `--no-verify` bypass via marker-gated sentinel; pre-push warns on any pushed SHA missing from `<git-common-dir>/hooks-sentinels/.pre-commit-passed` | commit + push lifecycle |
+| `make check-css-duplication` | duplicate CSS classes | whole tree |
+| `make check-clone-duplication` | new TS/TSX token-level clones not dispositioned in `docs/scope-discovery/clones.yaml` (495 baseline groups; content-hashed IDs survive line shifts) | whole tree |
+| `make check-chevron-sizing` | chevron CSS classes outside the canonical `.ac-chevron` rule | whole tree |
+| `make check-anti-patterns` | source matching a registered legacy shape in `docs/scope-discovery/anti-patterns.yaml` | whole tree |
+| `make check-adopters` | files in an adopter glob that don't import the canonical primitive declared in `docs/scope-discovery/adopter-manifests.yaml` | whole tree |
+| `make check-editor-symmetry` | read-only matrix check; the operator-readable artifact at `docs/scope-discovery/editor-symmetry.md` is refreshed by `make check-editor-symmetry-write` | whole tree |
+| `make check-disposition-survivor` | a `clones.yaml` entry whose protected disposition (`keep-with-reason` / `ignore-with-justification` / `refactor`) silently reverted to `pending` | on-disk `clones.yaml` vs the merge base |
+| `make check-refactor-preconditions` | `Closes clones.yaml <id>` markers when the named group's disposition isn't `refactor`, its `canonical_side` file doesn't exist, its `tests_proof.sha` doesn't resolve in git, or its `tests` commands fail at HEAD | each branch commit carrying the marker |
 
 ### Refactor preconditions
 
-Refactor commits closing a `clones.yaml` entry MUST declare `canonical_side: <file>|"all"|"new"` + `canonical_reason` + (when extracting a new primitive) `new_shape_summary` + `tests` + `tests_proof.{sha,demonstration}`. The commit-msg gate enforces this; before any refactor, prove either an existing regression-detection test exists OR write one. See `docs/scope-discovery/refactor-preconditions-checklist.md`.
+Refactor commits closing a `clones.yaml` entry MUST declare `canonical_side: <file>|"all"|"new"` + `canonical_reason` + (when extracting a new primitive) `new_shape_summary` + `tests` + `tests_proof.{sha,demonstration}`. `make gates` enforces this on every branch commit carrying the marker; before any refactor, prove either an existing regression-detection test exists OR write one. See `docs/scope-discovery/refactor-preconditions-checklist.md`.
 
-### Informational / operator-driven (not pre-commit-blocking)
+### Informational / operator-driven (not part of `make gates`)
 
 - `make check-deprecations` / `make check-deprecations-write` — walks `@deprecated` JSDoc + `// DEPRECATED:` markers; emits `docs/scope-discovery/deprecation-queue.md` split into "blocked by importers" + "safe-to-delete".
 - `make clone-summary SURFACE=<glob>` — per-surface counts: `total | pending-touching | pending-intra | dispositioned-touching`.
@@ -149,7 +157,7 @@ Refactor commits closing a `clones.yaml` entry MUST declare `canonical_side: <fi
 
 ### Validator suite
 
-`pnpm test:scope-discovery` runs every adversarial validator (~177 scenarios across ~15 validators in seconds); every gate has a gutted-stub self-check that proves the rejection assertions have teeth. When CI is absent, **the controller IS the gate** — re-run after every implementer dispatch before dispatching reviewers.
+`pnpm test:scope-discovery` runs every adversarial validator (~177 scenarios across ~15 validators in seconds); every gate has a gutted-stub self-check that proves the rejection assertions have teeth. There is no CI: **the controller IS the gate** — run `make gates` and re-run the validators after every implementer dispatch, before dispatching reviewers.
 
 Full protocol contract: `docs/scope-discovery/README.md` + `docs/scope-discovery/LAYOUT.md`.
 
@@ -166,6 +174,7 @@ For bridge work:
 
 ## Before Committing
 
+- `make gates` passes.
 - Progress indicators show bytes, elapsed time, and ETA when applicable.
 - No hardcoded pixel layouts where proportional flex layouts are expected.
 - No defensive sleeps when protocol ACK or response semantics already define completion.
@@ -213,7 +222,7 @@ The compiler must catch contract violations.
 ## Repository Hygiene
 
 - Build artifacts belong in `dist/`.
-- Do not bypass pre-commit or pre-push hooks.
+- No git hooks. Do not add hooks or set `core.hooksPath`; enforcement belongs in `make gates` and code review.
 - Do not commit temporary files, logs, or generated artifacts unless the repo explicitly tracks them.
 - Use `pnpm` for package operations.
 - Use `tsx` for running TypeScript scripts.

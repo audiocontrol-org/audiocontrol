@@ -2,7 +2,7 @@
  * tools/scope-discovery/disposition-survivor.gate-scenarios.ts
  *
  * AUDIT-20260524-14 Heavy-backstop scenarios for the
- * `check-disposition-survivor` pre-commit gate. Split out of
+ * `check-disposition-survivor` gate. Split out of
  * `disposition-survivor.validate.ts` so the host stays under the
  * 300-500 line cap; the Light-fix scenarios stay in the host (they
  * exercise the strict-parse + refresh-baseline path, which is a
@@ -235,6 +235,56 @@ export async function scenarioGateForceOverride(survivorEntry: string): Promise<
       return fail(name, `expected stderr to name the overridden id; got:\n${r.stderr}`);
     }
     return pass(name, 'gate exited 0 under --force; override warning emitted with id detail');
+  } finally {
+    rmSync(fix.dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Commit `baseContent` on `main`, then commit `branchContent` on a
+ * branch. Index and working tree both match the branch tip, so a
+ * staged-diff comparison sees nothing; only a base-ref comparison
+ * (`--head-ref main --working-tree`) can see the branch's change.
+ */
+function setupBaseAndBranch(fix: GitFixture, baseContent: string, branchContent: string): void {
+  const absBaseline = path.join(fix.dir, fix.baseline);
+  writeFileSync(absBaseline, baseContent, 'utf8');
+  execFileSync('git', ['add', fix.baseline], { cwd: fix.dir });
+  execFileSync('git', ['commit', '-q', '-m', 'baseline'], { cwd: fix.dir });
+  execFileSync('git', ['checkout', '-q', '-b', 'topic'], { cwd: fix.dir });
+  writeFileSync(absBaseline, branchContent, 'utf8');
+  execFileSync('git', ['add', fix.baseline], { cwd: fix.dir });
+  execFileSync('git', ['commit', '-q', '-m', 'branch change'], { cwd: fix.dir });
+}
+
+export async function scenarioWorkingTreeBlocksBranchLoss(survivorEntry: string): Promise<ScenarioResult> {
+  const name = 'disposition-survivor --working-tree blocks a loss committed on the branch';
+  const fix = makeGitFixture('wt-block');
+  try {
+    setupBaseAndBranch(fix, HEAD_YAML_WITH_KEEP, STAGED_YAML_REVERTS_KEEP);
+    const r = runSurvivorGate(survivorEntry, fix.dir, ['--head-ref', 'main', '--working-tree']);
+    if (r.code !== 1) {
+      return fail(name, `expected exit 1; got ${r.code}\nstdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    }
+    if (!r.stderr.includes('aaaaaaaaaaaa')) {
+      return fail(name, `expected stderr to name id "aaaaaaaaaaaa"; got:\n${r.stderr}`);
+    }
+    return pass(name, 'gate exited 1 and named the id the branch reverted to pending');
+  } finally {
+    rmSync(fix.dir, { recursive: true, force: true });
+  }
+}
+
+export async function scenarioWorkingTreeAllowsBranchAdditions(survivorEntry: string): Promise<ScenarioResult> {
+  const name = 'disposition-survivor --working-tree allows a branch that only adds pending entries';
+  const fix = makeGitFixture('wt-allow');
+  try {
+    setupBaseAndBranch(fix, HEAD_YAML_WITH_KEEP, STAGED_YAML_ADDS_PENDING);
+    const r = runSurvivorGate(survivorEntry, fix.dir, ['--head-ref', 'main', '--working-tree']);
+    if (r.code !== 0) {
+      return fail(name, `expected exit 0; got ${r.code}\nstdout:\n${r.stdout}\nstderr:\n${r.stderr}`);
+    }
+    return pass(name, 'gate exited 0 — the branch lost no protected disposition');
   } finally {
     rmSync(fix.dir, { recursive: true, force: true });
   }

@@ -169,7 +169,7 @@ export async function scenarioNewGroupCitesBatchDispose(): Promise<ScenarioResul
 /**
  * Scenario 2 (default mode, non-quiet): the per-NEW-group hint must
  * also appear in the default-mode output (the shape `make
- * check-clone-duplication` and the pre-commit hook surface to the
+ * check-clone-duplication` and `make gates` surface to the
  * operator). Default mode wraps NEW lines in 2-space indent — confirm
  * both the indented NEW line AND the citation lines land.
  */

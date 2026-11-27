@@ -12,10 +12,10 @@ The protocol treats agent-side enforcement as **code, not directives** — passi
 |---|---|---|
 | Starting a **system-wide feature** (UI redesign, architectural refactor, cross-cutting pattern enforcement) | `/scope-inventory <feature-slug>` | Produces a strawman `scope-manifest.yaml` + evidence trail so you walk the routes / modules / themes / patterns once upfront instead of N times reactively. |
 | **Mid-implementation operator complaint** ("the chevron is too small on Patches," "library uses a different primitive than Tones") | `/scope-widen "<complaint>"` | Greps for the named class/component/pattern, returns a `Searched / Included / Excluded` proposal naming every sibling that needs the same fix. |
-| **Pre-commit hook blocked your commit** with "new clone groups detected" | Read the failure output. Then either: (a) refactor so the new clone disappears; (b) edit `docs/scope-discovery/clones.yaml` to disposition the group as `keep-with-reason` / `ignore-with-justification` with a one-line reason; (c) run `/scope-widen` to find sibling cases that should be fixed in the same commit. | The gate enforces "no new duplication beyond the dispositioned baseline." Bypassing it requires explicit disposition, not silent commit-amend. |
+| **`make gates` failed** with "new clone groups detected" | Read the failure output. Then either: (a) refactor so the new clone disappears; (b) edit `docs/scope-discovery/clones.yaml` to disposition the group as `keep-with-reason` / `ignore-with-justification` with a one-line reason; (c) run `/scope-widen` to find sibling cases that should be fixed in the same commit. | The gate enforces "no new duplication beyond the dispositioned baseline." Bypassing it requires explicit disposition, not silent commit-amend. |
 | Reviewing the **duplication backlog** | Inspect `docs/scope-discovery/clones.yaml` (1 entry per clone group) | Each entry carries `id`, `members: [file:line]`, `lines`, `disposition`, `reason`. Operator dispositions every entry; refactor-marked entries become merged PRs. |
 | Sub-agent dispatch returned without enumerating siblings | The dispatch wrapper rejects the return automatically (when the orchestrator uses `wrap(...)` from `tools/scope-discovery/dispatch-wrapper.ts`) | Required return grammar: `Searched: <pattern> — <N matches>` / `Included: <file:line>, ...` / `Excluded: <file:line> — <reason>`. The wrapper parses + validates this block. |
-| **Dispositioning a clone group as `refactor`** | Follow Step 0 (canonical-side identification + regression-detection coverage); see [`## Refactor Preconditions (Step 0)`](#refactor-preconditions-step-0) below | Prevents regime erasure + behavior regression masked by a clone-count drop. Required by T5.3's pre-commit gate; enforced at parse time by the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts`. |
+| **Dispositioning a clone group as `refactor`** | Follow Step 0 (canonical-side identification + regression-detection coverage); see [`## Refactor Preconditions (Step 0)`](#refactor-preconditions-step-0) below | Prevents regime erasure + behavior regression masked by a clone-count drop. Required by T5.3's `make gates` check; enforced at parse time by the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts`. |
 
 ## Refactor Preconditions (Step 0)
 
@@ -123,7 +123,7 @@ Step 0 is the operator-declared MUST HAVE for Phase 5. The goal is twofold:
 
 2. **Systematically reinforce test coverage and quality as a side effect of the gate.** Every time a refactor disposition would have been written without coverage, Step 0b forces the test to be written or proven first. The clone-disposition backlog becomes a test-coverage forcing function. Drains that look like cleanup are also coverage walks.
 
-The gate is enforced mechanically by the T5.3 pre-commit hook (`make check-refactor-preconditions`); the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts` catches parse-time omissions; this section is the operator-facing protocol that the schema enforces. T5.4 wires the per-branch verification language (canonical fragment §"Verification per branch") into sub-agent dispatched prompts via two paths:
+The gate is enforced mechanically by the T5.3 gate in `make gates` (`make check-refactor-preconditions`); the schema validator in `tools/scope-discovery/clones-yaml.refactor.ts` catches parse-time omissions; this section is the operator-facing protocol that the schema enforces. T5.4 wires the per-branch verification language (canonical fragment §"Verification per branch") into sub-agent dispatched prompts via two paths:
 
 - **Static agent-prompt mirrors** — `.claude/agents/code-reviewer.md` + `.claude/agents/codebase-auditor.md` each carry a §"Step 0 verification" section naming the four canonical_side branch verifications + the test-precondition verification action.
 - **Dispatch-wrapper conditional prelude** — `tools/scope-discovery/dispatch-wrapper.ts` `wrap()` appends the prelude exported by `tools/scope-discovery/refactor-preconditions-prompt.ts` (`REFACTOR_PRECONDITIONS_CHECKLIST`) when the task prompt carries a refactor marker (`Closes clones.yaml` / `refactor disposition` / `disposition: refactor` / `extraction commit` / a literal `canonical_side` reference). This covers refactor-context dispatches without requiring a standalone refactor-orchestrator agent.
@@ -136,14 +136,14 @@ The clone detector catches duplication as a *shadow* of regime gaps — a holdou
 
 ### The four scan types
 
-| Scan | Artifact | Detects | Pre-commit gate |
+| Scan | Artifact | Detects | `make gates` |
 |---|---|---|---|
 | **Anti-pattern** (T6.1) | [`anti-patterns.yaml`](anti-patterns.yaml) | Legacy structural fingerprint match — files that match a shape registered as "replaced by primitive X" | **blocks** new shape matches |
 | **Adopter manifest** (T6.2) | [`adopter-manifests.yaml`](adopter-manifests.yaml) | Files matching a per-primitive adopter glob that don't import the canonical `from` path | **blocks** new holdouts |
 | **Cross-editor symmetry** (T6.3) | [`editor-symmetry.md`](editor-symmetry.md) | Fleet-matrix view across `modules/*-editor/`; surfaces editors that didn't follow a convention adopted by peers | runs read-only (presentation of the adopter data above) |
 | **Deprecation** (T6.4) | [`deprecation-queue.md`](deprecation-queue.md) | Files carrying `@deprecated` / `// DEPRECATED:` markers, counted by remaining importers; splits into "blocked" vs "safe to delete" | informational; operator-driven |
 
-The first three fire on every `.ts` / `.tsx` commit via [`.githooks/pre-commit`](../../.githooks/pre-commit). The fourth is operator-invoked (`make check-deprecations-write` regenerates the queue artifact).
+The first three run over the whole tree in `make gates` ([`tools/gates.sh`](../../tools/gates.sh)). The fourth is operator-invoked (`make check-deprecations-write` regenerates the queue artifact).
 
 ### Composition into `/scope-inventory`
 
@@ -191,7 +191,7 @@ operator surfaces inconsistency mid-flight   →   /scope-widen "<complaint>"
 ↓
 commit
 ↓
-pre-commit hook fires:
+`make gates` runs:
   - check-css-duplication (CSS class drift; existing)
   - check-clone-duplication (general jscpd-based TS/TSX detection; new)
 ↓
@@ -260,7 +260,7 @@ The forbidden-phrase list is sourced from `.claude/rules/agent-discipline.md` §
   - `find-feature.ts` — backs `make scope-inventory FEATURE=<slug>`
 - `.claude/skills/scope-inventory/SKILL.md` — the upfront-discovery skill (10-step procedure)
 - `.claude/skills/scope-widen/SKILL.md` — the mid-implementation widening skill (7-step procedure)
-- `.githooks/pre-commit` — wires both gates (CSS-class + general clone) into pre-commit
+- `tools/gates.sh` — `make gates`; wires both gates (CSS-class + general clone) and the rest into one verb
 - `Makefile` — `make scope-inventory FEATURE=<slug>`, `make refresh-clones-baseline`, `make test-scope-discovery`, etc.
 
 Per-feature scope-discovery artifacts live in the feature docs directory; see `LAYOUT.md` for the contract.

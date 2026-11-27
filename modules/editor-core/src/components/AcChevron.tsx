@@ -13,7 +13,7 @@
  *   (`.ac-list-bank-chevron`, `.ac-tree-chevron`, `.ac-tree-chevron-btn`,
  *   `.ac-device-memory-section-eyebrow-chevron`) that "agreed" by
  *   convention. One drifted to `1rem` without anyone noticing — caught
- *   by the operator on 2026-05-21. The pre-commit chevron-sizing gate
+ *   by the operator on 2026-05-21. The `make gates` chevron-sizing gate
  *   allow-listed the classes by name, so an allow-listed class could
  *   silently drift on a future edit without tripping the gate.
  *

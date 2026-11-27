@@ -10,9 +10,9 @@
  *   (c) named tests[] commands exit 0 at HEAD
  *   (d) parse-time T5.1 errors surface verbatim
  *
- * Wired via .githooks/commit-msg (the commit-msg hook receives the
- * message file path as $1; pre-commit doesn't). Silent on commits
- * without a marker. Runtime primitives extracted to
+ * Wired via `make gates` (tools/gates.sh), which runs it once per branch
+ * commit whose message carries a marker, passing that message. Silent on
+ * commits without a marker. Runtime primitives extracted to
  * check-refactor-preconditions.runtime.ts (file-cap split).
  *
  * Invocation flags:
@@ -105,7 +105,7 @@ async function readCommitMessage(cli: Cli): Promise<string> {
   if (cli.commitMsgInline !== null) return cli.commitMsgInline;
   if (cli.commitMsgFile !== null) return readFile(cli.commitMsgFile, 'utf8');
   // Default — read latest commit's message; only hit when the gate is
-  // run manually for diagnostic (commit-msg hook always supplies --commit-msg-file).
+  // run manually for diagnostic (`make gates` always supplies the commit message).
   const result = spawnSync('git', ['log', '-1', '--format=%B'], {
     cwd: cli.repoRoot,
     encoding: 'utf8',

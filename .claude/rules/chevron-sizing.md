@@ -26,7 +26,7 @@ padding / hit-area chrome), name it after the wrapper's ROLE — e.g.,
 `.ac-device-memory-section-eyebrow` — and put the AcChevron inside.
 **Never name a class after the glyph it wraps.** A class containing
 the substring "chevron" anywhere outside the canonical file fails
-the pre-commit gate.
+`make gates`.
 
 ## Why the rule has this exact shape
 
@@ -45,7 +45,7 @@ The new architecture closes the pathology structurally:
 
 1. **One CSS class** (`.ac-chevron`) in **one file** (chevron-primitives.css)
 2. **One React component** (`AcChevron`) that emits that class
-3. **A pre-commit gate** (`tools/check-chevron-sizing.sh`) that fails
+3. **A `make gates` gate** (`tools/check-chevron-sizing.sh`) that fails
    the build if any other CSS file declares a class containing the
    substring "chevron"
 
@@ -82,8 +82,8 @@ explicit operator approval because the diff is obvious.
    (`.ac-foo-toggle`, `.ac-bar-disclosure-btn`). The class may NOT
    contain the substring "chevron". The gate enforces this.
 3. After any change touching a disclosure surface, run
-   `make check-chevron-sizing` (the gate runs in pre-commit anyway,
-   but local verification saves a round-trip).
+   `make check-chevron-sizing` (`make gates` runs it anyway,
+   but running it alone saves a round-trip).
 4. After any change that changes which class wraps the chevron,
    re-screenshot the affected pages per the CSS refactor protocol
    (`.claude/rules/css-refactor.md`).
@@ -92,5 +92,5 @@ explicit operator approval because the diff is obvious.
 
 - `modules/editor-core/src/components/AcChevron.tsx` — the component
 - `modules/editor-core/src/design/chevron-primitives.css` — the lone CSS rule
-- `tools/check-chevron-sizing.sh` — the pre-commit gate
+- `tools/check-chevron-sizing.sh` — the `make gates` gate
 - `Makefile` — `check-chevron-sizing` target wired into the build

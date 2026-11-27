@@ -4,7 +4,7 @@
  *
  * Consumers MUST render the chevron via the AcChevron React component
  * (editor-core/src/components/AcChevron.tsx), which emits
- * `<span class="ac-chevron" data-expanded="…">`. The pre-commit gate
+ * `<span class="ac-chevron" data-expanded="…">`. The `make gates` gate
  * (`tools/check-chevron-sizing.sh`) fails the build if any other CSS
  * file declares a class containing the substring "chevron", so the
  * design surface is structurally one-class-only.

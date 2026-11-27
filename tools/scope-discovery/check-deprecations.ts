@@ -19,7 +19,7 @@
  *   - `docs/scope-discovery/deprecation-queue.md` (only with --write):
  *     the operator-readable artifact committed to the repo. Refreshed
  *     manually via `make check-deprecations-write` — there is NO
- *     pre-commit hook for this gate; the deprecation lifecycle is
+ *     `make gates` entry for this check; the deprecation lifecycle is
  *     operator-driven, not commit-driven.
  *
  * Exit codes:

@@ -16,8 +16,8 @@
  * both `import ... from '<path>'` and `import('<path>')`, with single OR
  * double quotes accepted.
  *
- * Pre-commit hook (`.githooks/pre-commit`) invokes this via
- * `make check-adopters` whenever staged changes touch .ts/.tsx.
+ * `make gates` (`tools/gates.sh`) invokes this via
+ * `make check-adopters` over the whole tree.
  *
  * Usage:
  *   tsx tools/scope-discovery/check-adopters.ts [--root <path>]

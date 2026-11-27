@@ -15,8 +15,8 @@
  * repo doesn't already carry; pure-regex is adequate when fingerprints
  * are precise.
  *
- * Pre-commit hook (`.githooks/pre-commit`) invokes this via
- * `make check-anti-patterns` whenever staged changes touch .ts/.tsx.
+ * `make gates` (`tools/gates.sh`) invokes this via
+ * `make check-anti-patterns` over the whole tree.
  *
  * Usage:
  *   tsx tools/scope-discovery/check-anti-patterns.ts [--root <path>]

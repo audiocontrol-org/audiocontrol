@@ -4,7 +4,7 @@
  * Adversarial validator harness for `tools/scope-discovery/check-anti-patterns.ts`
  * (workplan T6.1). Plants synthetic registry + source-file fixtures under
  * `.tmp/anti-patterns-validator-<runid>/`, runs the scanner as a subprocess
- * (same way the make target + pre-commit hook do), and asserts detection
+ * (same way the make target + `make gates` do), and asserts detection
  * behavior across six scenarios + a gutted-stub self-check.
  *
  * Pattern mirrors clone-detector.validate.ts and refactor-preconditions.validate.ts:

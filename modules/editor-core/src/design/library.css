@@ -380,7 +380,7 @@
 /* NOTE: the disclosure glyph is rendered via the AcChevron component
    (editor-core/src/components/AcChevron.tsx). Its sole CSS rule lives
    in chevron-primitives.css. Do not declare a chevron-named class
-   anywhere else — the pre-commit gate (tools/check-chevron-sizing.sh)
+   anywhere else — the `make gates` gate (tools/check-chevron-sizing.sh)
    fails the build if you do. See .claude/rules/chevron-sizing.md. */
 
 /* Collapsed-state border: drop the bottom hairline so a stack of

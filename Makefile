@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate check-disposition-survivor check-disposition-survivor-validate check-clone-summary-validate clone-summary batch-dispose check-batch-dispose-validate migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate check-no-verify-detection-validate check-pre-commit-consolidation-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate test-scope-discovery scope-inventory check-scope-discovery-deps check-deps-validate check-glob-validate refresh-clones-baseline check-chevron-sizing
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-device-conformance test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-probe-roland probe-roland-diag test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland test-ui-s3k test-ui-roland test-wiring-roland test-rendering-roland build-midi-macro-bridge record-fixtures-roland record-fixtures-roland-s330 record-fixtures-roland-s550 check-fixture-drift check-coverage-roland check-css-duplication check-css-duplication-validate check-clone-duplication check-clone-duplication-validate check-clone-id-stability-validate check-disposition-survivor check-disposition-survivor-validate check-clone-summary-validate clone-summary batch-dispose check-batch-dispose-validate migrate-clone-ids migrate-clone-ids-dry check-dispatch-wrapper-validate gates check-gates-validate check-refactor-preconditions-smoke check-refactor-preconditions check-refactor-preconditions-validate check-anti-patterns check-anti-patterns-validate check-adopters check-adopters-validate check-editor-symmetry check-editor-symmetry-write check-editor-symmetry-validate check-deprecations check-deprecations-write check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate test-scope-discovery scope-inventory check-scope-discovery-deps check-deps-validate check-glob-validate refresh-clones-baseline check-chevron-sizing
 
 build: $(ALL_STAMPS)
 
@@ -347,10 +347,11 @@ check-clone-id-stability-validate:
 # disposition-loss path the original audit names + every future
 # regression of the same shape, regardless of which upstream code path
 # triggered it. Operator override via `--force` (explicit, with stderr
-# warning). Pre-commit wires this in only when docs/scope-discovery/
-# clones.yaml is staged.
+# warning). Run bare, it compares the staged clones.yaml against HEAD.
+# `make gates` passes SURVIVOR_ARGS="--head-ref <merge-base> --working-tree"
+# to compare the on-disk file against the branch's merge base.
 check-disposition-survivor:
-	tsx tools/scope-discovery/check-disposition-survivor.ts
+	tsx tools/scope-discovery/check-disposition-survivor.ts $(SURVIVOR_ARGS)
 
 # Adversarial validator for AUDIT-20260524-14. Exercises BOTH the Light
 # fix (parseClonesYamlStrict: malformed baseline now fails loud instead
@@ -456,32 +457,23 @@ check-batch-dispose-validate:
 check-dispatch-wrapper-validate:
 	tsx tools/scope-discovery/dispatch-wrapper.validate.ts
 
-# Adversarial validator for the T7.5 `git commit --no-verify` bypass-
-# detection mechanism (per AUDIT-20260522-01). Stands up throwaway
-# git repos in $(mktemp -d), wires the real .githooks/post-commit and
-# .githooks/pre-push against a structurally-faithful pre-commit stub,
-# and asserts three observable outcomes plus an adversarial gutted-
-# detector self-check (replace the stub with a no-op; the
-# "normal commit recorded" assertion must FAIL — proving the marker
-# write is load-bearing, not the post-commit hook alone).
-check-no-verify-detection-validate:
-	tsx tools/scope-discovery/no-verify-detection.validate.ts
+# Every blocking gate, as one verb. The project uses no git hooks: the
+# controller and every implementer run this before each commit and
+# before opening or merging a PR (AGENTS.md §"Gates"). Runs the six
+# whole-tree scans, check-disposition-survivor against the merge base,
+# and check-refactor-preconditions for each branch commit carrying a
+# `Closes clones.yaml <id>` marker; prints one consolidated report.
+# GATES_BASE (default origin/main) names the ref to diff against.
+gates:
+	@./tools/gates.sh
 
-# Adversarial validator for the AUDIT-20260524-10 pre-commit gate-
-# consolidation restructure (TF-004). Stands up throwaway git repos
-# in $(mktemp -d) with the REAL .githooks/pre-commit copied verbatim
-# and a per-target `make` shim on PATH that routes each `make check-*`
-# invocation to a controllable stub. Asserts five observable outcomes:
-# (1) multiple-gate failures land in a single consolidated report with
-# both [FAIL] blocks + per-gate captured output + all [PASS] lines;
-# (2) PRE_COMMIT_SHORT_CIRCUIT=1 preserves the prior fail-fast shape;
-# (3) all-passing happy path emits no consolidated report; (4) gates
-# whose staged-file condition didn't trigger (CSS gates with no .css
-# files staged) are absent from the report entirely; (5) a gutted
-# stub of the hook (no-op exit-0) correctly fails the consolidation
-# assertions — proves the harness has teeth.
-check-pre-commit-consolidation-validate:
-	tsx tools/scope-discovery/pre-commit-consolidation.validate.ts
+# Adversarial validator for `make gates`. Throwaway git repos with the
+# REAL tools/gates.sh and a `make` shim routing each gate to a stub:
+# consolidated failure report, all-pass, merge-base handoff to the
+# survivor gate, refactor-preconditions only on marked commits, loud
+# failure on a missing base, and a gutted-script self-check.
+check-gates-validate:
+	tsx tools/scope-discovery/gates.validate.ts
 
 # Smoke-test the Phase 5 refactor-preconditions protocol: feeds
 # synthetic clone-group entries (missing canonical declaration, missing
@@ -495,19 +487,18 @@ check-pre-commit-consolidation-validate:
 check-refactor-preconditions-smoke:
 	tsx tools/scope-discovery/refactor-preconditions.smoke-test.ts
 
-# T5.3 — refactor-preconditions pre-commit (commit-msg) gate. Invoked
-# from .githooks/commit-msg when the commit message contains a
-# `Closes clones.yaml <id>` marker. Verifies the named clone group
-# satisfies both Step 0 preconditions (canonical-side + test-precondition)
-# at commit time: (a) canonical_side file-existence (when not "all"/"new");
+# T5.3 — refactor-preconditions gate. `make gates` runs it for each
+# branch commit whose message contains a `Closes clones.yaml <id>`
+# marker. Verifies the named clone group satisfies both Step 0
+# preconditions (canonical-side + test-precondition): (a) canonical_side file-existence (when not "all"/"new");
 # (b) tests_proof.sha resolves via git rev-parse; (c) named tests[]
 # commands exit 0 at HEAD; plus the T5.1 parse-time fields are surfaced
 # verbatim. Rejects with numbered per-precondition errors + actionable
 # next steps. Exits 0 on non-refactor commits (no marker → silent).
 #
-# COMMIT_MSG_FILE — supplied by the commit-msg hook to point at
-# $GIT_DIR/COMMIT_EDITMSG. When invoked manually (no var), reads the
-# latest commit's message via `git log -1 --format=%B` for diagnostic.
+# COMMIT_MSG_FILE — supplied by `make gates` with the commit's message.
+# When invoked manually (no var), reads the latest commit's message via
+# `git log -1 --format=%B`.
 check-refactor-preconditions:
 ifdef COMMIT_MSG_FILE
 	@tsx tools/scope-discovery/check-refactor-preconditions.ts --commit-msg-file "$(COMMIT_MSG_FILE)"
@@ -603,8 +594,8 @@ check-editor-symmetry-validate:
 # emits a status report ("blocked" with importer file:line lists +
 # "safe-to-delete" queue). Default invocation is read-only; the gate
 # is informational (operators consult the queue to drain deprecated
-# files), so this target does NOT block commits and is NOT wired
-# into the pre-commit hook. Exit codes: 0 on success (regardless of
+# files), so this target does NOT block and is NOT part of
+# `make gates`. Exit codes: 0 on success (regardless of
 # importer count); 2 on infra error. DRY: reuses util/glob.ts +
 # util/typeguards.ts; mirrors the CLI shape of check-editor-symmetry.
 check-deprecations:
@@ -682,7 +673,7 @@ check-synthesis-warnings-validate:
 # Combined runtime is under 30s; if that ever changes, the workplan T2.8
 # gate is broken and the slowdown must be surfaced.
 # T2.8 gate (+ T5.2 + T5.3 + T6.1 + T6.2 + T6.3 + T6.4 + T6.5 additions).
-test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-disposition-survivor-validate check-clone-summary-validate check-batch-dispose-validate check-dispatch-wrapper-validate check-no-verify-detection-validate check-pre-commit-consolidation-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate check-deps-validate check-glob-validate
+test-scope-discovery: check-clone-duplication-validate check-clone-id-stability-validate check-disposition-survivor-validate check-clone-summary-validate check-batch-dispose-validate check-dispatch-wrapper-validate check-gates-validate check-refactor-preconditions-smoke check-refactor-preconditions-validate check-anti-patterns-validate check-adopters-validate check-editor-symmetry-validate check-deprecations-validate check-regime-holdout-validate check-prd-themed-validate check-synthesis-warnings-validate check-deps-validate check-glob-validate
 
 # T7.2 — pre-flight dep guard for `make scope-inventory`. Runs
 # `tsx tools/scope-discovery/check-deps.ts` which probes the top-level
@@ -752,8 +743,8 @@ endif
 # emits. Use this AFTER landing refactors that legitimately drop clone
 # groups (so the gate stops flagging them as DROPPED), or after an
 # operator-approved scope change that expands the detector's coverage.
-# Never run on a routine basis — the gate's job is to flag NEW clones
-# at commit time, not to be silenced by a refresh.
+# Never run on a routine basis — the gate's job is to flag NEW clones,
+# not to be silenced by a refresh.
 #
 # Disposition preservation is the load-bearing behavior here:
 # `--refresh-baseline` is implemented in `clone-detector.ts` such that
@@ -762,29 +753,6 @@ endif
 # T2.7 gate.
 refresh-clones-baseline:
 	@tsx tools/scope-discovery/clone-detector.ts --refresh-baseline
-
-# Activate the in-repo pre-commit hooks. Idempotent. Run once per
-# clone; the config setting lives in `.git/config` (not tracked),
-# so each clone needs its own install step. The hook scripts
-# themselves are in `.githooks/` and ARE tracked, so they travel.
-install-hooks:
-	git config core.hooksPath .githooks
-	@echo "hooks installed: core.hooksPath = .githooks"
-	@echo "Active pre-commit gates (CSS-touching commits):"
-	@echo "  - check-css-duplication      blocks NEW cross-page CSS class duplication"
-	@echo "  - check-chevron-sizing       blocks chevron-named CSS outside the canonical primitive"
-	@echo "Active pre-commit gates (TS/TSX-touching commits):"
-	@echo "  - check-clone-duplication    blocks NEW TS/TSX clone groups (jscpd + clones.yaml)"
-	@echo "  - check-anti-patterns        blocks files matching registered legacy-shape anti-patterns"
-	@echo "  - check-adopters             blocks expected-adopter files missing the canonical import"
-	@echo "  - check-editor-symmetry      reports cross-editor symmetry gaps (read-only, fail-on-✗)"
-	@echo "Active commit-msg gate:"
-	@echo "  - check-refactor-preconditions  enforces Step 0 preconditions when message contains"
-	@echo "                                  'Closes clones.yaml <id>' (Phase 5)"
-	@echo "Active post-commit + pre-push gates:"
-	@echo "  - post-commit: records HEAD SHA in .git/hooks/.pre-commit-passed"
-	@echo "  - pre-push:    warns on stderr when pushed commits lack the sentinel"
-	@echo "                 (catches 'git commit --no-verify' bypass attempts)"
 
 # ---------------------------------------------------------------------------
 # Common-Area Library Tests (shared specs, parameterized by env)

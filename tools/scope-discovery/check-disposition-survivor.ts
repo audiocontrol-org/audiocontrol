@@ -20,15 +20,19 @@
  *   tsx tools/scope-discovery/check-disposition-survivor.ts --force    # override
  *   tsx tools/scope-discovery/check-disposition-survivor.ts --baseline <path>
  *   tsx tools/scope-discovery/check-disposition-survivor.ts --head-ref <ref>
+ *   tsx tools/scope-discovery/check-disposition-survivor.ts --head-ref <merge-base> --working-tree
+ *       branch mode, used by `make gates`: compares the on-disk file
+ *       against <ref>, whether or not anything is staged
  *
  * Exit code:
- *   0   no destructive transitions detected, OR clones.yaml not staged
- *   1   one or more non-pending → pending transitions in the staged diff
+ *   0   no destructive transitions detected, OR (staged mode) clones.yaml not staged
+ *   1   one or more non-pending → pending transitions
  *   2   I/O, parse, or git error
  *
  * Comparison semantics:
- *   HEAD-side YAML  : `git show HEAD:<baseline>`           (parsed; throws on shape error)
- *   Staged-side YAML: `git show :<baseline>` (index blob)  (parsed; throws on shape error)
+ *   HEAD-side YAML  : `git show <head-ref>:<baseline>`     (parsed; throws on shape error)
+ *   Staged-side YAML: `git show :<baseline>` (index blob), or the on-disk
+ *                     file under --working-tree            (parsed; throws on shape error)
  *
  * For every entry in HEAD with `disposition ∈ {keep-with-reason,
  * ignore-with-justification, refactor}`, look up the same `id` in the
@@ -40,12 +44,13 @@
  * Entries that legitimately disappear (id removed from staged) or
  * change id (membership/content change) are NOT flagged — those are
  * either operator-driven refactors or content-driven id rolls, both
- * of which are visible in the standard pre-commit clone-detector diff.
+ * of which are visible in the standard clone-detector diff.
  * This gate's narrow job is to catch the SILENT loss path where the
  * id stays the same but the disposition reverts.
  */
 
 import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   type ClonesYaml,
@@ -62,15 +67,18 @@ interface Cli {
   readonly force: boolean;
   readonly baseline: string;
   readonly headRef: string;
+  readonly workingTree: boolean;
 }
 
 function parseCli(argv: readonly string[]): Cli {
   let force = false;
   let baseline = DEFAULT_BASELINE;
   let headRef = DEFAULT_HEAD_REF;
+  let workingTree = false;
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--force') force = true;
+    else if (a === '--working-tree') workingTree = true;
     else if (a === '--baseline') {
       const next = argv[++i];
       if (next === undefined) throw new Error('--baseline requires a path');
@@ -81,7 +89,19 @@ function parseCli(argv: readonly string[]): Cli {
       headRef = next;
     } else throw new Error(`unknown arg: ${a}`);
   }
-  return { force, baseline, headRef };
+  return { force, baseline, headRef, workingTree };
+}
+
+/**
+ * Read the candidate side of the comparison: the on-disk file under
+ * `--working-tree` (branch mode, used by `make gates` against the
+ * merge base), otherwise the staged index blob.
+ */
+function readCandidate(cli: Cli, cwd: string): GitShowResult {
+  if (!cli.workingTree) return gitShowBlob(`:${cli.baseline}`, cwd);
+  const abs = path.join(cwd, cli.baseline);
+  if (!existsSync(abs)) return { ok: false, missing: true };
+  return { ok: true, text: readFileSync(abs, 'utf8') };
 }
 
 /**
@@ -133,8 +153,8 @@ function gitShowBlob(spec: string, cwd: string): GitShowResult {
 /**
  * Returns true if `<baseline>` is staged for commit (added, modified,
  * or copied). Uses `git diff --cached --name-only --diff-filter=ACM`
- * — matches the pattern used in `.githooks/pre-commit`'s staged-files
- * sniffer. If the file isn't staged, this gate has nothing to do.
+ * — the staged-index check used when the gate runs bare (`make gates`
+ * passes `--head-ref <merge-base> --working-tree` instead). If the file isn't staged, this gate has nothing to do.
  */
 function isBaselineStaged(baseline: string, cwd: string): boolean {
   const result = spawnSync(
@@ -233,15 +253,14 @@ async function main(): Promise<number> {
     return 2;
   }
 
-  if (!isBaselineStaged(cli.baseline, REPO_ROOT)) {
-    // Nothing to do; the gate only runs when the baseline is part of
-    // the commit. Silent in this branch so pre-commit output stays
-    // clean for the common case (most commits don't touch clones.yaml).
+  if (!cli.workingTree && !isBaselineStaged(cli.baseline, REPO_ROOT)) {
+    // Staged mode with nothing staged: nothing to compare. Silent so
+    // the common case (no clones.yaml change) stays quiet.
     return 0;
   }
 
   const headSpec = `${cli.headRef}:${cli.baseline}`;
-  const stagedSpec = `:${cli.baseline}`;
+  const stagedSpec = cli.workingTree ? `working tree ${cli.baseline}` : `:${cli.baseline}`;
 
   const headResult = gitShowBlob(headSpec, REPO_ROOT);
   if (!headResult.ok && !headResult.missing) {
@@ -254,15 +273,15 @@ async function main(): Promise<number> {
     return 0;
   }
 
-  const stagedResult = gitShowBlob(stagedSpec, REPO_ROOT);
+  const stagedResult = readCandidate(cli, REPO_ROOT);
   if (!stagedResult.ok && !stagedResult.missing) {
-    console.error(`git show ${stagedSpec} failed:\n${stagedResult.stderr}`);
+    console.error(`reading ${stagedSpec} failed:\n${stagedResult.stderr}`);
     return 2;
   }
   if (!stagedResult.ok) {
     // The file is staged for deletion (or otherwise unreadable from
     // index). A deletion is a destructive operation but it's visible
-    // in the standard pre-commit diff — outside this gate's narrow
+    // in the standard staged diff — outside this gate's narrow
     // remit (silent same-id disposition reverts).
     return 0;
   }

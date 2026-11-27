@@ -131,7 +131,7 @@ the entry uses):
 
 Source of truth: docs/scope-discovery/refactor-preconditions-checklist.md
 §"Verification per branch". The mechanical schema check lives in
-tools/scope-discovery/clones-yaml.refactor.ts; the pre-commit gate at
+tools/scope-discovery/clones-yaml.refactor.ts; the make-gates check at
 make check-refactor-preconditions catches commit-time omissions. Your
 job here is the implementation-diff-level verification the schema can't
 do on its own.

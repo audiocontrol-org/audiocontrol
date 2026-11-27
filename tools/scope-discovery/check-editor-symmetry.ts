@@ -10,7 +10,7 @@
  *   - stdout (always): the rendered markdown table, suitable for
  *     piping into a markdown renderer or scanning in a terminal.
  *   - `docs/scope-discovery/editor-symmetry.md` (only with `--write`):
- *     the committed operator-readable artifact. The pre-commit hook
+ *     the committed operator-readable artifact. `make gates`
  *     runs WITHOUT `--write`; the operator runs `make check-editor-
  *     symmetry-write` to refresh the artifact when the registry
  *     changes.
